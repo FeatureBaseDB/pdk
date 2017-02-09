@@ -171,20 +171,9 @@ func getFrames(body []byte) ([]string, error) {
 	frames := make([]string, len(query.Calls))
 
 	for i, call := range query.Calls {
-		switch callt := call.(type) {
-		case *pql.Bitmap:
-			frames[i] = callt.Frame
-		case *pql.ClearBit:
-			frames[i] = callt.Frame
-		case *pql.Range:
-			frames[i] = callt.Frame
-		case *pql.SetBit:
-			frames[i] = callt.Frame
-		case *pql.SetBitmapAttrs:
-			frames[i] = callt.Frame
-		case *pql.TopN:
-			frames[i] = callt.Frame
-		default:
+		if frame, ok := call.Args["frame"].(string); ok {
+			frames[i] = frame
+		} else {
 			frames[i] = ""
 		}
 	}
