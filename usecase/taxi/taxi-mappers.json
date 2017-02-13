@@ -1,0 +1,56 @@
+{
+    "Fields": [
+        "VendorID": 0,
+        "Lpep_pickup_datetime": 1,
+	      "Lpep_dropoff_datetime": 2,
+	      "Store_and_fwd_flag": 3,
+	      "RateCodeID": 4,
+	      "Pickup_longitude": 5,
+	      "Pickup_latitude": 6,
+	      "Dropoff_longitude": 7,
+	      "Dropoff_latitude": 8,
+	      "Passenger_count": 9,
+	      "Trip_distance": 10,
+	      "Fare_amount": 11,
+	      "Extra": 12,
+	      "MTA_tax": 13,
+	      "Tip_amount": 14,
+	      "Tolls_amount": 15,
+	      "Ehail_fee": 16,
+	      "Total_amount": 17,
+	      "Payment_type": 18,
+	      "Trip_type": 19,
+    ],
+    "Parsers": [
+        {
+            "Name": "TimeParser0",
+            "Layout": "2006-01-02 15:04:05",
+        },
+        {
+            "Name": "FloatParser",
+        },
+        {
+            "Name": "IntParser",
+        },
+    ],
+    "Mappers": [
+        {
+            "Name": "floatMapper0",
+            "Buckets": [0.0, 0.5, 1.0, 2.0, 5.0, 10.0, 25.0, 50.0, 100.0, 200.0],
+        },
+    ],
+    "ParserMappers": [
+        {
+            "Frame": "cabType",
+            "Mapper": {
+                "Name": "IntMapper",
+                "Min": 0,
+                "Max": 2,
+            },
+            "Parsers": [
+                {"Name": "IntParser"}
+            ],
+            "Fields": "VendorID",
+        }
+    ]
+}
