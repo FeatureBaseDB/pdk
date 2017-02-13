@@ -160,22 +160,24 @@ func main() {
 
 func NewMain() *Main {
 	return &Main{
-		endpointIDs:  NewEndpointIDs(),
-		methodIDs:    NewStringIDs(),
-		userAgentIDs: NewStringIDs(),
-		hostnameIDs:  NewStringIDs(),
+		netEndpointIDs:   NewEndpointIDs(),
+		transEndpointIDs: NewEndpointIDs(),
+		methodIDs:        NewStringIDs(),
+		userAgentIDs:     NewStringIDs(),
+		hostnameIDs:      NewStringIDs(),
 	}
 }
 
 type Main struct {
-	iface        string
-	snaplen      int32
-	promisc      bool
-	timeout      time.Duration
-	endpointIDs  *EndpointIDs
-	methodIDs    *StringIDs
-	userAgentIDs *StringIDs
-	hostnameIDs  *StringIDs
+	iface            string
+	snaplen          int32
+	promisc          bool
+	timeout          time.Duration
+	netEndpointIDs   *EndpointIDs
+	transEndpointIDs *EndpointIDs
+	methodIDs        *StringIDs
+	userAgentIDs     *StringIDs
+	hostnameIDs      *StringIDs
 
 	numExtractors int
 	pilosaHost    string
@@ -185,8 +187,10 @@ type Main struct {
 
 func (m *Main) Get(frame string, id uint64) interface{} {
 	switch frame {
-	case netSrcFrame, netDstFrame, tranSrcFrame, tranDstFrame:
-		return m.endpointIDs.Get(id).String()
+	case netSrcFrame, netDstFrame:
+		return m.netEndpointIDs.Get(id).String()
+	case tranSrcFrame, tranDstFrame:
+		return m.transEndpointIDs.Get(id).String()
 	case netProtoFrame, transProtoFrame, appProtoFrame:
 		return gopacket.LayerType(id).String()
 	case hostnameFrame:
@@ -279,8 +283,8 @@ func (m *Main) extractAndPost(packets chan gopacket.Packet) {
 		qb.Add(uint64(netProto), netProtoFrame)
 		netFlow := netLayer.NetworkFlow()
 		netSrc, netDst := netFlow.Endpoints()
-		qb.Add(m.endpointIDs.GetID(netSrc), netSrcFrame)
-		qb.Add(m.endpointIDs.GetID(netDst), netDstFrame)
+		qb.Add(m.netEndpointIDs.GetID(netSrc), netSrcFrame)
+		qb.Add(m.netEndpointIDs.GetID(netDst), netDstFrame)
 
 		transLayer := packet.TransportLayer()
 		if transLayer == nil {
@@ -292,8 +296,8 @@ func (m *Main) extractAndPost(packets chan gopacket.Packet) {
 		qb.Add(uint64(transProto), transProtoFrame)
 		transFlow := transLayer.TransportFlow()
 		transSrc, transDst := transFlow.Endpoints()
-		qb.Add(m.endpointIDs.GetID(transSrc), tranSrcFrame)
-		qb.Add(m.endpointIDs.GetID(transDst), tranDstFrame)
+		qb.Add(m.transEndpointIDs.GetID(transSrc), tranSrcFrame)
+		qb.Add(m.transEndpointIDs.GetID(transDst), tranDstFrame)
 		if tcpLayer, ok := transLayer.(*layers.TCP); ok {
 			if tcpLayer.FIN {
 				qb.Add(uint64(FIN), TCPFlagsFrame)
