@@ -3,16 +3,14 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
-	"time"
-
 	"sync"
-
-	"context"
+	"time"
 
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
@@ -20,121 +18,6 @@ import (
 	"github.com/pilosa/pdk"
 	"github.com/pilosa/pilosa"
 )
-
-const (
-	netSrcFrame      = "netSrc"
-	netDstFrame      = "netDst"
-	tranSrcFrame     = "tranSrc"
-	tranDstFrame     = "tranDst"
-	netProtoFrame    = "netProto"
-	transProtoFrame  = "transProto"
-	appProtoFrame    = "appProto"
-	hostnameFrame    = "hostname"
-	methodFrame      = "method"
-	contentTypeFrame = "contentType"
-	userAgentFrame   = "userAgent"
-	packetSizeFrame  = "packetSize"
-	TCPFlagsFrame    = "TCPflags"
-)
-
-type TCPFlag uint64
-
-const (
-	FIN TCPFlag = iota
-	SYN
-	RST
-	PSH
-	ACK
-	URG
-	ECE
-	CWR
-	NS
-)
-
-func (f TCPFlag) String() string {
-	switch f {
-	case FIN:
-		return "FIN"
-	case SYN:
-		return "SYN"
-	case RST:
-		return "RST"
-	case PSH:
-		return "PSH"
-	case ACK:
-		return "ACK"
-	case URG:
-		return "URG"
-	case ECE:
-		return "ECE"
-	case CWR:
-		return "CWR"
-	case NS:
-		return "NS"
-	default:
-		return "???"
-	}
-}
-
-type StringIDs struct {
-	lock    sync.RWMutex
-	idMap   map[string]uint64
-	strings []string
-	cur     uint64
-}
-
-func NewStringIDs() *StringIDs {
-	return &StringIDs{
-		idMap:   make(map[string]uint64),
-		strings: make([]string, 0, 1000),
-	}
-}
-
-func (s *StringIDs) GetID(input string) uint64 {
-	s.lock.RLock()
-	id, ok := s.idMap[input]
-	s.lock.RUnlock()
-	if ok {
-		return id
-	}
-	s.lock.Lock()
-	s.idMap[input] = s.cur
-	s.strings = append(s.strings, input)
-	s.cur += 1
-	s.lock.Unlock()
-	return s.cur - 1
-}
-
-func (s *StringIDs) Get(id uint64) string {
-	// TODO I think we can get away without locking here - confirm
-	return s.strings[id]
-}
-
-func main() {
-	m := NewMain()
-	m.iface = "en0"
-	m.snaplen = 2048
-	m.promisc = true
-	m.timeout = time.Millisecond
-	m.numExtractors = 1
-	m.pilosaHost = "localhost:15000"
-	go m.Run()
-	log.Fatal(pdk.StartMappingProxy("localhost:15001", "http://localhost:15000", m))
-}
-
-// TODO SetBitmapAttrs to name=whatever for endpoint frames, hostname, useragent, and whatever else makes sense
-// was planning on doing that in IDMappers since they know when these things are first setHeader
-// Might want to think more about how to persist this info between runs though since it's pretty useless without that. Also if this is being run from multiple places, they'll need to coordinate.
-
-func NewMain() *Main {
-	return &Main{
-		netEndpointIDs:   NewStringIDs(),
-		transEndpointIDs: NewStringIDs(),
-		methodIDs:        NewStringIDs(),
-		userAgentIDs:     NewStringIDs(),
-		hostnameIDs:      NewStringIDs(),
-	}
-}
 
 type Main struct {
 	iface            string
@@ -156,47 +39,16 @@ type Main struct {
 	lenLock  sync.Mutex
 }
 
-func (m *Main) Get(frame string, id uint64) interface{} {
-	switch frame {
-	case netSrcFrame, netDstFrame:
-		return m.netEndpointIDs.Get(id)
-	case tranSrcFrame, tranDstFrame:
-		return m.transEndpointIDs.Get(id)
-	case netProtoFrame, transProtoFrame, appProtoFrame:
-		return gopacket.LayerType(id).String()
-	case hostnameFrame:
-		return m.hostnameIDs.Get(id)
-	case methodFrame:
-		return m.methodIDs.Get(id)
-	case userAgentFrame:
-		return m.userAgentIDs.Get(id)
-	case packetSizeFrame:
-		return id
-	case TCPFlagsFrame:
-		return TCPFlag(id).String()
-	default:
-		log.Fatalf("Unknown frame name: %v, can't translate id: %v", frame, id)
-		return nil
-	}
-}
-
-func (m *Main) AddLength(num int) {
-	m.lenLock.Lock()
-	m.totalLen += int64(num)
-	m.lenLock.Unlock()
-}
-
-type Nexter struct {
-	id   uint64
-	lock sync.Mutex
-}
-
-func (n *Nexter) Next() (nextID uint64) {
-	n.lock.Lock()
-	nextID = n.id
-	n.id += 1
-	n.lock.Unlock()
-	return
+func main() {
+	m := NewMain()
+	m.iface = "en0"
+	m.snaplen = 2048
+	m.promisc = true
+	m.timeout = time.Millisecond
+	m.numExtractors = 1
+	m.pilosaHost = "localhost:15000"
+	go m.Run()
+	log.Fatal(pdk.StartMappingProxy("localhost:15001", "http://localhost:15000", m))
 }
 
 func (m *Main) Run() {
@@ -348,5 +200,45 @@ func (m *Main) extractAndPost(packets chan gopacket.Packet) {
 		if err != nil {
 			log.Printf("Error writing to pilosa: %v", err)
 		}
+	}
+}
+
+func (m *Main) Get(frame string, id uint64) interface{} {
+	switch frame {
+	case netSrcFrame, netDstFrame:
+		return m.netEndpointIDs.Get(id)
+	case tranSrcFrame, tranDstFrame:
+		return m.transEndpointIDs.Get(id)
+	case netProtoFrame, transProtoFrame, appProtoFrame:
+		return gopacket.LayerType(id).String()
+	case hostnameFrame:
+		return m.hostnameIDs.Get(id)
+	case methodFrame:
+		return m.methodIDs.Get(id)
+	case userAgentFrame:
+		return m.userAgentIDs.Get(id)
+	case packetSizeFrame:
+		return id
+	case TCPFlagsFrame:
+		return TCPFlag(id).String()
+	default:
+		log.Fatalf("Unknown frame name: %v, can't translate id: %v", frame, id)
+		return nil
+	}
+}
+
+func (m *Main) AddLength(num int) {
+	m.lenLock.Lock()
+	m.totalLen += int64(num)
+	m.lenLock.Unlock()
+}
+
+func NewMain() *Main {
+	return &Main{
+		netEndpointIDs:   NewStringIDs(),
+		transEndpointIDs: NewStringIDs(),
+		methodIDs:        NewStringIDs(),
+		userAgentIDs:     NewStringIDs(),
+		hostnameIDs:      NewStringIDs(),
 	}
 }
