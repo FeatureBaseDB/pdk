@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"os/signal"
 	"time"
 
 	"sync"
@@ -149,6 +151,9 @@ type Main struct {
 	pilosaHost    string
 
 	nexter Nexter
+
+	totalLen int64
+	lenLock  sync.Mutex
 }
 
 func (m *Main) Get(frame string, id uint64) interface{} {
@@ -175,6 +180,12 @@ func (m *Main) Get(frame string, id uint64) interface{} {
 	}
 }
 
+func (m *Main) AddLength(num int) {
+	m.lenLock.Lock()
+	m.totalLen += int64(num)
+	m.lenLock.Unlock()
+}
+
 type Nexter struct {
 	id   uint64
 	lock sync.Mutex
@@ -189,6 +200,26 @@ func (n *Nexter) Next() (nextID uint64) {
 }
 
 func (m *Main) Run() {
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
+	go func() {
+		for range c {
+			m.lenLock.Lock()
+			log.Printf("Total captured traffic: %v", Bytes(m.totalLen))
+			m.lenLock.Unlock()
+			os.Exit(0)
+		}
+	}()
+
+	go func() {
+		nt := time.NewTicker(time.Second * 10)
+		for range nt.C {
+			m.lenLock.Lock()
+			log.Printf("Total captured traffic: %v", Bytes(m.totalLen))
+			m.lenLock.Unlock()
+		}
+	}()
+
 	h, err := pcap.OpenLive(m.iface, m.snaplen, m.promisc, m.timeout)
 	if err != nil {
 		log.Fatalf("Open error: %v", err)
@@ -225,7 +256,6 @@ func (m *Main) extractAndPost(packets chan gopacket.Packet) {
 	}
 	qb := &QueryBuilder{}
 	for packet := range packets {
-		fmt.Printf("%v", packet)
 		errL := packet.ErrorLayer()
 		if errL != nil {
 			log.Printf("Decoding Error: %v", errL)
@@ -236,6 +266,7 @@ func (m *Main) extractAndPost(packets chan gopacket.Packet) {
 		qb.query = ""
 
 		length := packet.Metadata().Length
+		m.AddLength(length)
 		qb.Add(uint64(length), packetSizeFrame)
 		// ts := packet.Metadata().Timestamp
 
@@ -299,29 +330,23 @@ func (m *Main) extractAndPost(packets chan gopacket.Packet) {
 			buf := bytes.NewBuffer(appBytes)
 			req, err := http.ReadRequest(bufio.NewReader(buf))
 			if err == nil {
-				log.Printf("http request")
 				userAgent := req.UserAgent()
 				qb.Add(m.userAgentIDs.GetID(userAgent), userAgentFrame)
-				log.Println("Got useragent: ", userAgent)
 				method := req.Method
 				qb.Add(m.methodIDs.GetID(method), methodFrame)
-				log.Println("Got method: ", method)
 				hostname := req.Host
-				log.Println("Got hostname: ", hostname)
 				qb.Add(m.hostnameIDs.GetID(hostname), hostnameFrame)
 			} else {
-				log.Printf("Could not read request: %v", err)
 				// try HTTP response?
 				// resp, err := http.ReadResponse(bufio.NewReader(buf))
 				// 	if err == nil {
 				// 	}
 			}
-		} else {
-			log.Println("nil application layer")
 		}
 
-		res, err := client.ExecuteQuery(context.Background(), "net", qb.Query(), true)
-		log.Println("result: ", res, err)
-		fmt.Println()
+		_, err := client.ExecuteQuery(context.Background(), "net", qb.Query(), true)
+		if err != nil {
+			log.Printf("Error writing to pilosa: %v", err)
+		}
 	}
 }
