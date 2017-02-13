@@ -74,40 +74,6 @@ func (f TCPFlag) String() string {
 	}
 }
 
-type EndpointIDs struct {
-	lock      sync.RWMutex
-	idMap     map[gopacket.Endpoint]uint64
-	endpoints []gopacket.Endpoint
-	cur       uint64
-}
-
-func NewEndpointIDs() *EndpointIDs {
-	return &EndpointIDs{
-		idMap:     make(map[gopacket.Endpoint]uint64),
-		endpoints: make([]gopacket.Endpoint, 0, 10000),
-	}
-}
-
-func (ep *EndpointIDs) GetID(endpoint gopacket.Endpoint) uint64 {
-	ep.lock.RLock()
-	id, ok := ep.idMap[endpoint]
-	ep.lock.RUnlock()
-	if ok {
-		return id
-	}
-	ep.lock.Lock()
-	ep.idMap[endpoint] = ep.cur
-	ep.endpoints = append(ep.endpoints, endpoint)
-	ep.cur += 1
-	ep.lock.Unlock()
-	return ep.cur - 1
-}
-
-func (ep *EndpointIDs) Get(id uint64) gopacket.Endpoint {
-	// TODO I think we can get away without locking here - confirm
-	return ep.endpoints[id]
-}
-
 type StringIDs struct {
 	lock    sync.RWMutex
 	idMap   map[string]uint64
@@ -160,8 +126,8 @@ func main() {
 
 func NewMain() *Main {
 	return &Main{
-		netEndpointIDs:   NewEndpointIDs(),
-		transEndpointIDs: NewEndpointIDs(),
+		netEndpointIDs:   NewStringIDs(),
+		transEndpointIDs: NewStringIDs(),
 		methodIDs:        NewStringIDs(),
 		userAgentIDs:     NewStringIDs(),
 		hostnameIDs:      NewStringIDs(),
@@ -173,8 +139,8 @@ type Main struct {
 	snaplen          int32
 	promisc          bool
 	timeout          time.Duration
-	netEndpointIDs   *EndpointIDs
-	transEndpointIDs *EndpointIDs
+	netEndpointIDs   *StringIDs
+	transEndpointIDs *StringIDs
 	methodIDs        *StringIDs
 	userAgentIDs     *StringIDs
 	hostnameIDs      *StringIDs
@@ -188,9 +154,9 @@ type Main struct {
 func (m *Main) Get(frame string, id uint64) interface{} {
 	switch frame {
 	case netSrcFrame, netDstFrame:
-		return m.netEndpointIDs.Get(id).String()
+		return m.netEndpointIDs.Get(id)
 	case tranSrcFrame, tranDstFrame:
-		return m.transEndpointIDs.Get(id).String()
+		return m.transEndpointIDs.Get(id)
 	case netProtoFrame, transProtoFrame, appProtoFrame:
 		return gopacket.LayerType(id).String()
 	case hostnameFrame:
@@ -283,8 +249,8 @@ func (m *Main) extractAndPost(packets chan gopacket.Packet) {
 		qb.Add(uint64(netProto), netProtoFrame)
 		netFlow := netLayer.NetworkFlow()
 		netSrc, netDst := netFlow.Endpoints()
-		qb.Add(m.netEndpointIDs.GetID(netSrc), netSrcFrame)
-		qb.Add(m.netEndpointIDs.GetID(netDst), netDstFrame)
+		qb.Add(m.netEndpointIDs.GetID(netSrc.String()), netSrcFrame)
+		qb.Add(m.netEndpointIDs.GetID(netDst.String()), netDstFrame)
 
 		transLayer := packet.TransportLayer()
 		if transLayer == nil {
@@ -296,8 +262,8 @@ func (m *Main) extractAndPost(packets chan gopacket.Packet) {
 		qb.Add(uint64(transProto), transProtoFrame)
 		transFlow := transLayer.TransportFlow()
 		transSrc, transDst := transFlow.Endpoints()
-		qb.Add(m.transEndpointIDs.GetID(transSrc), tranSrcFrame)
-		qb.Add(m.transEndpointIDs.GetID(transDst), tranDstFrame)
+		qb.Add(m.transEndpointIDs.GetID(transSrc.String()), tranSrcFrame)
+		qb.Add(m.transEndpointIDs.GetID(transDst.String()), tranDstFrame)
 		if tcpLayer, ok := transLayer.(*layers.TCP); ok {
 			if tcpLayer.FIN {
 				qb.Add(uint64(FIN), TCPFlagsFrame)
