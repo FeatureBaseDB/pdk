@@ -19,6 +19,7 @@ var netCommand = &cobra.Command{
 	Short: "net -  gather network traffic and store in pilosa",
 	Long:  `TODO`,
 	Run: func(cmd *cobra.Command, args []string) {
+		start := time.Now()
 		if net.Iface == "" && net.Filename == "" {
 			fmt.Println("Error: you must specify an interface or file to read from.")
 			if err := cmd.Usage(); err != nil {
@@ -27,6 +28,7 @@ var netCommand = &cobra.Command{
 			os.Exit(-1)
 		}
 		net.Run()
+		log.Println("Done: ", time.Since(start))
 		select {}
 	},
 }
