@@ -158,6 +158,19 @@ func getParserMappers() []pdk.ParserMapper {
 	tp := pdk.TimeParser{Layout: layout}
 
 	pms := []pdk.ParserMapper{
+
+		pdk.ParserMapper{
+			Frame:   "passengerCount",
+			Mapper:  pdk.IntMapper{Min: 1, Max: 8},
+			Parsers: []pdk.Parser{pdk.IntParser{}},
+			Fields:  []int{Passenger_count},
+		},
+		pdk.ParserMapper{
+			Frame:   "totalAmount",
+			Mapper:  pdk.LinearFloatMapper{Min: 0, Max: 200, Res: 100},
+			Parsers: []pdk.Parser{pdk.FloatParser{}},
+			Fields:  []int{Total_amount},
+		},
 		pdk.ParserMapper{
 			Frame:   "cabType",
 			Mapper:  pdk.IntMapper{Min: 0, Max: 2},
