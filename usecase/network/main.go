@@ -27,6 +27,7 @@ type Main struct {
 	Timeout       time.Duration
 	NumExtractors int
 	PilosaHost    string
+	Filter        string
 
 	netEndpointIDs   *StringIDs
 	transEndpointIDs *StringIDs
@@ -65,11 +66,18 @@ func (m *Main) Run() {
 		}
 	}()
 
-	h, err := pcap.OpenLive(m.Iface, m.Snaplen, m.Promisc, m.Timeout)
+	var h *pcap.Handle
+	var err error
+	if m.Filename != "" {
+		h, err = pcap.OpenOffline(m.Filename)
+	} else {
+		h, err = pcap.OpenLive(m.Iface, m.Snaplen, m.Promisc, m.Timeout)
+	}
 	if err != nil {
 		log.Fatalf("Open error: %v", err)
 	}
-	err = h.SetBPFFilter("dst port 80")
+
+	err = h.SetBPFFilter(m.Filter)
 	if err != nil {
 		log.Fatalf("error setting bpf filter")
 	}
@@ -117,8 +125,6 @@ func (m *Main) extractAndPost(packets chan gopacket.Packet) {
 
 		netLayer := packet.NetworkLayer()
 		if netLayer == nil {
-			log.Printf("Netlayer is nil")
-			fmt.Println()
 			continue
 		}
 		netProto := netLayer.LayerType()
@@ -130,8 +136,6 @@ func (m *Main) extractAndPost(packets chan gopacket.Packet) {
 
 		transLayer := packet.TransportLayer()
 		if transLayer == nil {
-			log.Printf("Translayer is nil")
-			fmt.Println()
 			continue
 		}
 		transProto := transLayer.LayerType()
