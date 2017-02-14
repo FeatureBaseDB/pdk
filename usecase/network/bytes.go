@@ -1,4 +1,4 @@
-package main
+package network
 
 // This code adapted from https://github.com/cloudfoundry/bytefmt (Apache V2)
 

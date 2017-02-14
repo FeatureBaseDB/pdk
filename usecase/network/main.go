@@ -1,4 +1,4 @@
-package main
+package network
 
 import (
 	"bufio"
@@ -20,18 +20,19 @@ import (
 )
 
 type Main struct {
-	iface            string
-	snaplen          int32
-	promisc          bool
-	timeout          time.Duration
+	Iface         string
+	Filename      string
+	Snaplen       int32
+	Promisc       bool
+	Timeout       time.Duration
+	NumExtractors int
+	PilosaHost    string
+
 	netEndpointIDs   *StringIDs
 	transEndpointIDs *StringIDs
 	methodIDs        *StringIDs
 	userAgentIDs     *StringIDs
 	hostnameIDs      *StringIDs
-
-	numExtractors int
-	pilosaHost    string
 
 	nexter Nexter
 
@@ -39,19 +40,11 @@ type Main struct {
 	lenLock  sync.Mutex
 }
 
-func main() {
-	m := NewMain()
-	m.iface = "en0"
-	m.snaplen = 2048
-	m.promisc = true
-	m.timeout = time.Millisecond
-	m.numExtractors = 1
-	m.pilosaHost = "localhost:15000"
-	go m.Run()
-	log.Fatal(pdk.StartMappingProxy("localhost:15001", "http://localhost:15000", m))
-}
-
 func (m *Main) Run() {
+	go func() {
+		log.Fatal(pdk.StartMappingProxy("localhost:15001", "http://localhost:15000", m))
+	}()
+
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
 	go func() {
@@ -72,7 +65,7 @@ func (m *Main) Run() {
 		}
 	}()
 
-	h, err := pcap.OpenLive(m.iface, m.snaplen, m.promisc, m.timeout)
+	h, err := pcap.OpenLive(m.Iface, m.Snaplen, m.Promisc, m.Timeout)
 	if err != nil {
 		log.Fatalf("Open error: %v", err)
 	}
@@ -83,7 +76,7 @@ func (m *Main) Run() {
 	packetSource := gopacket.NewPacketSource(h, h.LinkType())
 	packets := packetSource.Packets()
 
-	for i := 1; i < m.numExtractors; i++ {
+	for i := 1; i < m.NumExtractors; i++ {
 		go m.extractAndPost(packets)
 	}
 	m.extractAndPost(packets)
@@ -102,7 +95,7 @@ func (qb *QueryBuilder) Add(bitmapID uint64, frame string) {
 func (qb *QueryBuilder) Query() string { return qb.query }
 
 func (m *Main) extractAndPost(packets chan gopacket.Packet) {
-	client, err := pilosa.NewClient(m.pilosaHost)
+	client, err := pilosa.NewClient(m.PilosaHost)
 	if err != nil {
 		panic(err)
 	}
