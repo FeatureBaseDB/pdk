@@ -321,16 +321,16 @@ func parseNew(rec string, nexter *Nexter, parserMappers []pdk.ParserMapper) {
 			parsed = append(parsed, parsedField)
 		}
 
-		// map those fields to an ID
-		// every ID() function is variadic now, even though only CustomMapper.ID needs to be.
-		// TODO is there a better way?
-		// NOTE since a config file wont use CustomMapper...
-		id, err := pm.Mapper.ID(parsed...)
+		// map those fields to a slice of IDs
+		ids, err := pm.Mapper.ID(parsed...)
 		if err != nil {
 			fmt.Println(err)
 			return
 		}
-		qb.Add(uint64(id), pm.Frame)
+		for _, id := range ids {
+			// TODO bitmap attributes
+			qb.Add(uint64(id), pm.Frame)
+		}
 	}
 	fmt.Println(qb.Query())
 	res, err := client.ExecuteQuery(context.Background(), db, qb.Query(), true)
