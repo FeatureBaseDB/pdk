@@ -63,6 +63,7 @@ var urls = []string{
 var db = "taxi"
 
 const (
+	// for field meanings, see http://www.nyc.gov/html/tlc/downloads/pdf/data_dictionary_trip_records_green.pdf
 	VendorID = iota
 	Lpep_pickup_datetime
 	Lpep_dropoff_datetime
@@ -87,8 +88,14 @@ const (
 
 var layout = "2006-01-02 15:04:05"
 
+/***********************
+use case implementation
+***********************/
+
 // TODO autoscan 1. determine field type by attempting conversions
-// TODO autoscan 2. determine field mapping by looking at statistics
+// TODO autoscan 2. determine field mapping by looking at statistics (for floatmapper, intmapper)
+// TODO autoscan 3. write results from ^^ to config file
+// TODO read ParserMapper config from file (cant do CustomMapper)
 
 func main() {
 	fmt.Println("fetch and parse")
@@ -112,10 +119,6 @@ func main() {
 }
 
 func getParserMappers() []pdk.ParserMapper {
-	// TODO read this stuff from a config file
-	// but can't put the CustomMappers in json...
-	// http://www.nyc.gov/html/tlc/downloads/pdf/data_dictionary_trip_records_green.pdf
-
 	// map a pair of floats to a grid sector of a rectangular region
 	gm := pdk.GridMapper{
 		Xmin: -74.27,
@@ -127,7 +130,6 @@ func getParserMappers() []pdk.ParserMapper {
 	}
 
 	// map a float according to a custom set of bins
-	// TODO: generate buckets by analyzing distribution of a field
 	fm := pdk.FloatMapper{
 		Buckets: []float64{0, 0.5, 1, 2, 5, 10, 25, 50, 100, 200},
 	}
@@ -199,7 +201,7 @@ func getParserMappers() []pdk.ParserMapper {
 			Fields:  []int{Lpep_dropoff_datetime},
 		},
 		pdk.ParserMapper{
-			Frame:   "dist_miles",
+			Frame:   "dist_miles", // note "_miles" is a unit annotation
 			Mapper:  fm,
 			Parsers: []pdk.Parser{pdk.FloatParser{}},
 			Fields:  []int{Trip_distance},
