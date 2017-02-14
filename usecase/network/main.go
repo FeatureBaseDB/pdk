@@ -3,7 +3,6 @@ package network
 import (
 	"bufio"
 	"bytes"
-	"context"
 	"fmt"
 	"log"
 	"net/http"
@@ -16,7 +15,6 @@ import (
 	"github.com/google/gopacket/layers"
 	"github.com/google/gopacket/pcap"
 	"github.com/pilosa/pdk"
-	"github.com/pilosa/pilosa"
 )
 
 type Main struct {
@@ -28,12 +26,15 @@ type Main struct {
 	NumExtractors int
 	PilosaHost    string
 	Filter        string
+	Database      string
 
 	netEndpointIDs   *StringIDs
 	transEndpointIDs *StringIDs
 	methodIDs        *StringIDs
 	userAgentIDs     *StringIDs
 	hostnameIDs      *StringIDs
+
+	client SetBit
 
 	nexter Nexter
 
@@ -42,6 +43,8 @@ type Main struct {
 }
 
 func (m *Main) Run() {
+	m.client = NewImportClient(m.PilosaHost, m.Database)
+
 	go func() {
 		log.Fatal(pdk.StartMappingProxy("localhost:15001", "http://localhost:15000", m))
 	}()
@@ -91,23 +94,8 @@ func (m *Main) Run() {
 
 }
 
-type QueryBuilder struct {
-	profileID uint64
-	query     string
-}
-
-func (qb *QueryBuilder) Add(bitmapID uint64, frame string) {
-	qb.query += fmt.Sprintf("SetBit(id=%d, frame=%s, profileID=%d)", bitmapID, frame, qb.profileID)
-}
-
-func (qb *QueryBuilder) Query() string { return qb.query }
-
 func (m *Main) extractAndPost(packets chan gopacket.Packet) {
-	client, err := pilosa.NewClient(m.PilosaHost)
-	if err != nil {
-		panic(err)
-	}
-	qb := &QueryBuilder{}
+	var profileID uint64
 	for packet := range packets {
 		errL := packet.ErrorLayer()
 		if errL != nil {
@@ -115,12 +103,11 @@ func (m *Main) extractAndPost(packets chan gopacket.Packet) {
 			fmt.Println()
 			continue
 		}
-		qb.profileID = m.nexter.Next()
-		qb.query = ""
+		profileID = m.nexter.Next()
 
 		length := packet.Metadata().Length
 		m.AddLength(length)
-		qb.Add(uint64(length), packetSizeFrame)
+		m.client.SetBit(uint64(length), profileID, packetSizeFrame)
 		// ts := packet.Metadata().Timestamp
 
 		netLayer := packet.NetworkLayer()
@@ -128,49 +115,49 @@ func (m *Main) extractAndPost(packets chan gopacket.Packet) {
 			continue
 		}
 		netProto := netLayer.LayerType()
-		qb.Add(uint64(netProto), netProtoFrame)
+		m.client.SetBit(uint64(netProto), profileID, netProtoFrame)
 		netFlow := netLayer.NetworkFlow()
 		netSrc, netDst := netFlow.Endpoints()
-		qb.Add(m.netEndpointIDs.GetID(netSrc.String()), netSrcFrame)
-		qb.Add(m.netEndpointIDs.GetID(netDst.String()), netDstFrame)
+		m.client.SetBit(m.netEndpointIDs.GetID(netSrc.String()), profileID, netSrcFrame)
+		m.client.SetBit(m.netEndpointIDs.GetID(netDst.String()), profileID, netDstFrame)
 
 		transLayer := packet.TransportLayer()
 		if transLayer == nil {
 			continue
 		}
 		transProto := transLayer.LayerType()
-		qb.Add(uint64(transProto), transProtoFrame)
+		m.client.SetBit(uint64(transProto), profileID, transProtoFrame)
 		transFlow := transLayer.TransportFlow()
 		transSrc, transDst := transFlow.Endpoints()
-		qb.Add(m.transEndpointIDs.GetID(transSrc.String()), tranSrcFrame)
-		qb.Add(m.transEndpointIDs.GetID(transDst.String()), tranDstFrame)
+		m.client.SetBit(m.transEndpointIDs.GetID(transSrc.String()), profileID, tranSrcFrame)
+		m.client.SetBit(m.transEndpointIDs.GetID(transDst.String()), profileID, tranDstFrame)
 		if tcpLayer, ok := transLayer.(*layers.TCP); ok {
 			if tcpLayer.FIN {
-				qb.Add(uint64(FIN), TCPFlagsFrame)
+				m.client.SetBit(uint64(FIN), profileID, TCPFlagsFrame)
 			}
 			if tcpLayer.SYN {
-				qb.Add(uint64(SYN), TCPFlagsFrame)
+				m.client.SetBit(uint64(SYN), profileID, TCPFlagsFrame)
 			}
 			if tcpLayer.RST {
-				qb.Add(uint64(RST), TCPFlagsFrame)
+				m.client.SetBit(uint64(RST), profileID, TCPFlagsFrame)
 			}
 			if tcpLayer.PSH {
-				qb.Add(uint64(PSH), TCPFlagsFrame)
+				m.client.SetBit(uint64(PSH), profileID, TCPFlagsFrame)
 			}
 			if tcpLayer.ACK {
-				qb.Add(uint64(ACK), TCPFlagsFrame)
+				m.client.SetBit(uint64(ACK), profileID, TCPFlagsFrame)
 			}
 			if tcpLayer.URG {
-				qb.Add(uint64(URG), TCPFlagsFrame)
+				m.client.SetBit(uint64(URG), profileID, TCPFlagsFrame)
 			}
 			if tcpLayer.ECE {
-				qb.Add(uint64(ECE), TCPFlagsFrame)
+				m.client.SetBit(uint64(ECE), profileID, TCPFlagsFrame)
 			}
 			if tcpLayer.CWR {
-				qb.Add(uint64(CWR), TCPFlagsFrame)
+				m.client.SetBit(uint64(CWR), profileID, TCPFlagsFrame)
 			}
 			if tcpLayer.NS {
-				qb.Add(uint64(NS), TCPFlagsFrame)
+				m.client.SetBit(uint64(NS), profileID, TCPFlagsFrame)
 			}
 		}
 		appLayer := packet.ApplicationLayer()
@@ -180,22 +167,17 @@ func (m *Main) extractAndPost(packets chan gopacket.Packet) {
 			req, err := http.ReadRequest(bufio.NewReader(buf))
 			if err == nil {
 				userAgent := req.UserAgent()
-				qb.Add(m.userAgentIDs.GetID(userAgent), userAgentFrame)
+				m.client.SetBit(m.userAgentIDs.GetID(userAgent), profileID, userAgentFrame)
 				method := req.Method
-				qb.Add(m.methodIDs.GetID(method), methodFrame)
+				m.client.SetBit(m.methodIDs.GetID(method), profileID, methodFrame)
 				hostname := req.Host
-				qb.Add(m.hostnameIDs.GetID(hostname), hostnameFrame)
+				m.client.SetBit(m.hostnameIDs.GetID(hostname), profileID, hostnameFrame)
 			} else {
 				// try HTTP response?
 				// resp, err := http.ReadResponse(bufio.NewReader(buf))
 				// 	if err == nil {
 				// 	}
 			}
-		}
-
-		_, err := client.ExecuteQuery(context.Background(), "net", qb.Query(), true)
-		if err != nil {
-			log.Printf("Error writing to pilosa: %v", err)
 		}
 	}
 }

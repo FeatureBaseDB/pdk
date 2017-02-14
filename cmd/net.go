@@ -43,6 +43,7 @@ func init() {
 	netCommand.Flags().IntVarP(&net.NumExtractors, "concurrency", "c", 1, "Number of goroutines working on packets")
 	netCommand.Flags().StringVarP(&net.PilosaHost, "pilosa", "l", "localhost:15000", "Address of pilosa host to write to")
 	netCommand.Flags().StringVarP(&net.Filter, "filter", "b", "", "BPF style filter for packet capture - i.e. 'dst port 80' would capture only traffic headed for port 80")
+	netCommand.Flags().StringVarP(&net.Database, "database", "d", "net", "Pilosa db to write to")
 
 	err := viper.BindPFlags(netCommand.Flags())
 	if err != nil {
