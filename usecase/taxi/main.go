@@ -15,6 +15,43 @@ import (
 	"github.com/umbel/pilosa"
 )
 
+/**************
+common tools
+**************/
+
+// QueryBuilder maintains a query string for a single profileID
+type QueryBuilder struct {
+	profileID uint64
+	query     string
+}
+
+// Add appends a SetBit() query to the query string
+func (qb *QueryBuilder) Add(bitmapID uint64, frame string) {
+	qb.query += fmt.Sprintf("SetBit(id=%d, frame=%s, profileID=%d)", bitmapID, frame, qb.profileID)
+}
+
+// Query returns the full query string
+func (qb *QueryBuilder) Query() string { return qb.query }
+
+// Nexter generates unique bitmapIDs
+type Nexter struct {
+	id   uint64
+	lock sync.Mutex
+}
+
+// Next generates a new bitmapID
+func (n *Nexter) Next() (nextID uint64) {
+	n.lock.Lock()
+	nextID = n.id
+	n.id++
+	n.lock.Unlock()
+	return
+}
+
+/***************
+use case setup
+***************/
+
 var urls = []string{
 	"https://s3.amazonaws.com/nyc-tlc/trip+data/green_tripdata_2013-08.csv",
 	"https://s3.amazonaws.com/nyc-tlc/trip+data/green_tripdata_2013-09.csv",
@@ -72,21 +109,6 @@ func main() {
 	if err != nil {
 		fmt.Println(err)
 	}
-}
-
-// Nexter generates unique bitmapIDs
-type Nexter struct {
-	id   uint64
-	lock sync.Mutex
-}
-
-// Next generates a new bitmapID
-func (n *Nexter) Next() (nextID uint64) {
-	n.lock.Lock()
-	nextID = n.id
-	n.id++
-	n.lock.Unlock()
-	return
 }
 
 func getParserMappers() []pdk.ParserMapper {
@@ -281,17 +303,6 @@ func parse(rec string) {
 
 	post(vendorID, pickupTime, dropTime, dist, pickLoc, dropLoc)
 }
-
-type QueryBuilder struct {
-	profileID uint64
-	query     string
-}
-
-func (qb *QueryBuilder) Add(bitmapID uint64, frame string) {
-	qb.query += fmt.Sprintf("SetBit(id=%d, frame=%s, profileID=%d)", bitmapID, frame, qb.profileID)
-}
-
-func (qb *QueryBuilder) Query() string { return qb.query }
 
 func parseNew(rec string, nexter *Nexter, parserMappers []pdk.ParserMapper) {
 	client, err := pilosa.NewClient("localhost:15000")
