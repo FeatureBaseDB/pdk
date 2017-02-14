@@ -320,6 +320,7 @@ func parse(rec string) {
 }
 
 func parseNew(rec string, nexter *Nexter, parserMappers []pdk.ParserMapper) {
+	// TODO: consider optimizing this
 	client, err := pilosa.NewClient("localhost:15000")
 	if err != nil {
 		panic(err)

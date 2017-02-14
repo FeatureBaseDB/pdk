@@ -1,0 +1,1 @@
+http://alanbernstein.net/files/green_tripdata_sample.csv
