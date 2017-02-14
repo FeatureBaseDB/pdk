@@ -21,6 +21,19 @@
 	      "Payment_type": 18,
 	      "Trip_type": 19,
     ],
+    "BitmapAttributes": [
+        {
+            "frame": "pickupTime",
+            "id": 0,
+            "attrs": [
+                "minTime_minutes": 0,
+                "maxTime_minutes": 30,
+            ],
+        },
+    ]
+    "ProfileAttributes": [
+        "?"
+    ]
     "Parsers": [
         {
             "Name": "TimeParser0",
