@@ -52,3 +52,10 @@ func (n *Nexter) Next() (nextID uint64) {
 	n.lock.Unlock()
 	return
 }
+
+func (n *Nexter) Last() (lastID uint64) {
+	n.lock.Lock()
+	lastID = n.id - 1
+	n.lock.Unlock()
+	return
+}

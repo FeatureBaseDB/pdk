@@ -27,6 +27,7 @@ type Main struct {
 	PilosaHost    string
 	Filter        string
 	Database      string
+	BindAddr      string
 
 	netEndpointIDs   *StringIDs
 	transEndpointIDs *StringIDs
@@ -47,11 +48,13 @@ func (m *Main) Run() {
 		transProtoFrame, appProtoFrame, hostnameFrame, methodFrame, contentTypeFrame,
 		userAgentFrame, packetSizeFrame, TCPFlagsFrame}
 	m.client = pdk.NewImportClient(m.PilosaHost, m.Database, frames)
+	defer m.client.Close()
 
 	go func() {
-		log.Fatal(pdk.StartMappingProxy("localhost:15001", "http://localhost:15000", m))
+		log.Fatal(pdk.StartMappingProxy(m.BindAddr, m.PilosaHost, m))
 	}()
 
+	// print total captured traffic when killed via Ctrl-c
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
 	go func() {
@@ -63,14 +66,16 @@ func (m *Main) Run() {
 		}
 	}()
 
+	// print total captured traffic every 10 seconds
+	nt := time.NewTicker(time.Second * 10)
 	go func() {
-		nt := time.NewTicker(time.Second * 10)
 		for range nt.C {
 			m.lenLock.Lock()
-			log.Printf("Total captured traffic: %v", Bytes(m.totalLen))
+			log.Printf("Total captured traffic: %v, num packets: %v", Bytes(m.totalLen), m.nexter.Last())
 			m.lenLock.Unlock()
 		}
 	}()
+	defer nt.Stop()
 
 	var h *pcap.Handle
 	var err error
