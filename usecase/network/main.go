@@ -34,7 +34,7 @@ type Main struct {
 	userAgentIDs     *StringIDs
 	hostnameIDs      *StringIDs
 
-	client SetBit
+	client pdk.PilosaImporter
 
 	nexter Nexter
 
@@ -43,7 +43,10 @@ type Main struct {
 }
 
 func (m *Main) Run() {
-	m.client = NewImportClient(m.PilosaHost, m.Database)
+	frames := []string{netSrcFrame, netDstFrame, tranSrcFrame, tranDstFrame, netProtoFrame,
+		transProtoFrame, appProtoFrame, hostnameFrame, methodFrame, contentTypeFrame,
+		userAgentFrame, packetSizeFrame, TCPFlagsFrame}
+	m.client = pdk.NewImportClient(m.PilosaHost, m.Database, frames)
 
 	go func() {
 		log.Fatal(pdk.StartMappingProxy("localhost:15001", "http://localhost:15000", m))

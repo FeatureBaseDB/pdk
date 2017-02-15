@@ -1,4 +1,4 @@
-package network
+package pdk
 
 import (
 	"fmt"
@@ -7,12 +7,12 @@ import (
 	"os"
 	"sync"
 
-	"golang.org/x/net/context"
+	"context"
 
 	"github.com/pilosa/pilosa/pilosactl"
 )
 
-type SetBit interface {
+type PilosaImporter interface {
 	SetBit(bitmapID, profileID uint64, frame string)
 	Close()
 }
@@ -27,26 +27,13 @@ type ImportClient struct {
 	wg       sync.WaitGroup
 }
 
-func NewImportClient(host, db string) *ImportClient {
+func NewImportClient(host, db string, frames []string) *ImportClient {
 	ic := &ImportClient{}
-	ic.channels = map[string]chan Bit{
-		netSrcFrame:      make(chan Bit, 0),
-		netDstFrame:      make(chan Bit, 0),
-		tranSrcFrame:     make(chan Bit, 0),
-		tranDstFrame:     make(chan Bit, 0),
-		netProtoFrame:    make(chan Bit, 0),
-		transProtoFrame:  make(chan Bit, 0),
-		appProtoFrame:    make(chan Bit, 0),
-		hostnameFrame:    make(chan Bit, 0),
-		methodFrame:      make(chan Bit, 0),
-		contentTypeFrame: make(chan Bit, 0),
-		userAgentFrame:   make(chan Bit, 0),
-		packetSizeFrame:  make(chan Bit, 0),
-		TCPFlagsFrame:    make(chan Bit, 0),
-	}
-	for frame, channel := range ic.channels {
+	ic.channels = make(map[string]chan Bit, len(frames))
+	for _, frame := range frames {
 		ic.wg.Add(1)
-		go writer(channel, host, db, frame, &ic.wg)
+		ic.channels[frame] = make(chan Bit, 0)
+		go writer(ic.channels[frame], host, db, frame, &ic.wg)
 	}
 	return ic
 }
