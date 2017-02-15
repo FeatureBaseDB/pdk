@@ -60,7 +60,7 @@ func (m *Main) Run() {
 	go func() {
 		for range c {
 			m.lenLock.Lock()
-			log.Printf("Total captured traffic: %v", Bytes(m.totalLen))
+			log.Printf("Total captured traffic: %v, num packets: %v", Bytes(m.totalLen), m.nexter.Last())
 			m.lenLock.Unlock()
 			os.Exit(0)
 		}
