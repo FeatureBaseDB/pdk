@@ -142,8 +142,8 @@ func (m *Main) extractAndPost(packets chan gopacket.Packet) {
 		m.client.SetBit(m.transProtoIDs.GetID(transProto.String()), profileID, transProtoFrame)
 		transFlow := transLayer.TransportFlow()
 		transSrc, transDst := transFlow.Endpoints()
-		m.client.SetBit(m.transEndpointIDs.GetID(transSrc.String()), profileID, tranSrcFrame)
-		m.client.SetBit(m.transEndpointIDs.GetID(transDst.String()), profileID, tranDstFrame)
+		m.client.SetBit(m.transEndpointIDs.GetID(transSrc.String()), profileID, transSrcFrame)
+		m.client.SetBit(m.transEndpointIDs.GetID(transDst.String()), profileID, transDstFrame)
 		if tcpLayer, ok := transLayer.(*layers.TCP); ok {
 			if tcpLayer.FIN {
 				m.client.SetBit(uint64(FIN), profileID, TCPFlagsFrame)
@@ -201,7 +201,7 @@ func (m *Main) Get(frame string, id uint64) interface{} {
 	switch frame {
 	case netSrcFrame, netDstFrame:
 		return m.netEndpointIDs.Get(id)
-	case tranSrcFrame, tranDstFrame:
+	case transSrcFrame, transDstFrame:
 		return m.transEndpointIDs.Get(id)
 	case netProtoFrame:
 		return m.netProtoIDs.Get(id)
@@ -236,7 +236,7 @@ func (m *Main) GetID(frame string, ival interface{}) (uint64, error) {
 	switch frame {
 	case netSrcFrame, netDstFrame:
 		return checkStr(m.netEndpointIDs.GetID)
-	case tranSrcFrame, tranDstFrame:
+	case transSrcFrame, transDstFrame:
 		return checkStr(m.transEndpointIDs.GetID)
 	case netProtoFrame:
 		return checkStr(m.netProtoIDs.GetID)

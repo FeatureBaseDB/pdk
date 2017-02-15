@@ -3,8 +3,8 @@ package network
 const (
 	netSrcFrame      = "netSrc"
 	netDstFrame      = "netDst"
-	tranSrcFrame     = "tranSrc"
-	tranDstFrame     = "tranDst"
+	transSrcFrame    = "transSrc"
+	transDstFrame    = "transDst"
 	netProtoFrame    = "netProto"
 	transProtoFrame  = "transProto"
 	appProtoFrame    = "appProto"
@@ -16,7 +16,7 @@ const (
 	TCPFlagsFrame    = "TCPflags"
 )
 
-var Frames = []string{netSrcFrame, netDstFrame, tranSrcFrame, tranDstFrame, netProtoFrame, transProtoFrame, appProtoFrame, hostnameFrame, methodFrame, contentTypeFrame, userAgentFrame, packetSizeFrame, TCPFlagsFrame}
+var Frames = []string{netSrcFrame, netDstFrame, transSrcFrame, transDstFrame, netProtoFrame, transProtoFrame, appProtoFrame, hostnameFrame, methodFrame, contentTypeFrame, userAgentFrame, packetSizeFrame, TCPFlagsFrame}
 
 type TCPFlag uint64
 
