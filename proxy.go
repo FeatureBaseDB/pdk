@@ -18,6 +18,7 @@ import (
 type Mapper interface {
 	// Get must be safe for concurrent access
 	Get(frame string, id uint64) interface{}
+	GetID(frame string, val interface{}) (uint64, error)
 }
 
 // StartMappingProxy listens for incoming http connections on `bind` and
@@ -51,6 +52,16 @@ func (p *pilosaForwarder) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	// inspect the request to determine which queries have a frame - the Mapper
 	// needs the frame for it's lookups.
 	frames, err := getFrames(body)
+	if err != nil {
+		http.Error(w, "getting frames: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	body, err = p.mapRequest(body)
+	if err != nil {
+		http.Error(w, "mapping request: "+err.Error(), http.StatusBadRequest)
+		return
+	}
 
 	// forward the request and get the pilosa response
 	resp, err := p.proxyRequest(req, body)
@@ -110,6 +121,7 @@ func (p *pilosaForwarder) proxyRequest(orig *http.Request, origbody []byte) (*ht
 	orig.Host = ""
 	orig.RequestURI = ""
 	orig.Body = ioutil.NopCloser(bytes.NewBuffer(origbody))
+	orig.ContentLength = int64(len(origbody))
 	resp, err := p.client.Do(orig)
 	return resp, err
 }
@@ -157,6 +169,37 @@ func (p *pilosaForwarder) mapResult(frame string, res interface{}) (mappedRes in
 		mappedRes = result
 	}
 	return mappedRes, nil
+}
+
+func (p *pilosaForwarder) mapRequest(body []byte) ([]byte, error) {
+	query, err := pql.ParseString(string(body))
+	if err != nil {
+		return nil, err
+	}
+	for _, call := range query.Calls {
+		err := p.mapCall(call)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return []byte(query.String()), nil
+}
+
+func (p *pilosaForwarder) mapCall(call *pql.Call) error {
+	if call.Name == "Bitmap" {
+		id, err := p.m.GetID(call.Args["frame"].(string), call.Args["id"])
+		if err != nil {
+			return err
+		}
+		call.Args["id"] = id
+		return nil
+	}
+	for _, child := range call.Children {
+		if err := p.mapCall(child); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // getFrames interprets body as pql queries and then tries to determine the

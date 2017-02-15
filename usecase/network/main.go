@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"sync"
 	"time"
 
@@ -31,6 +32,9 @@ type Main struct {
 
 	netEndpointIDs   *StringIDs
 	transEndpointIDs *StringIDs
+	netProtoIDs      *StringIDs
+	transProtoIDs    *StringIDs
+	appProtoIDs      *StringIDs
 	methodIDs        *StringIDs
 	userAgentIDs     *StringIDs
 	hostnameIDs      *StringIDs
@@ -44,10 +48,7 @@ type Main struct {
 }
 
 func (m *Main) Run() {
-	frames := []string{netSrcFrame, netDstFrame, tranSrcFrame, tranDstFrame, netProtoFrame,
-		transProtoFrame, appProtoFrame, hostnameFrame, methodFrame, contentTypeFrame,
-		userAgentFrame, packetSizeFrame, TCPFlagsFrame}
-	m.client = pdk.NewImportClient(m.PilosaHost, m.Database, frames)
+	m.client = pdk.NewImportClient(m.PilosaHost, m.Database, Frames)
 	defer m.client.Close()
 
 	go func() {
@@ -127,7 +128,7 @@ func (m *Main) extractAndPost(packets chan gopacket.Packet) {
 			continue
 		}
 		netProto := netLayer.LayerType()
-		m.client.SetBit(uint64(netProto), profileID, netProtoFrame)
+		m.client.SetBit(m.netProtoIDs.GetID(netProto.String()), profileID, netProtoFrame)
 		netFlow := netLayer.NetworkFlow()
 		netSrc, netDst := netFlow.Endpoints()
 		m.client.SetBit(m.netEndpointIDs.GetID(netSrc.String()), profileID, netSrcFrame)
@@ -138,7 +139,7 @@ func (m *Main) extractAndPost(packets chan gopacket.Packet) {
 			continue
 		}
 		transProto := transLayer.LayerType()
-		m.client.SetBit(uint64(transProto), profileID, transProtoFrame)
+		m.client.SetBit(m.transProtoIDs.GetID(transProto.String()), profileID, transProtoFrame)
 		transFlow := transLayer.TransportFlow()
 		transSrc, transDst := transFlow.Endpoints()
 		m.client.SetBit(m.transEndpointIDs.GetID(transSrc.String()), profileID, tranSrcFrame)
@@ -174,6 +175,8 @@ func (m *Main) extractAndPost(packets chan gopacket.Packet) {
 		}
 		appLayer := packet.ApplicationLayer()
 		if appLayer != nil {
+			appProto := appLayer.LayerType()
+			m.client.SetBit(m.appProtoIDs.GetID(appProto.String()), profileID, appProtoFrame)
 			appBytes := appLayer.Payload()
 			buf := bytes.NewBuffer(appBytes)
 			req, err := http.ReadRequest(bufio.NewReader(buf))
@@ -200,8 +203,12 @@ func (m *Main) Get(frame string, id uint64) interface{} {
 		return m.netEndpointIDs.Get(id)
 	case tranSrcFrame, tranDstFrame:
 		return m.transEndpointIDs.Get(id)
-	case netProtoFrame, transProtoFrame, appProtoFrame:
-		return gopacket.LayerType(id).String()
+	case netProtoFrame:
+		return m.netProtoIDs.Get(id)
+	case transProtoFrame:
+		return m.transProtoIDs.Get(id)
+	case appProtoFrame:
+		return m.appProtoIDs.Get(id)
 	case hostnameFrame:
 		return m.hostnameIDs.Get(id)
 	case methodFrame:
@@ -218,6 +225,48 @@ func (m *Main) Get(frame string, id uint64) interface{} {
 	}
 }
 
+func (m *Main) GetID(frame string, ival interface{}) (uint64, error) {
+	val, isString := ival.(string)
+	checkStr := func(mapper func(string) uint64) (uint64, error) {
+		if isString {
+			return mapper(val), nil
+		}
+		return 0, fmt.Errorf("%v is not a string, but should be for frame %s", ival, frame)
+	}
+	switch frame {
+	case netSrcFrame, netDstFrame:
+		return checkStr(m.netEndpointIDs.GetID)
+	case tranSrcFrame, tranDstFrame:
+		return checkStr(m.transEndpointIDs.GetID)
+	case netProtoFrame:
+		return checkStr(m.netProtoIDs.GetID)
+	case transProtoFrame:
+		return checkStr(m.transProtoIDs.GetID)
+	case appProtoFrame:
+		return checkStr(m.appProtoIDs.GetID)
+	case hostnameFrame:
+		return checkStr(m.hostnameIDs.GetID)
+	case methodFrame:
+		return checkStr(m.methodIDs.GetID)
+	case userAgentFrame:
+		return checkStr(m.userAgentIDs.GetID)
+	case packetSizeFrame:
+		fval, ok := ival.(float64)
+		if !ok {
+			return 0, fmt.Errorf("%v should be numeric for frame %s", ival, frame)
+		}
+		return uint64(fval), nil
+	case TCPFlagsFrame:
+		if ret, ok := TCPFlagMap[val]; isString && ok {
+			return ret, nil
+		}
+		return 0, fmt.Errorf("%v not a valid value for %s", ival, TCPFlagsFrame)
+	default:
+		return 0, fmt.Errorf("%s is not a known frame. try one of %v", frame, strings.Join(Frames, ", "))
+	}
+
+}
+
 func (m *Main) AddLength(num int) {
 	m.lenLock.Lock()
 	m.totalLen += int64(num)
@@ -228,6 +277,9 @@ func NewMain() *Main {
 	return &Main{
 		netEndpointIDs:   NewStringIDs(),
 		transEndpointIDs: NewStringIDs(),
+		netProtoIDs:      NewStringIDs(),
+		transProtoIDs:    NewStringIDs(),
+		appProtoIDs:      NewStringIDs(),
 		methodIDs:        NewStringIDs(),
 		userAgentIDs:     NewStringIDs(),
 		hostnameIDs:      NewStringIDs(),

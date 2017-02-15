@@ -16,6 +16,8 @@ const (
 	TCPFlagsFrame    = "TCPflags"
 )
 
+var Frames = []string{netSrcFrame, netDstFrame, tranSrcFrame, tranDstFrame, netProtoFrame, transProtoFrame, appProtoFrame, hostnameFrame, methodFrame, contentTypeFrame, userAgentFrame, packetSizeFrame, TCPFlagsFrame}
+
 type TCPFlag uint64
 
 const (
@@ -29,6 +31,18 @@ const (
 	CWR
 	NS
 )
+
+var TCPFlagMap = map[string]uint64{
+	"FIN": uint64(FIN),
+	"SYN": uint64(SYN),
+	"RST": uint64(RST),
+	"PSH": uint64(PSH),
+	"ACK": uint64(ACK),
+	"URG": uint64(URG),
+	"ECE": uint64(ECE),
+	"CWR": uint64(CWR),
+	"NS":  uint64(NS),
+}
 
 func (f TCPFlag) String() string {
 	switch f {
