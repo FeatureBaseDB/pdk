@@ -51,7 +51,7 @@ func (m *Main) Run() {
 	defer m.client.Close()
 
 	go func() {
-		log.Fatal(pdk.StartMappingProxy(m.BindAddr, m.PilosaHost, m))
+		log.Fatal(pdk.StartMappingProxy(m.BindAddr, "http://"+m.PilosaHost, m))
 	}()
 
 	// print total captured traffic when killed via Ctrl-c
@@ -95,11 +95,15 @@ func (m *Main) Run() {
 	packetSource := gopacket.NewPacketSource(h, h.LinkType())
 	packets := packetSource.Packets()
 
-	for i := 1; i < m.NumExtractors; i++ {
-		go m.extractAndPost(packets)
+	extractorWG := sync.WaitGroup{}
+	for i := 0; i < m.NumExtractors; i++ {
+		extractorWG.Add(1)
+		go func() {
+			m.extractAndPost(packets)
+			extractorWG.Done()
+		}()
 	}
-	m.extractAndPost(packets)
-
+	extractorWG.Wait()
 }
 
 func (m *Main) extractAndPost(packets chan gopacket.Packet) {

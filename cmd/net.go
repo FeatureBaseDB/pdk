@@ -41,7 +41,7 @@ func init() {
 	netCommand.Flags().BoolVarP(&net.Promisc, "promisc", "p", false, "Put interface into promiscuous mode.")
 	netCommand.Flags().Int64VarP((*int64)(&net.Timeout), "timeout", "t", int64(time.Millisecond), "Timeout for capturing packets")
 	netCommand.Flags().IntVarP(&net.NumExtractors, "concurrency", "c", 1, "Number of goroutines working on packets")
-	netCommand.Flags().StringVarP(&net.PilosaHost, "pilosa", "l", "http://localhost:15000", "Address of pilosa host to write to")
+	netCommand.Flags().StringVarP(&net.PilosaHost, "pilosa", "l", "localhost:15000", "Address of pilosa host to write to")
 	netCommand.Flags().StringVarP(&net.Filter, "filter", "b", "", "BPF style filter for packet capture - i.e. 'dst port 80' would capture only traffic headed for port 80")
 	netCommand.Flags().StringVarP(&net.Database, "database", "d", "net", "Pilosa db to write to")
 	netCommand.Flags().StringVarP(&net.BindAddr, "bind-addr", "a", "localhost:15001", "Address which mapping proxy will bind to")
