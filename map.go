@@ -12,8 +12,8 @@ type Mapper interface {
 	ID(...interface{}) ([]int64, error)
 }
 
-// BitMapper is a trivial Mapper for boolean types
-type BitMapper struct {
+// BoolMapper is a trivial Mapper for boolean types
+type BoolMapper struct {
 }
 
 // IntMapper is a Mapper for integer types, mapping each int in the range to a bitmap
@@ -166,8 +166,8 @@ func (m YearMapper) ID(ti ...interface{}) (bitmapIDs []int64, err error) {
 	return []int64{int64(t.Year())}, nil
 }
 
-// ID maps a bit to a bitmapID (identity mapper)
-func (m BitMapper) ID(bi ...interface{}) (bitmapIDs []int64, err error) {
+// ID maps a bool to a bitmapID (identity mapper)
+func (m BoolMapper) ID(bi ...interface{}) (bitmapIDs []int64, err error) {
 	return []int64{bi[0].(int64)}, nil
 }
 

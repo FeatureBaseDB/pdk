@@ -108,17 +108,24 @@ func main() {
 	//go parse(recs)
 	//urls <- url2
 
-	pms := getParserMappers()
+	bms := getBitMappers()
+	ams := getAttrMappers()
 
 	nexter := Nexter{}
 
-	err := fetch(url1, &nexter, pms)
+	err := fetch(url1, &nexter, bms, ams)
 	if err != nil {
 		fmt.Println(err)
 	}
 }
 
-func getParserMappers() []pdk.ParserMapper {
+func getAttrMappers() []pdk.AttrMapper {
+	ams := []pdk.AttrMapper{}
+
+	return ams
+}
+
+func getBitMappers() []pdk.BitMapper {
 	// map a pair of floats to a grid sector of a rectangular region
 	gm := pdk.GridMapper{
 		Xmin: -74.27,
@@ -167,99 +174,98 @@ func getParserMappers() []pdk.ParserMapper {
 
 	tp := pdk.TimeParser{Layout: layout}
 
-	pms := []pdk.ParserMapper{
-
-		pdk.ParserMapper{
+	bms := []pdk.BitMapper{
+		pdk.BitMapper{
 			Frame:   "passengerCount",
 			Mapper:  pdk.IntMapper{Min: 1, Max: 8},
 			Parsers: []pdk.Parser{pdk.IntParser{}},
 			Fields:  []int{Passenger_count},
 		},
-		pdk.ParserMapper{
+		pdk.BitMapper{
 			Frame:   "totalAmount_dollars",
 			Mapper:  lfm,
 			Parsers: []pdk.Parser{pdk.FloatParser{}},
 			Fields:  []int{Total_amount},
 		},
-		pdk.ParserMapper{
+		pdk.BitMapper{
 			Frame:   "cabType",
 			Mapper:  pdk.IntMapper{Min: 0, Max: 2},
 			Parsers: []pdk.Parser{pdk.IntParser{}},
 			Fields:  []int{VendorID},
 		},
-		pdk.ParserMapper{
+		pdk.BitMapper{
 			Frame:   "pickupTime",
 			Mapper:  pdk.TimeOfDayMapper{Res: 48},
 			Parsers: []pdk.Parser{tp},
 			Fields:  []int{Lpep_pickup_datetime},
 		},
-		pdk.ParserMapper{
+		pdk.BitMapper{
 			Frame:   "pickupDay",
 			Mapper:  pdk.DayOfWeekMapper{},
 			Parsers: []pdk.Parser{tp},
 			Fields:  []int{Lpep_pickup_datetime},
 		},
-		pdk.ParserMapper{
+		pdk.BitMapper{
 			Frame:   "pickupMonth",
 			Mapper:  pdk.MonthMapper{},
 			Parsers: []pdk.Parser{tp},
 			Fields:  []int{Lpep_pickup_datetime},
 		},
-		pdk.ParserMapper{
+		pdk.BitMapper{
 			Frame:   "pickupYear",
 			Mapper:  pdk.YearMapper{},
 			Parsers: []pdk.Parser{tp},
 			Fields:  []int{Lpep_pickup_datetime},
 		},
-		pdk.ParserMapper{
+		pdk.BitMapper{
 			Frame:   "dropTime",
 			Mapper:  pdk.TimeOfDayMapper{Res: 48},
 			Parsers: []pdk.Parser{tp},
 			Fields:  []int{Lpep_dropoff_datetime},
 		},
-		pdk.ParserMapper{
+		pdk.BitMapper{
 			Frame:   "dropDay",
 			Mapper:  pdk.DayOfWeekMapper{},
 			Parsers: []pdk.Parser{tp},
 			Fields:  []int{Lpep_dropoff_datetime},
 		},
-		pdk.ParserMapper{
+		pdk.BitMapper{
 			Frame:   "dropMonth",
 			Mapper:  pdk.MonthMapper{},
 			Parsers: []pdk.Parser{tp},
 			Fields:  []int{Lpep_dropoff_datetime},
 		},
-		pdk.ParserMapper{
+		pdk.BitMapper{
 			Frame:   "dropYear",
 			Mapper:  pdk.YearMapper{},
 			Parsers: []pdk.Parser{tp},
 			Fields:  []int{Lpep_dropoff_datetime},
 		},
-		pdk.ParserMapper{
+		pdk.BitMapper{
 			Frame:   "dist_miles", // note "_miles" is a unit annotation
 			Mapper:  lfm,
 			Parsers: []pdk.Parser{pdk.FloatParser{}},
 			Fields:  []int{Trip_distance},
 		},
-		pdk.ParserMapper{
+		pdk.BitMapper{
 			Frame:   "duration_minutes",
 			Mapper:  durm,
 			Parsers: []pdk.Parser{tp, tp},
 			Fields:  []int{Lpep_pickup_datetime, Lpep_dropoff_datetime},
 		},
-		pdk.ParserMapper{
+		pdk.BitMapper{
 			Frame:   "speed_mph",
 			Mapper:  speedm,
 			Parsers: []pdk.Parser{tp, tp, pdk.FloatParser{}},
 			Fields:  []int{Lpep_pickup_datetime, Lpep_dropoff_datetime, Trip_distance},
 		},
-		pdk.ParserMapper{
+		pdk.BitMapper{
 			Frame:   "pickupGridID",
 			Mapper:  gm,
 			Parsers: []pdk.Parser{pdk.FloatParser{}, pdk.FloatParser{}},
 			Fields:  []int{Pickup_longitude, Pickup_latitude},
 		},
-		pdk.ParserMapper{
+		pdk.BitMapper{
 			Frame:   "dropGridID",
 			Mapper:  gm,
 			Parsers: []pdk.Parser{pdk.FloatParser{}, pdk.FloatParser{}},
@@ -267,10 +273,10 @@ func getParserMappers() []pdk.ParserMapper {
 		},
 	}
 
-	return pms
+	return bms
 }
 
-func fetch(url string, nexter *Nexter, parserMappers []pdk.ParserMapper) error {
+func fetch(url string, nexter *Nexter, bitMappers []pdk.BitMapper, attrMappers []pdk.AttrMapper) error {
 	fmt.Println(url)
 	resp, err := http.Get(url)
 	if err != nil {
@@ -280,9 +286,11 @@ func fetch(url string, nexter *Nexter, parserMappers []pdk.ParserMapper) error {
 
 	scan := bufio.NewScanner(resp.Body)
 	for scan.Scan() {
-		s := scan.Text()
+		record := scan.Text()
 		// parse(s)
-		parseNew(s, nexter, parserMappers)
+		profileID := nexter.Next()
+		mapRecordToBitmaps(record, profileID, bitMappers)
+		mapRecordToAttrs(record, profileID, attrMappers)
 	}
 
 	return nil
@@ -341,22 +349,27 @@ func parse(rec string) {
 	post(vendorID, pickupTime, dropTime, dist, pickLoc, dropLoc)
 }
 
-func parseNew(rec string, nexter *Nexter, parserMappers []pdk.ParserMapper) {
+func mapRecordToAttrs(rec string, profileID uint64, attrMappers []pdk.AttrMapper) {
+
+}
+
+func mapRecordToBitmaps(rec string, profileID uint64, bitMappers []pdk.BitMapper) {
 	// TODO: consider optimizing this
 	client, err := pilosa.NewClient("localhost:15000")
 	if err != nil {
 		panic(err)
 	}
 	qb := &QueryBuilder{}
-	qb.profileID = nexter.Next()
+	qb.profileID = profileID
 	qb.query = ""
 
 	fields := strings.Split(rec, ",")
 
-	for _, pm := range parserMappers {
+	// do parsing and mapping steps for each BitMapper; append resulting query to list
+	for _, pm := range bitMappers {
 		if len(pm.Fields) != len(pm.Parsers) {
 			// TODO if len(pm.Parsers) == 1, use that for all fields
-			fmt.Println("parse: ParserMapper has different number of fields and parsers")
+			fmt.Println("parse: BitMapper has different number of fields and parsers")
 			continue
 		}
 		// parse fields into a slice `parsed`
@@ -365,7 +378,6 @@ func parseNew(rec string, nexter *Nexter, parserMappers []pdk.ParserMapper) {
 		for n, fieldnum := range pm.Fields {
 			parser := pm.Parsers[n]
 			if fieldnum >= len(fields) {
-				// TODO this check doesn't need to be in the inner loop
 				fmt.Println("parse: field index out of range")
 				skip = true
 				break
@@ -389,16 +401,15 @@ func parseNew(rec string, nexter *Nexter, parserMappers []pdk.ParserMapper) {
 			continue
 		}
 		for _, id := range ids {
-			// TODO bitmap attributes
 			qb.Add(uint64(id), pm.Frame)
 		}
 	}
-	// fmt.Println(qb.Query())
+
+	// send query
 	_, err = client.ExecuteQuery(context.Background(), db, qb.Query(), true)
 	if err != nil {
 		fmt.Println(err)
 	}
-	// log.Println("result: ", res, err)
 }
 
 func parseAsync(recs <-chan string) {
