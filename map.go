@@ -64,6 +64,8 @@ type SparseIntMapper struct {
 }
 
 // LinearFloatMapper is a Mapper for float types, mapping to regularly spaced buckets
+// TODO: consider defining this in terms of a linear mapping
+// ID = floor(a*value + b)
 type LinearFloatMapper struct {
 	Min           float64
 	Max           float64
