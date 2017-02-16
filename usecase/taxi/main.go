@@ -387,9 +387,12 @@ func parseNew(rec string, nexter *Nexter, parserMappers []pdk.ParserMapper) {
 			qb.Add(uint64(id), pm.Frame)
 		}
 	}
-	fmt.Println(qb.Query())
-	res, err := client.ExecuteQuery(context.Background(), db, qb.Query(), true)
-	log.Println("result: ", res, err)
+	// fmt.Println(qb.Query())
+	_, err = client.ExecuteQuery(context.Background(), db, qb.Query(), true)
+	if err != nil {
+		fmt.Println(err)
+	}
+	// log.Println("result: ", res, err)
 }
 
 func parseAsync(recs <-chan string) {
