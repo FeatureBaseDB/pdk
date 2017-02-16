@@ -60,7 +60,7 @@ var urls = []string{
 	"https://s3.amazonaws.com/nyc-tlc/trip+data/green_tripdata_2013-12.csv",
 }
 
-var db = "taxi1"
+var db = "taxi2"
 
 const (
 	// for field meanings, see http://www.nyc.gov/html/tlc/downloads/pdf/data_dictionary_trip_records_green.pdf
@@ -130,15 +130,18 @@ func getParserMappers() []pdk.ParserMapper {
 	}
 
 	// map a float according to a custom set of bins
-	fm := pdk.FloatMapper{
-		Buckets: []float64{0, 0.5, 1, 2, 5, 10, 25, 50, 100, 200},
-	}
+	// seems like the LFM defined below is more sensible
+	/*
+		fm := pdk.FloatMapper{
+			Buckets: []float64{0, 0.5, 1, 2, 5, 10, 25, 50, 100, 200},
+		}
+	*/
 
 	// this set of bins is equivalent to rounding to nearest int (TODO verify)
 	lfm := pdk.LinearFloatMapper{
 		Min: -0.5,
-		Max: 100.5,
-		Res: 101,
+		Max: 200.5,
+		Res: 201,
 	}
 
 	// map the (pickupTime, dropTime) pair, according to the duration in minutes, binned using `fm`
@@ -148,7 +151,7 @@ func getParserMappers() []pdk.ParserMapper {
 			end := fields[1].(time.Time)
 			return end.Sub(start).Minutes()
 		},
-		Mapper: fm,
+		Mapper: lfm,
 	}
 
 	// map the (pickupTime, dropTime, dist) triple, according to the speed in mph, binned using `fm`
@@ -159,7 +162,7 @@ func getParserMappers() []pdk.ParserMapper {
 			dist := fields[2].(float64)
 			return dist / end.Sub(start).Hours()
 		},
-		Mapper: fm,
+		Mapper: lfm,
 	}
 
 	tp := pdk.TimeParser{Layout: layout}
@@ -173,8 +176,8 @@ func getParserMappers() []pdk.ParserMapper {
 			Fields:  []int{Passenger_count},
 		},
 		pdk.ParserMapper{
-			Frame:   "totalAmount",
-			Mapper:  pdk.LinearFloatMapper{Min: 0, Max: 200, Res: 100},
+			Frame:   "totalAmount_dollars",
+			Mapper:  lfm,
 			Parsers: []pdk.Parser{pdk.FloatParser{}},
 			Fields:  []int{Total_amount},
 		},
@@ -231,12 +234,6 @@ func getParserMappers() []pdk.ParserMapper {
 			Mapper:  pdk.YearMapper{},
 			Parsers: []pdk.Parser{tp},
 			Fields:  []int{Lpep_dropoff_datetime},
-		},
-		pdk.ParserMapper{
-			Frame:   "dist_binned_miles", // note "_miles" is a unit annotation
-			Mapper:  fm,
-			Parsers: []pdk.Parser{pdk.FloatParser{}},
-			Fields:  []int{Trip_distance},
 		},
 		pdk.ParserMapper{
 			Frame:   "dist_miles", // note "_miles" is a unit annotation
