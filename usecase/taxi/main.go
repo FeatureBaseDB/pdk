@@ -361,19 +361,25 @@ func parseNew(rec string, nexter *Nexter, parserMappers []pdk.ParserMapper) {
 		}
 		// parse fields into a slice `parsed`
 		parsed := make([]interface{}, 0, len(pm.Fields))
+		skip := false
 		for n, fieldnum := range pm.Fields {
 			parser := pm.Parsers[n]
 			if fieldnum >= len(fields) {
 				// TODO this check doesn't need to be in the inner loop
 				fmt.Println("parse: field index out of range")
-				continue
+				skip = true
+				break
 			}
 			parsedField, err := parser.Parse(fields[fieldnum])
 			if err != nil {
 				fmt.Println(err)
-				continue
+				skip = true
+				break
 			}
 			parsed = append(parsed, parsedField)
+		}
+		if skip {
+			continue
 		}
 
 		// map those fields to a slice of IDs
