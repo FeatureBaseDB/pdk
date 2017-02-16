@@ -33,8 +33,10 @@ type BinaryIntMapper struct {
 	allowExternal bool
 }
 
-// TODO: consider putting all time buckets in same frame
 // TimeOfDayMapper is a Mapper for timestamps, mapping the time component only
+// TODO: consider putting all time buckets in same frame
+// pros: single frame
+// cons: would have to abandon the simple ID interface. also single frame may not be a good thing
 type TimeOfDayMapper struct {
 	Res int64
 }
@@ -45,6 +47,11 @@ type DayOfWeekMapper struct {
 
 // MonthMapper is a Mapper for timestamps, mapping the month only
 type MonthMapper struct {
+}
+
+// YearMapper is a Mapper for timestamps, mapping the year only
+type YearMapper struct {
+	MinYear int64 // TODO? use this to eliminate empty bitmaps for year < 2000 or whatever
 }
 
 // SparseIntMapper is a Mapper for integer types, mapping only relevant ints
@@ -149,6 +156,12 @@ func (m DayOfWeekMapper) ID(ti ...interface{}) (bitmapIDs []int64, err error) {
 func (m MonthMapper) ID(ti ...interface{}) (bitmapIDs []int64, err error) {
 	t := ti[0].(time.Time)
 	return []int64{int64(t.Month())}, nil
+}
+
+// ID maps a timestamp to a year bucket
+func (m YearMapper) ID(ti ...interface{}) (bitmapIDs []int64, err error) {
+	t := ti[0].(time.Time)
+	return []int64{int64(t.Year())}, nil
 }
 
 // ID maps a bit to a bitmapID (identity mapper)

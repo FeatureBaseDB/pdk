@@ -60,7 +60,7 @@ var urls = []string{
 	"https://s3.amazonaws.com/nyc-tlc/trip+data/green_tripdata_2013-12.csv",
 }
 
-var db = "taxi"
+var db = "taxi1"
 
 const (
 	// for field meanings, see http://www.nyc.gov/html/tlc/downloads/pdf/data_dictionary_trip_records_green.pdf
@@ -134,6 +134,13 @@ func getParserMappers() []pdk.ParserMapper {
 		Buckets: []float64{0, 0.5, 1, 2, 5, 10, 25, 50, 100, 200},
 	}
 
+	// this set of bins is equivalent to rounding to nearest int (TODO verify)
+	lfm := pdk.LinearFloatMapper{
+		Min: -0.5,
+		Max: 100.5,
+		Res: 101,
+	}
+
 	// map the (pickupTime, dropTime) pair, according to the duration in minutes, binned using `fm`
 	durm := pdk.CustomMapper{
 		Func: func(fields ...interface{}) interface{} {
@@ -196,6 +203,12 @@ func getParserMappers() []pdk.ParserMapper {
 			Fields:  []int{Lpep_pickup_datetime},
 		},
 		pdk.ParserMapper{
+			Frame:   "pickupYear",
+			Mapper:  pdk.YearMapper{},
+			Parsers: []pdk.Parser{tp},
+			Fields:  []int{Lpep_pickup_datetime},
+		},
+		pdk.ParserMapper{
 			Frame:   "dropTime",
 			Mapper:  pdk.TimeOfDayMapper{Res: 48},
 			Parsers: []pdk.Parser{tp},
@@ -214,8 +227,20 @@ func getParserMappers() []pdk.ParserMapper {
 			Fields:  []int{Lpep_dropoff_datetime},
 		},
 		pdk.ParserMapper{
-			Frame:   "dist_miles", // note "_miles" is a unit annotation
+			Frame:   "dropYear",
+			Mapper:  pdk.YearMapper{},
+			Parsers: []pdk.Parser{tp},
+			Fields:  []int{Lpep_dropoff_datetime},
+		},
+		pdk.ParserMapper{
+			Frame:   "dist_binned_miles", // note "_miles" is a unit annotation
 			Mapper:  fm,
+			Parsers: []pdk.Parser{pdk.FloatParser{}},
+			Fields:  []int{Trip_distance},
+		},
+		pdk.ParserMapper{
+			Frame:   "dist_miles", // note "_miles" is a unit annotation
+			Mapper:  lfm,
 			Parsers: []pdk.Parser{pdk.FloatParser{}},
 			Fields:  []int{Trip_distance},
 		},
