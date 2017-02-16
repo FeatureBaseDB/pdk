@@ -357,7 +357,7 @@ func parseNew(rec string, nexter *Nexter, parserMappers []pdk.ParserMapper) {
 		if len(pm.Fields) != len(pm.Parsers) {
 			// TODO if len(pm.Parsers) == 1, use that for all fields
 			fmt.Println("parse: ParserMapper has different number of fields and parsers")
-			return
+			continue
 		}
 		// parse fields into a slice `parsed`
 		parsed := make([]interface{}, 0, len(pm.Fields))
@@ -366,12 +366,12 @@ func parseNew(rec string, nexter *Nexter, parserMappers []pdk.ParserMapper) {
 			if fieldnum >= len(fields) {
 				// TODO this check doesn't need to be in the inner loop
 				fmt.Println("parse: field index out of range")
-				return
+				continue
 			}
 			parsedField, err := parser.Parse(fields[fieldnum])
 			if err != nil {
 				fmt.Println(err)
-				return
+				continue
 			}
 			parsed = append(parsed, parsedField)
 		}
@@ -380,7 +380,7 @@ func parseNew(rec string, nexter *Nexter, parserMappers []pdk.ParserMapper) {
 		ids, err := pm.Mapper.ID(parsed...)
 		if err != nil {
 			fmt.Println(err)
-			return
+			continue
 		}
 		for _, id := range ids {
 			// TODO bitmap attributes
