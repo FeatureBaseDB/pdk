@@ -6,13 +6,12 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/pilosa/pdk"
-	"github.com/umbel/pilosa"
+	"github.com/pilosa/pilosa"
 )
 
 /**************
@@ -51,17 +50,6 @@ func (n *Nexter) Next() (nextID uint64) {
 /***************
 use case setup
 ***************/
-
-var urls = []string{
-	"https://s3.amazonaws.com/nyc-tlc/trip+data/green_tripdata_2013-08.csv",
-	"https://s3.amazonaws.com/nyc-tlc/trip+data/green_tripdata_2013-09.csv",
-	"https://s3.amazonaws.com/nyc-tlc/trip+data/green_tripdata_2013-10.csv",
-	"https://s3.amazonaws.com/nyc-tlc/trip+data/green_tripdata_2013-11.csv",
-	"https://s3.amazonaws.com/nyc-tlc/trip+data/green_tripdata_2013-12.csv",
-}
-
-var db = "taxi2"
-
 const (
 	// for field meanings, see http://www.nyc.gov/html/tlc/downloads/pdf/data_dictionary_trip_records_green.pdf
 	VendorID = iota
@@ -97,25 +85,148 @@ use case implementation
 // TODO autoscan 3. write results from ^^ to config file
 // TODO read ParserMapper config from file (cant do CustomMapper)
 
+type Main struct {
+	UrlFile     string
+	Concurrency int
+	Database    string
+
+	urls []string
+	bms  []pdk.BitMapper
+	ams  []pdk.AttrMapper
+
+	nexter *Nexter
+}
+
+func NewMain() *Main {
+	m := &Main{
+		Concurrency: 1,
+		nexter:      &Nexter{},
+	}
+	// TODO read file
+	m.urls = []string{
+		"https://s3.amazonaws.com/nyc-tlc/trip+data/green_tripdata_2013-08.csv",
+		"https://s3.amazonaws.com/nyc-tlc/trip+data/green_tripdata_2013-09.csv",
+		"https://s3.amazonaws.com/nyc-tlc/trip+data/green_tripdata_2013-10.csv",
+		"https://s3.amazonaws.com/nyc-tlc/trip+data/green_tripdata_2013-11.csv",
+		"https://s3.amazonaws.com/nyc-tlc/trip+data/green_tripdata_2013-12.csv",
+	}
+	return m
+}
+
 func main() {
-	fmt.Println("fetch and parse")
-	url1 := "https://s3.amazonaws.com/nyc-tlc/trip+data/green_tripdata_2013-08.csv"
-	//url2 := "http://alanbernstein.net/files/green_tripdata_sample.csv"
+	m := NewMain()
+	m.Database = "taxi"
+	m.Run()
+}
 
-	//urls := make(chan string)
-	//recs := make(chan string)
-	//go fetch(urls, recs)
-	//go parse(recs)
-	//urls <- url2
+func (m *Main) Run() {
 
-	bms := getBitMappers()
-	ams := getAttrMappers()
+	urls := make(chan string)
+	records := make(chan string)
 
-	nexter := Nexter{}
+	go func() {
+		for _, url := range m.urls {
+			urls <- url
+		}
+		close(urls)
+	}()
 
-	err := fetch(url1, &nexter, bms, ams)
-	if err != nil {
-		fmt.Println(err)
+	m.bms = getBitMappers()
+	m.ams = getAttrMappers()
+
+	var wg sync.WaitGroup
+	for i := 0; i < m.Concurrency; i++ {
+		wg.Add(1)
+		go func() {
+			m.fetch(urls, records)
+			wg.Done()
+		}()
+	}
+	for i := 0; i < m.Concurrency; i++ {
+		wg.Add(1)
+		go func() {
+			m.parseMapAndPost(records)
+			wg.Done()
+		}()
+	}
+	wg.Wait()
+}
+
+func (m *Main) fetch(urls <-chan string, records chan<- string) {
+	for url := range urls {
+		resp, err := http.Get(url)
+		if err != nil {
+			log.Printf("fetching %s, err: %v", url, err)
+			continue
+		}
+
+		scan := bufio.NewScanner(resp.Body)
+		for scan.Scan() {
+			record := scan.Text()
+			records <- record
+		}
+	}
+}
+
+//		mapRecordToBitmaps(record, profileID, m.bitMappers)
+//      mapRecordToAttrs(record, profileID, m.attrMappers)
+
+func (m *Main) parseMapAndPost(records <-chan string) {
+	for record := range records {
+		profileID := m.nexter.Next()
+		client, err := pilosa.NewClient("localhost:15000")
+		if err != nil {
+			panic(err)
+		}
+		qb := &QueryBuilder{}
+		qb.profileID = profileID
+		qb.query = ""
+
+		fields := strings.Split(record, ",")
+		for _, pm := range m.bms {
+			if len(pm.Fields) != len(pm.Parsers) {
+				// TODO if len(pm.Parsers) == 1, use that for all fields
+				log.Printf("parse: BitMapper has different number of fields: %v and parsers: %v", pm.Fields, pm.Parsers)
+				continue
+			}
+
+			// parse fields into a slice `parsed`
+			parsed := make([]interface{}, 0, len(pm.Fields))
+			skip := false
+			for n, fieldnum := range pm.Fields {
+				parser := pm.Parsers[n]
+				if fieldnum >= len(fields) {
+					log.Println("parse: field index out of range")
+					skip = true
+					break
+				}
+				parsedField, err := parser.Parse(fields[fieldnum])
+				if err != nil {
+					fmt.Println(err)
+					skip = true
+					break
+				}
+				parsed = append(parsed, parsedField)
+			}
+			if skip {
+				continue
+			}
+
+			// map those fields to a slice of IDs
+			ids, err := pm.Mapper.ID(parsed...)
+			if err != nil {
+				fmt.Println(err)
+				continue
+			}
+			for _, id := range ids {
+				qb.Add(uint64(id), pm.Frame)
+			}
+		}
+		_, err = client.ExecuteQuery(context.Background(), m.Database, qb.Query(), true)
+		if err != nil {
+			fmt.Println(err)
+		}
+
 	}
 }
 
@@ -274,314 +385,4 @@ func getBitMappers() []pdk.BitMapper {
 	}
 
 	return bms
-}
-
-func fetch(url string, nexter *Nexter, bitMappers []pdk.BitMapper, attrMappers []pdk.AttrMapper) error {
-	fmt.Println(url)
-	resp, err := http.Get(url)
-	if err != nil {
-		fmt.Println(err)
-		return err
-	}
-
-	scan := bufio.NewScanner(resp.Body)
-	for scan.Scan() {
-		record := scan.Text()
-		// parse(s)
-		profileID := nexter.Next()
-		mapRecordToBitmaps(record, profileID, bitMappers)
-		mapRecordToAttrs(record, profileID, attrMappers)
-	}
-
-	return nil
-}
-
-func fetch_async(urls <-chan string, recs chan<- string) error {
-	fmt.Println("fetch")
-	for url := range urls {
-		fmt.Println(url)
-		resp, err := http.Get(url)
-		fmt.Println(resp)
-		fmt.Println(err)
-		if err != nil {
-			fmt.Println(err)
-			return err
-		}
-
-		scan := bufio.NewScanner(resp.Body)
-		fmt.Println("scan loop")
-		for scan.Scan() {
-			s := scan.Text()
-			fmt.Println(s)
-			recs <- s
-		}
-	}
-	return nil
-}
-
-func parse(rec string) {
-	fields := strings.Split(rec, ",")
-	if len(fields) <= 1 {
-		log.Printf("Empty line")
-		return
-	}
-	pickupTime, err := time.Parse(layout, fields[Lpep_pickup_datetime])
-	if err != nil {
-		log.Printf("Couldn't parse time: %v, err: %v", fields[Lpep_pickup_datetime], err)
-		return
-	}
-	dropTime, err := time.Parse(layout, fields[Lpep_dropoff_datetime])
-	if err != nil {
-		log.Printf("Couldn't parse time: %v, err: %v", fields[Lpep_dropoff_datetime], err)
-		return
-	}
-
-	dist, err := strconv.ParseFloat(fields[Trip_distance], 32)
-	if err != nil || dist == 0 {
-		if dist == 0 {
-			log.Printf("Invalid distance %v: %v", fields[Trip_distance], err)
-		}
-		return
-	}
-	vendorID, err := strconv.Atoi(fields[VendorID])
-	pickLoc, dropLoc, err := getLocations(fields)
-
-	post(vendorID, pickupTime, dropTime, dist, pickLoc, dropLoc)
-}
-
-func mapRecordToAttrs(rec string, profileID uint64, attrMappers []pdk.AttrMapper) {
-
-}
-
-func mapRecordToBitmaps(rec string, profileID uint64, bitMappers []pdk.BitMapper) {
-	// TODO: consider optimizing this
-	client, err := pilosa.NewClient("localhost:15000")
-	if err != nil {
-		panic(err)
-	}
-	qb := &QueryBuilder{}
-	qb.profileID = profileID
-	qb.query = ""
-
-	fields := strings.Split(rec, ",")
-
-	// do parsing and mapping steps for each BitMapper; append resulting query to list
-	for _, pm := range bitMappers {
-		if len(pm.Fields) != len(pm.Parsers) {
-			// TODO if len(pm.Parsers) == 1, use that for all fields
-			fmt.Println("parse: BitMapper has different number of fields and parsers")
-			continue
-		}
-		// parse fields into a slice `parsed`
-		parsed := make([]interface{}, 0, len(pm.Fields))
-		skip := false
-		for n, fieldnum := range pm.Fields {
-			parser := pm.Parsers[n]
-			if fieldnum >= len(fields) {
-				fmt.Println("parse: field index out of range")
-				skip = true
-				break
-			}
-			parsedField, err := parser.Parse(fields[fieldnum])
-			if err != nil {
-				fmt.Println(err)
-				skip = true
-				break
-			}
-			parsed = append(parsed, parsedField)
-		}
-		if skip {
-			continue
-		}
-
-		// map those fields to a slice of IDs
-		ids, err := pm.Mapper.ID(parsed...)
-		if err != nil {
-			fmt.Println(err)
-			continue
-		}
-		for _, id := range ids {
-			qb.Add(uint64(id), pm.Frame)
-		}
-	}
-
-	// send query
-	_, err = client.ExecuteQuery(context.Background(), db, qb.Query(), true)
-	if err != nil {
-		fmt.Println(err)
-	}
-}
-
-func parseAsync(recs <-chan string) {
-	fmt.Println("parse")
-	for rec := range recs {
-		fmt.Println(rec)
-		fields := strings.Split(rec, ",")
-		pickupTime, err := time.Parse(layout, fields[Lpep_pickup_datetime])
-		if err != nil {
-			log.Printf("Couldn't parse time: %v, err: %v", fields[Lpep_pickup_datetime], err)
-			continue
-		}
-		dropTime, err := time.Parse(layout, fields[Lpep_dropoff_datetime])
-		if err != nil {
-			log.Printf("Couldn't parse time: %v, err: %v", fields[Lpep_dropoff_datetime], err)
-			continue
-		}
-		dist, err := strconv.ParseFloat(fields[Trip_distance], 32)
-		if err != nil || dist == 0 {
-			if dist == 0 {
-				log.Printf("Couldn't convert %v to float: %v", fields[Trip_distance], err)
-			}
-			continue
-		}
-		vendorID, err := strconv.Atoi(fields[VendorID])
-		pickLoc, dropLoc, err := getLocations(fields)
-
-		post(vendorID, pickupTime, dropTime, dist, pickLoc, dropLoc)
-	}
-}
-
-func getLocations(fields []string) (pickup pdk.Point, dropoff pdk.Point, err error) {
-	// parse locations
-	pickup, dropoff = pdk.Point{}, pdk.Point{}
-	pickup.X, err = strconv.ParseFloat(fields[Pickup_longitude], 64)
-	if err != nil {
-		return pickup, dropoff, err
-	}
-	pickup.Y, err = strconv.ParseFloat(fields[Pickup_latitude], 64)
-	if err != nil {
-		return pickup, dropoff, err
-	}
-	dropoff.X, err = strconv.ParseFloat(fields[Dropoff_longitude], 64)
-	if err != nil {
-		return pickup, dropoff, err
-	}
-	dropoff.Y, err = strconv.ParseFloat(fields[Dropoff_latitude], 64)
-	return pickup, dropoff, err
-}
-
-func post(cabType int, pickupTime, dropTime time.Time, dist float64, pickupLoc, dropLoc pdk.Point) {
-	fmt.Println(cabType, pickupTime, dropTime, dist, pickupLoc, dropLoc)
-
-	im := pdk.IntMapper{
-		Min: 0,
-		Max: 2,
-	}
-
-	// map a timestamp according to its cyclic components
-	tm := pdk.TimeOfDayMapper{Res: 48}
-	dm := pdk.DayOfWeekMapper{}
-	mm := pdk.MonthMapper{}
-
-	// map a point (pair of floats) to a grid sector of a rectangular region
-	gm := pdk.GridMapper{
-		Xmin: -74.27,
-		Xmax: -73.69,
-		Xres: 100,
-		Ymin: 40.48,
-		Ymax: 40.93,
-		Yres: 100,
-	}
-
-	// map a float according to a custom set of bins
-	fm := pdk.FloatMapper{
-		Buckets: []float64{0, 0.5, 1, 2, 5, 10, 25, 50, 100, 200},
-	}
-
-	// map the (pickupTime, dropTime) pair, according to the duration in minutes, binned using `fm`
-	durm := pdk.CustomMapper{
-		Func: func(fields ...interface{}) interface{} {
-			start := fields[0].(time.Time)
-			end := fields[1].(time.Time)
-			return end.Sub(start).Minutes()
-		},
-		Mapper: fm,
-	}
-
-	// map the (pickupTime, dropTime, dist) triple, according to the speed in mph, binned using `fm`
-	speedm := pdk.CustomMapper{
-		Func: func(fields ...interface{}) interface{} {
-			start := fields[0].(time.Time)
-			end := fields[1].(time.Time)
-			dist := fields[2].(float64)
-			return dist / end.Sub(start).Hours()
-		},
-		Mapper: fm,
-	}
-
-	cabTypeID, err := im.ID(int64(cabType))
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	pickupTimeID, err := tm.ID(pickupTime)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	dropTimeID, err := tm.ID(dropTime)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	pickupDayID, err := dm.ID(pickupTime)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	dropDayID, err := dm.ID(dropTime)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	pickupMonthID, err := mm.ID(pickupTime)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	dropMonthID, err := mm.ID(dropTime)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	distCustomID, err := fm.ID(dist)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	durID, err := durm.ID(pickupTime, dropTime)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	speedID, err := speedm.ID(pickupTime, dropTime, dist)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	pickupLocID, err := gm.ID(pickupLoc)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	dropLocID, err := gm.ID(dropLoc)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-
-	// SetBit
-	rideID := -1
-	fmt.Printf("SetBit(id=%d, frame='cabType', profileID=%d)\n", cabTypeID, rideID)
-	fmt.Printf("SetBit(id=%d, frame='pickupTime', profileID=%d)\n", pickupTimeID, rideID)
-	fmt.Printf("SetBit(id=%d, frame='pickupDay', profileID=%d)\n", pickupDayID, rideID)
-	fmt.Printf("SetBit(id=%d, frame='pickupMonth', profileID=%d)\n", pickupMonthID, rideID)
-	fmt.Printf("SetBit(id=%d, frame='dropTime', profileID=%d)\n", dropTimeID, rideID)
-	fmt.Printf("SetBit(id=%d, frame='dropDay', profileID=%d)\n", dropDayID, rideID)
-	fmt.Printf("SetBit(id=%d, frame='dropMonth', profileID=%d)\n", dropMonthID, rideID)
-	fmt.Printf("SetBit(id=%d, frame='dist_miles', profileID=%d)\n", distCustomID, rideID)
-	fmt.Printf("SetBit(id=%d, frame='duration_minutes', profileID=%d)\n", durID, rideID)
-	fmt.Printf("SetBit(id=%d, frame='speed_mph', profileID=%d)\n", speedID, rideID)
-	fmt.Printf("SetBit(id=%d, frame='pickupGridID', profileID=%d)\n", pickupLocID, rideID)
-	fmt.Printf("SetBit(id=%d, frame='dropGridID', profileID=%d)\n", dropLocID, rideID)
 }
