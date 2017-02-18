@@ -1,4 +1,4 @@
-package main
+package taxi
 
 import (
 	"bufio"
@@ -105,18 +105,8 @@ func NewMain() *Main {
 	// TODO read file
 	m.urls = []string{
 		"https://s3.amazonaws.com/nyc-tlc/trip+data/green_tripdata_2013-08.csv",
-		"https://s3.amazonaws.com/nyc-tlc/trip+data/green_tripdata_2013-09.csv",
-		"https://s3.amazonaws.com/nyc-tlc/trip+data/green_tripdata_2013-10.csv",
-		"https://s3.amazonaws.com/nyc-tlc/trip+data/green_tripdata_2013-11.csv",
-		"https://s3.amazonaws.com/nyc-tlc/trip+data/green_tripdata_2013-12.csv",
 	}
 	return m
-}
-
-func main() {
-	m := NewMain()
-	m.Database = "taxi"
-	m.Run()
 }
 
 func (m *Main) Run() {
@@ -142,14 +132,17 @@ func (m *Main) Run() {
 			wg.Done()
 		}()
 	}
+	var wg2 sync.WaitGroup
 	for i := 0; i < m.Concurrency; i++ {
-		wg.Add(1)
+		wg2.Add(1)
 		go func() {
 			m.parseMapAndPost(records)
-			wg.Done()
+			wg2.Done()
 		}()
 	}
 	wg.Wait()
+	close(records)
+	wg2.Wait()
 }
 
 func (m *Main) fetch(urls <-chan string, records chan<- string) {
