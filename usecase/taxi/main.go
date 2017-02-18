@@ -2,7 +2,6 @@ package taxi
 
 import (
 	"bufio"
-	"context"
 	"fmt"
 	"log"
 	"net/http"
@@ -11,7 +10,6 @@ import (
 	"time"
 
 	"github.com/pilosa/pdk"
-	"github.com/pilosa/pilosa"
 )
 
 /**************
@@ -86,13 +84,15 @@ use case implementation
 // TODO read ParserMapper config from file (cant do CustomMapper)
 
 type Main struct {
+	PilosaHost  string
 	UrlFile     string
 	Concurrency int
 	Database    string
 
-	urls []string
-	bms  []pdk.BitMapper
-	ams  []pdk.AttrMapper
+	importer pdk.PilosaImporter
+	urls     []string
+	bms      []pdk.BitMapper
+	ams      []pdk.AttrMapper
 
 	nexter *Nexter
 }
@@ -102,6 +102,7 @@ func NewMain() *Main {
 		Concurrency: 1,
 		nexter:      &Nexter{},
 	}
+
 	// TODO read file
 	m.urls = []string{
 		"https://s3.amazonaws.com/nyc-tlc/trip+data/green_tripdata_2013-08.csv",
@@ -110,6 +111,8 @@ func NewMain() *Main {
 }
 
 func (m *Main) Run() {
+	frames := []string{"passengerCount", "totalAmount_dollars", "cabType", "pickupTime", "pickupDay", "pickupMonth", "pickupYear", "dropTime", "dropDay", "dropMonth", "dropYear", "dist_miles", "duration_minutes", "speed_mph", "pickupGridID", "dropGridID"}
+	m.importer = pdk.NewImportClient(m.PilosaHost, m.Database, frames)
 
 	urls := make(chan string)
 	records := make(chan string)
@@ -143,6 +146,7 @@ func (m *Main) Run() {
 	wg.Wait()
 	close(records)
 	wg2.Wait()
+	m.importer.Close()
 }
 
 func (m *Main) fetch(urls <-chan string, records chan<- string) {
@@ -161,19 +165,9 @@ func (m *Main) fetch(urls <-chan string, records chan<- string) {
 	}
 }
 
-//		mapRecordToBitmaps(record, profileID, m.bitMappers)
-//      mapRecordToAttrs(record, profileID, m.attrMappers)
-
 func (m *Main) parseMapAndPost(records <-chan string) {
 	for record := range records {
 		profileID := m.nexter.Next()
-		client, err := pilosa.NewClient("localhost:15000")
-		if err != nil {
-			panic(err)
-		}
-		qb := &QueryBuilder{}
-		qb.profileID = profileID
-		qb.query = ""
 
 		fields := strings.Split(record, ",")
 		for _, pm := range m.bms {
@@ -212,14 +206,9 @@ func (m *Main) parseMapAndPost(records <-chan string) {
 				continue
 			}
 			for _, id := range ids {
-				qb.Add(uint64(id), pm.Frame)
+				m.importer.SetBit(uint64(id), profileID, pm.Frame)
 			}
 		}
-		_, err = client.ExecuteQuery(context.Background(), m.Database, qb.Query(), true)
-		if err != nil {
-			fmt.Println(err)
-		}
-
 	}
 }
 
