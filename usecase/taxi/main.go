@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -85,7 +86,7 @@ use case implementation
 
 type Main struct {
 	PilosaHost  string
-	UrlFile     string
+	URLFile     string
 	Concurrency int
 	Database    string
 
@@ -101,18 +102,31 @@ func NewMain() *Main {
 	m := &Main{
 		Concurrency: 1,
 		nexter:      &Nexter{},
+		urls:        make([]string, 0),
 	}
 
-	// TODO read file
-	m.urls = []string{
-		"https://s3.amazonaws.com/nyc-tlc/trip+data/green_tripdata_2013-08.csv",
-	}
 	return m
 }
 
-func (m *Main) Run() {
+func (m *Main) Run() error {
+	if m.URLFile == "" {
+		return fmt.Errorf("Need to specify a URL File")
+	}
+	f, err := os.Open(m.URLFile)
+	if err != nil {
+		return err
+	}
+
 	frames := []string{"passengerCount", "totalAmount_dollars", "cabType", "pickupTime", "pickupDay", "pickupMonth", "pickupYear", "dropTime", "dropDay", "dropMonth", "dropYear", "dist_miles", "duration_minutes", "speed_mph", "pickupGridID", "dropGridID"}
 	m.importer = pdk.NewImportClient(m.PilosaHost, m.Database, frames)
+
+	s := bufio.NewScanner(f)
+	for s.Scan() {
+		m.urls = append(m.urls, s.Text())
+	}
+	if err := s.Err(); err != nil {
+		return err
+	}
 
 	urls := make(chan string)
 	records := make(chan string)
@@ -147,6 +161,7 @@ func (m *Main) Run() {
 	close(records)
 	wg2.Wait()
 	m.importer.Close()
+	return nil
 }
 
 func (m *Main) fetch(urls <-chan string, records chan<- string) {
