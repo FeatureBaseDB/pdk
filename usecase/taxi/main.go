@@ -13,39 +13,6 @@ import (
 	"github.com/pilosa/pdk"
 )
 
-/**************
-common tools
-**************/
-
-// QueryBuilder maintains a query string for a single profileID
-type QueryBuilder struct {
-	profileID uint64
-	query     string
-}
-
-// Add appends a SetBit() query to the query string
-func (qb *QueryBuilder) Add(bitmapID uint64, frame string) {
-	qb.query += fmt.Sprintf("SetBit(id=%d, frame=%s, profileID=%d)", bitmapID, frame, qb.profileID)
-}
-
-// Query returns the full query string
-func (qb *QueryBuilder) Query() string { return qb.query }
-
-// Nexter generates unique bitmapIDs
-type Nexter struct {
-	id   uint64
-	lock sync.Mutex
-}
-
-// Next generates a new bitmapID
-func (n *Nexter) Next() (nextID uint64) {
-	n.lock.Lock()
-	nextID = n.id
-	n.id++
-	n.lock.Unlock()
-	return
-}
-
 /***************
 use case setup
 ***************/
@@ -94,6 +61,9 @@ type Main struct {
 	ams      []pdk.AttrMapper
 
 	nexter *Nexter
+
+	totalBytes int64
+	bytesLock  sync.Mutex
 }
 
 func NewMain() *Main {
@@ -107,23 +77,15 @@ func NewMain() *Main {
 }
 
 func (m *Main) Run() error {
-	if m.URLFile == "" {
-		return fmt.Errorf("Need to specify a URL File")
-	}
-	f, err := os.Open(m.URLFile)
+	err := m.readURLs()
 	if err != nil {
-		return err
-	}
-	s := bufio.NewScanner(f)
-	for s.Scan() {
-		m.urls = append(m.urls, s.Text())
-	}
-	if err := s.Err(); err != nil {
 		return err
 	}
 
 	frames := []string{"passengerCount", "totalAmount_dollars", "cabType", "pickupTime", "pickupDay", "pickupMonth", "pickupYear", "dropTime", "dropDay", "dropMonth", "dropYear", "dist_miles", "duration_minutes", "speed_mph", "pickupGridID", "dropGridID"}
 	m.importer = pdk.NewImportClient(m.PilosaHost, m.Database, frames)
+
+	ticker := m.printStats()
 
 	urls := make(chan string)
 	records := make(chan string)
@@ -158,7 +120,36 @@ func (m *Main) Run() error {
 	close(records)
 	wg2.Wait()
 	m.importer.Close()
+	ticker.Stop()
 	return nil
+}
+
+func (m *Main) readURLs() error {
+	if m.URLFile == "" {
+		return fmt.Errorf("Need to specify a URL File")
+	}
+	f, err := os.Open(m.URLFile)
+	if err != nil {
+		return err
+	}
+	s := bufio.NewScanner(f)
+	for s.Scan() {
+		m.urls = append(m.urls, s.Text())
+	}
+	if err := s.Err(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (m *Main) printStats() *time.Ticker {
+	t := time.NewTicker(time.Second * 10)
+	go func() {
+		for range t.C {
+			log.Printf("Profiles: %d, Bytes: %s", m.nexter.Last(), pdk.Bytes(m.BytesProcessed()))
+		}
+	}()
+	return t
 }
 
 func (m *Main) fetch(urls <-chan string, records chan<- string) {
@@ -172,6 +163,7 @@ func (m *Main) fetch(urls <-chan string, records chan<- string) {
 		scan := bufio.NewScanner(resp.Body)
 		for scan.Scan() {
 			record := scan.Text()
+			m.AddBytes(len(record))
 			records <- record
 		}
 	}
@@ -377,4 +369,39 @@ func getBitMappers() []pdk.BitMapper {
 	}
 
 	return bms
+}
+
+func (m *Main) AddBytes(n int) {
+	m.bytesLock.Lock()
+	m.totalBytes += int64(n)
+	m.bytesLock.Unlock()
+}
+
+func (m *Main) BytesProcessed() (num int64) {
+	m.bytesLock.Lock()
+	num = m.totalBytes
+	m.bytesLock.Unlock()
+	return
+}
+
+// Nexter generates unique bitmapIDs
+type Nexter struct {
+	id   uint64
+	lock sync.Mutex
+}
+
+// Next generates a new bitmapID
+func (n *Nexter) Next() (nextID uint64) {
+	n.lock.Lock()
+	nextID = n.id
+	n.id++
+	n.lock.Unlock()
+	return
+}
+
+func (n *Nexter) Last() (lastID uint64) {
+	n.lock.Lock()
+	lastID = n.id - 1
+	n.lock.Unlock()
+	return
 }
