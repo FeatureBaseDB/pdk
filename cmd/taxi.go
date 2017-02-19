@@ -34,7 +34,7 @@ func init() {
 	taxiCommand.Flags().IntVarP(&taxiMain.Concurrency, "concurrency", "c", 1, "Number of goroutines fetching and parsing")
 	taxiCommand.Flags().StringVarP(&taxiMain.PilosaHost, "pilosa", "p", "localhost:15000", "Pilosa host")
 	taxiCommand.Flags().StringVarP(&taxiMain.Database, "database", "d", "taxi", "Pilosa db to write to")
-	taxiCommand.Flags().StringVarP(&taxiMain.URLFile, "url-file", "f", "", "File to get raw data urls from")
+	taxiCommand.Flags().StringVarP(&taxiMain.URLFile, "url-file", "f", "", "File to get raw data urls from. Urls may be http or local files.")
 
 	err := viper.BindPFlags(taxiCommand.Flags())
 	if err != nil {

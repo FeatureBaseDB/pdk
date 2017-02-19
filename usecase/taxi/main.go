@@ -3,12 +3,16 @@ package taxi
 import (
 	"bufio"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
 	"strings"
 	"sync"
 	"time"
+
+	_ "net/http/pprof"
 
 	"github.com/pilosa/pdk"
 )
@@ -77,6 +81,10 @@ func NewMain() *Main {
 }
 
 func (m *Main) Run() error {
+	go func() {
+		log.Println(http.ListenAndServe("localhost:6060", nil))
+	}()
+
 	err := m.readURLs()
 	if err != nil {
 		return err
@@ -100,6 +108,15 @@ func (m *Main) Run() error {
 	m.bms = getBitMappers()
 	m.ams = getAttrMappers()
 
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
+	go func() {
+		for range c {
+			log.Printf("Profiles: %d, Bytes: %s", m.nexter.Last(), pdk.Bytes(m.BytesProcessed()))
+			os.Exit(0)
+		}
+	}()
+
 	var wg sync.WaitGroup
 	for i := 0; i < m.Concurrency; i++ {
 		wg.Add(1)
@@ -121,7 +138,7 @@ func (m *Main) Run() error {
 	wg2.Wait()
 	m.importer.Close()
 	ticker.Stop()
-	return nil
+	return err
 }
 
 func (m *Main) readURLs() error {
@@ -154,17 +171,32 @@ func (m *Main) printStats() *time.Ticker {
 
 func (m *Main) fetch(urls <-chan string, records chan<- string) {
 	for url := range urls {
-		resp, err := http.Get(url)
-		if err != nil {
-			log.Printf("fetching %s, err: %v", url, err)
-			continue
+		var content io.ReadCloser
+		if strings.HasPrefix(url, "http") {
+			resp, err := http.Get(url)
+			if err != nil {
+				log.Printf("fetching %s, err: %v", url, err)
+				continue
+			}
+			content = resp.Body
+		} else {
+			f, err := os.Open(url)
+			if err != nil {
+				log.Printf("opening %s, err: %v", url, err)
+				continue
+			}
+			content = f
 		}
 
-		scan := bufio.NewScanner(resp.Body)
+		scan := bufio.NewScanner(content)
 		for scan.Scan() {
 			record := scan.Text()
 			m.AddBytes(len(record))
 			records <- record
+		}
+		err := content.Close()
+		if err != nil {
+			log.Printf("closing %s, err: %v", url, err)
 		}
 	}
 }
