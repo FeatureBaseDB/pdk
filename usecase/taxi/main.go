@@ -73,8 +73,6 @@ const (
 	Trip_type
 )
 
-var layout = "2006-01-02 15:04:05"
-
 /***********************
 use case implementation
 ***********************/
@@ -116,10 +114,6 @@ func (m *Main) Run() error {
 	if err != nil {
 		return err
 	}
-
-	frames := []string{"passengerCount", "totalAmount_dollars", "cabType", "pickupTime", "pickupDay", "pickupMonth", "pickupYear", "dropTime", "dropDay", "dropMonth", "dropYear", "dist_miles", "duration_minutes", "speed_mph", "pickupGridID", "dropGridID"}
-	m.importer = pdk.NewImportClient(m.PilosaHost, m.Database, frames)
-
 	s := bufio.NewScanner(f)
 	for s.Scan() {
 		m.urls = append(m.urls, s.Text())
@@ -127,6 +121,9 @@ func (m *Main) Run() error {
 	if err := s.Err(); err != nil {
 		return err
 	}
+
+	frames := []string{"passengerCount", "totalAmount_dollars", "cabType", "pickupTime", "pickupDay", "pickupMonth", "pickupYear", "dropTime", "dropDay", "dropMonth", "dropYear", "dist_miles", "duration_minutes", "speed_mph", "pickupGridID", "dropGridID"}
+	m.importer = pdk.NewImportClient(m.PilosaHost, m.Database, frames)
 
 	urls := make(chan string)
 	records := make(chan string)
@@ -185,26 +182,25 @@ func (m *Main) parseMapAndPost(records <-chan string) {
 		profileID := m.nexter.Next()
 
 		fields := strings.Split(record, ",")
-		for _, pm := range m.bms {
-			if len(pm.Fields) != len(pm.Parsers) {
+		for _, bm := range m.bms {
+			if len(bm.Fields) != len(bm.Parsers) {
 				// TODO if len(pm.Parsers) == 1, use that for all fields
-				log.Printf("parse: BitMapper has different number of fields: %v and parsers: %v", pm.Fields, pm.Parsers)
+				log.Printf("parse: BitMapper has different number of fields: %v and parsers: %v", bm.Fields, bm.Parsers)
 				continue
 			}
 
 			// parse fields into a slice `parsed`
-			parsed := make([]interface{}, 0, len(pm.Fields))
+			parsed := make([]interface{}, 0, len(bm.Fields))
 			skip := false
-			for n, fieldnum := range pm.Fields {
-				parser := pm.Parsers[n]
+			for n, fieldnum := range bm.Fields {
+				parser := bm.Parsers[n]
 				if fieldnum >= len(fields) {
-					log.Println("parse: field index out of range")
+					log.Printf("parse: field index: %v out of range for: %v", fieldnum, fields)
 					skip = true
 					break
 				}
 				parsedField, err := parser.Parse(fields[fieldnum])
 				if err != nil {
-					fmt.Println(err)
 					skip = true
 					break
 				}
@@ -215,13 +211,12 @@ func (m *Main) parseMapAndPost(records <-chan string) {
 			}
 
 			// map those fields to a slice of IDs
-			ids, err := pm.Mapper.ID(parsed...)
+			ids, err := bm.Mapper.ID(parsed...)
 			if err != nil {
-				fmt.Println(err)
 				continue
 			}
 			for _, id := range ids {
-				m.importer.SetBit(uint64(id), profileID, pm.Frame)
+				m.importer.SetBit(uint64(id), profileID, bm.Frame)
 			}
 		}
 	}
@@ -280,7 +275,7 @@ func getBitMappers() []pdk.BitMapper {
 		Mapper: lfm,
 	}
 
-	tp := pdk.TimeParser{Layout: layout}
+	tp := pdk.TimeParser{Layout: "2006-01-02 15:04:05"}
 
 	bms := []pdk.BitMapper{
 		pdk.BitMapper{
