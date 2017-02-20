@@ -361,6 +361,7 @@ Records:
 				}
 				log.Printf("mapping: bm: %v, err: %v rec: %v", bm, err, record)
 				m.skippedRecs.Add(1)
+				m.badUnknowns.Add(1)
 				continue Records
 			}
 			for _, id := range ids {
