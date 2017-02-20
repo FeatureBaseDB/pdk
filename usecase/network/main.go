@@ -48,7 +48,7 @@ type Main struct {
 }
 
 func (m *Main) Run() {
-	m.client = pdk.NewImportClient(m.PilosaHost, m.Database, Frames)
+	m.client = pdk.NewImportClient(m.PilosaHost, m.Database, Frames, 10000000)
 	defer m.client.Close()
 
 	go func() {

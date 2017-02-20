@@ -77,6 +77,7 @@ type Main struct {
 	URLFile     string
 	Concurrency int
 	Database    string
+	BufferSize  int
 
 	importer  pdk.PilosaImporter
 	urls      []string
@@ -129,7 +130,7 @@ func (m *Main) Run() error {
 	}
 
 	frames := []string{"passengerCount", "totalAmount_dollars", "pickupTime", "pickupDay", "pickupMonth", "pickupYear", "dropTime", "dropDay", "dropMonth", "dropYear", "dist_miles", "duration_minutes", "speed_mph", "pickupGridID", "dropGridID"}
-	m.importer = pdk.NewImportClient(m.PilosaHost, m.Database, frames)
+	m.importer = pdk.NewImportClient(m.PilosaHost, m.Database, frames, m.BufferSize)
 
 	ticker := m.printStats()
 
