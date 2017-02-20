@@ -97,6 +97,7 @@ type Main struct {
 	badSpeeds     *Counter
 	badTotalAmnts *Counter
 	badDurations  *Counter
+	badPassCounts *Counter
 	badUnknowns   *Counter
 }
 
@@ -113,6 +114,7 @@ func NewMain() *Main {
 		badSpeeds:     &Counter{},
 		badTotalAmnts: &Counter{},
 		badDurations:  &Counter{},
+		badPassCounts: &Counter{},
 		badUnknowns:   &Counter{},
 	}
 
@@ -204,7 +206,7 @@ func (m *Main) printStats() *time.Ticker {
 	go func() {
 		for range t.C {
 			log.Printf("Profiles: %d, Bytes: %s, Records: %v", m.nexter.Last(), pdk.Bytes(m.BytesProcessed()), m.totalRecs.Get())
-			log.Printf("Skipped: %v, badLocs: %v, nullLocs: %v, badSpeeds: %v, badTotalAmnts: %v, badDurations: %v, badUnknowns: %v", m.skippedRecs.Get(), m.badLocs.Get(), m.nullLocs.Get(), m.badSpeeds.Get(), m.badTotalAmnts.Get(), m.badDurations.Get(), m.badUnknowns.Get())
+			log.Printf("Skipped: %v, badLocs: %v, nullLocs: %v, badSpeeds: %v, badTotalAmnts: %v, badDurations: %v, badUnknowns: %v, badPassCounts: %v,", m.skippedRecs.Get(), m.badLocs.Get(), m.nullLocs.Get(), m.badSpeeds.Get(), m.badTotalAmnts.Get(), m.badDurations.Get(), m.badUnknowns.Get(), m.badPassCounts.Get())
 		}
 	}()
 	return t
@@ -356,6 +358,11 @@ Records:
 				}
 				if bm.Frame == "duration_minutes" && strings.Contains(err.Error(), "out of range") {
 					m.badDurations.Add(1)
+					m.skippedRecs.Add(1)
+					continue Records
+				}
+				if bm.Frame == "passenger_count" && strings.Contains(err.Error(), "out of range") {
+					m.badPassCounts.Add(1)
 					m.skippedRecs.Add(1)
 					continue Records
 				}
