@@ -20,29 +20,48 @@ import (
 /***************
 use case setup
 ***************/
-const (
-	// for field meanings, see http://www.nyc.gov/html/tlc/downloads/pdf/data_dictionary_trip_records_green.pdf
-	VendorID = iota
-	Lpep_pickup_datetime
-	Lpep_dropoff_datetime
-	Store_and_fwd_flag
-	RateCodeID
-	Pickup_longitude
-	Pickup_latitude
-	Dropoff_longitude
-	Dropoff_latitude
-	Passenger_count
-	Trip_distance
-	Fare_amount
-	Extra
-	MTA_tax
-	Tip_amount
-	Tolls_amount
-	Ehail_fee
-	Total_amount
-	Payment_type
-	Trip_type
-)
+var greenFields = map[string]int{
+	"vendor_id":          0,
+	"pickup_datetime":    1,
+	"dropoff_datetime":   2,
+	"passenger_count":    9,
+	"trip_distance":      10,
+	"pickup_longitude":   5,
+	"pickup_latitude":    6,
+	"ratecode_id":        4,
+	"store_and_fwd_flag": 3,
+	"dropoff_longitude":  7,
+	"dropoff_latitude":   8,
+	"payment_type":       18,
+	"fare_amount":        11,
+	"extra":              12,
+	"mta_tax":            13,
+	"tip_amount":         14,
+	"tolls_amount":       15,
+	"total_amount":       17,
+}
+
+var yellowFields = map[string]int{
+	"vendor_id":             0,
+	"pickup_datetime":       1,
+	"dropoff_datetime":      2,
+	"passenger_count":       3,
+	"trip_distance":         4,
+	"pickup_longitude":      5,
+	"pickup_latitude":       6,
+	"ratecode_id":           7,
+	"store_and_fwd_flag":    8,
+	"dropoff_longitude":     9,
+	"dropoff_latitude":      10,
+	"payment_type":          11,
+	"fare_amount":           12,
+	"extra":                 13,
+	"mta_tax":               14,
+	"tip_amount":            15,
+	"tolls_amount":          16,
+	"total_amount":          18,
+	"improvement_surcharge": 17,
+}
 
 /***********************
 use case implementation
@@ -59,15 +78,25 @@ type Main struct {
 	Concurrency int
 	Database    string
 
-	importer pdk.PilosaImporter
-	urls     []string
-	bms      []pdk.BitMapper
-	ams      []pdk.AttrMapper
+	importer  pdk.PilosaImporter
+	urls      []string
+	greenBms  []pdk.BitMapper
+	yellowBms []pdk.BitMapper
+	ams       []pdk.AttrMapper
 
 	nexter *Nexter
 
 	totalBytes int64
 	bytesLock  sync.Mutex
+
+	totalRecs     *Counter
+	skippedRecs   *Counter
+	nullLocs      *Counter
+	badLocs       *Counter
+	badSpeeds     *Counter
+	badTotalAmnts *Counter
+	badDurations  *Counter
+	badUnknowns   *Counter
 }
 
 func NewMain() *Main {
@@ -75,6 +104,15 @@ func NewMain() *Main {
 		Concurrency: 1,
 		nexter:      &Nexter{},
 		urls:        make([]string, 0),
+
+		totalRecs:     &Counter{},
+		skippedRecs:   &Counter{},
+		nullLocs:      &Counter{},
+		badLocs:       &Counter{},
+		badSpeeds:     &Counter{},
+		badTotalAmnts: &Counter{},
+		badDurations:  &Counter{},
+		badUnknowns:   &Counter{},
 	}
 
 	return m
@@ -90,13 +128,13 @@ func (m *Main) Run() error {
 		return err
 	}
 
-	frames := []string{"passengerCount", "totalAmount_dollars", "cabType", "pickupTime", "pickupDay", "pickupMonth", "pickupYear", "dropTime", "dropDay", "dropMonth", "dropYear", "dist_miles", "duration_minutes", "speed_mph", "pickupGridID", "dropGridID"}
+	frames := []string{"passengerCount", "totalAmount_dollars", "pickupTime", "pickupDay", "pickupMonth", "pickupYear", "dropTime", "dropDay", "dropMonth", "dropYear", "dist_miles", "duration_minutes", "speed_mph", "pickupGridID", "dropGridID"}
 	m.importer = pdk.NewImportClient(m.PilosaHost, m.Database, frames)
 
 	ticker := m.printStats()
 
 	urls := make(chan string)
-	records := make(chan string)
+	records := make(chan Record)
 
 	go func() {
 		for _, url := range m.urls {
@@ -105,7 +143,8 @@ func (m *Main) Run() error {
 		close(urls)
 	}()
 
-	m.bms = getBitMappers()
+	m.greenBms = getBitMappers(greenFields)
+	m.yellowBms = getBitMappers(yellowFields)
 	m.ams = getAttrMappers()
 
 	c := make(chan os.Signal, 1)
@@ -163,14 +202,23 @@ func (m *Main) printStats() *time.Ticker {
 	t := time.NewTicker(time.Second * 10)
 	go func() {
 		for range t.C {
-			log.Printf("Profiles: %d, Bytes: %s", m.nexter.Last(), pdk.Bytes(m.BytesProcessed()))
+			log.Printf("Profiles: %d, Bytes: %s, Records: %v", m.nexter.Last(), pdk.Bytes(m.BytesProcessed()), m.totalRecs.Get())
+			log.Printf("Skipped: %v, badLocs: %v, nullLocs: %v, badSpeeds: %v, badTotalAmnts: %v, badDurations: %v, badUnknowns: %v", m.skippedRecs.Get(), m.badLocs.Get(), m.nullLocs.Get(), m.badSpeeds.Get(), m.badTotalAmnts.Get(), m.badDurations.Get(), m.badUnknowns.Get())
 		}
 	}()
 	return t
 }
 
-func (m *Main) fetch(urls <-chan string, records chan<- string) {
+func (m *Main) fetch(urls <-chan string, records chan<- Record) {
 	for url := range urls {
+		var typ rune
+		if strings.Contains(url, "green") {
+			typ = 'g'
+		} else if strings.Contains(url, "yellow") {
+			typ = 'y'
+		} else {
+			typ = 'x'
+		}
 		var content io.ReadCloser
 		if strings.HasPrefix(url, "http") {
 			resp, err := http.Get(url)
@@ -189,10 +237,28 @@ func (m *Main) fetch(urls <-chan string, records chan<- string) {
 		}
 
 		scan := bufio.NewScanner(content)
+		// discard header line
+		correctLine := false
+		if scan.Scan() {
+			header := scan.Text()
+			if strings.HasPrefix(header, "vendor_name") {
+				correctLine = true
+			}
+		}
 		for scan.Scan() {
+			m.totalRecs.Add(1)
 			record := scan.Text()
 			m.AddBytes(len(record))
-			records <- record
+			if correctLine {
+				// last field needs to be shifted over by 1
+				lastcomma := strings.LastIndex(record, ",")
+				if lastcomma == -1 {
+					m.skippedRecs.Add(1)
+					continue
+				}
+				record = record[:lastcomma] + "," + record[lastcomma:]
+			}
+			records <- Record{Val: record, Type: typ}
 		}
 		err := content.Close()
 		if err != nil {
@@ -201,47 +267,108 @@ func (m *Main) fetch(urls <-chan string, records chan<- string) {
 	}
 }
 
-func (m *Main) parseMapAndPost(records <-chan string) {
-	for record := range records {
-		profileID := m.nexter.Next()
+type Record struct {
+	Type rune
+	Val  string
+}
 
-		fields := strings.Split(record, ",")
-		for _, bm := range m.bms {
+func (r Record) Clean() ([]string, bool) {
+	if len(r.Val) == 0 {
+		return nil, false
+	}
+	fields := strings.Split(r.Val, ",")
+	return fields, true
+}
+
+type BitFrame struct {
+	Bit   uint64
+	Frame string
+}
+
+func (m *Main) parseMapAndPost(records <-chan Record) {
+Records:
+	for record := range records {
+		fields, ok := record.Clean()
+		if !ok {
+			m.skippedRecs.Add(1)
+			continue
+		}
+		var bms []pdk.BitMapper
+		if record.Type == 'g' {
+			bms = m.greenBms
+		} else if record.Type == 'y' {
+			bms = m.yellowBms
+		} else {
+			log.Println("unknown record type")
+			m.badUnknowns.Add(1)
+			m.skippedRecs.Add(1)
+			continue
+		}
+		bitsToSet := make([]BitFrame, 0)
+
+		for _, bm := range bms {
 			if len(bm.Fields) != len(bm.Parsers) {
 				// TODO if len(pm.Parsers) == 1, use that for all fields
-				log.Printf("parse: BitMapper has different number of fields: %v and parsers: %v", bm.Fields, bm.Parsers)
-				continue
+				log.Fatalf("parse: BitMapper has different number of fields: %v and parsers: %v", bm.Fields, bm.Parsers)
 			}
 
 			// parse fields into a slice `parsed`
 			parsed := make([]interface{}, 0, len(bm.Fields))
-			skip := false
 			for n, fieldnum := range bm.Fields {
 				parser := bm.Parsers[n]
 				if fieldnum >= len(fields) {
 					log.Printf("parse: field index: %v out of range for: %v", fieldnum, fields)
-					skip = true
-					break
+					m.skippedRecs.Add(1)
+					continue Records
 				}
 				parsedField, err := parser.Parse(fields[fieldnum])
 				if err != nil {
-					skip = true
-					break
+					log.Printf("parsing: field: %v err: %v bm: %v rec: %v", fields[fieldnum], err, bm, record)
+					m.skippedRecs.Add(1)
+					continue Records
 				}
 				parsed = append(parsed, parsedField)
-			}
-			if skip {
-				continue
 			}
 
 			// map those fields to a slice of IDs
 			ids, err := bm.Mapper.ID(parsed...)
 			if err != nil {
-				continue
+				if err.Error() == "point (0, 0) out of range" {
+					m.nullLocs.Add(1)
+					m.skippedRecs.Add(1)
+					continue Records
+				}
+				if strings.Contains(bm.Frame, "GridID") && strings.Contains(err.Error(), "out of range") {
+					m.badLocs.Add(1)
+					m.skippedRecs.Add(1)
+					continue Records
+				}
+				if bm.Frame == "speed_mph" && strings.Contains(err.Error(), "out of range") {
+					m.badSpeeds.Add(1)
+					m.skippedRecs.Add(1)
+					continue Records
+				}
+				if bm.Frame == "totalAmount_dollars" && strings.Contains(err.Error(), "out of range") {
+					m.badTotalAmnts.Add(1)
+					m.skippedRecs.Add(1)
+					continue Records
+				}
+				if bm.Frame == "duration_minutes" && strings.Contains(err.Error(), "out of range") {
+					m.badDurations.Add(1)
+					m.skippedRecs.Add(1)
+					continue Records
+				}
+				log.Printf("mapping: bm: %v, err: %v rec: %v", bm, err, record)
+				m.skippedRecs.Add(1)
+				continue Records
 			}
 			for _, id := range ids {
-				m.importer.SetBit(uint64(id), profileID, bm.Frame)
+				bitsToSet = append(bitsToSet, BitFrame{Bit: uint64(id), Frame: bm.Frame})
 			}
+		}
+		profileID := m.nexter.Next()
+		for _, bit := range bitsToSet {
+			m.importer.SetBit(bit.Bit, profileID, bit.Frame)
 		}
 	}
 }
@@ -252,7 +379,7 @@ func getAttrMappers() []pdk.AttrMapper {
 	return ams
 }
 
-func getBitMappers() []pdk.BitMapper {
+func getBitMappers(fields map[string]int) []pdk.BitMapper {
 	// map a pair of floats to a grid sector of a rectangular region
 	gm := pdk.GridMapper{
 		Xmin: -74.27,
@@ -274,7 +401,7 @@ func getBitMappers() []pdk.BitMapper {
 	// this set of bins is equivalent to rounding to nearest int (TODO verify)
 	lfm := pdk.LinearFloatMapper{
 		Min: -0.5,
-		Max: 200.5,
+		Max: 3600,
 		Res: 201,
 	}
 
@@ -304,99 +431,93 @@ func getBitMappers() []pdk.BitMapper {
 	bms := []pdk.BitMapper{
 		pdk.BitMapper{
 			Frame:   "passengerCount",
-			Mapper:  pdk.IntMapper{Min: 1, Max: 8},
+			Mapper:  pdk.IntMapper{Min: 0, Max: 9},
 			Parsers: []pdk.Parser{pdk.IntParser{}},
-			Fields:  []int{Passenger_count},
+			Fields:  []int{fields["passenger_count"]},
 		},
 		pdk.BitMapper{
 			Frame:   "totalAmount_dollars",
 			Mapper:  lfm,
 			Parsers: []pdk.Parser{pdk.FloatParser{}},
-			Fields:  []int{Total_amount},
-		},
-		pdk.BitMapper{
-			Frame:   "cabType",
-			Mapper:  pdk.IntMapper{Min: 0, Max: 2},
-			Parsers: []pdk.Parser{pdk.IntParser{}},
-			Fields:  []int{VendorID},
+			Fields:  []int{fields["total_amount"]},
 		},
 		pdk.BitMapper{
 			Frame:   "pickupTime",
 			Mapper:  pdk.TimeOfDayMapper{Res: 48},
 			Parsers: []pdk.Parser{tp},
-			Fields:  []int{Lpep_pickup_datetime},
+			Fields:  []int{fields["pickup_datetime"]},
 		},
 		pdk.BitMapper{
 			Frame:   "pickupDay",
 			Mapper:  pdk.DayOfWeekMapper{},
 			Parsers: []pdk.Parser{tp},
-			Fields:  []int{Lpep_pickup_datetime},
+			Fields:  []int{fields["pickup_datetime"]},
 		},
 		pdk.BitMapper{
 			Frame:   "pickupMonth",
 			Mapper:  pdk.MonthMapper{},
 			Parsers: []pdk.Parser{tp},
-			Fields:  []int{Lpep_pickup_datetime},
+			Fields:  []int{fields["pickup_datetime"]},
 		},
 		pdk.BitMapper{
 			Frame:   "pickupYear",
 			Mapper:  pdk.YearMapper{},
 			Parsers: []pdk.Parser{tp},
-			Fields:  []int{Lpep_pickup_datetime},
+			Fields:  []int{fields["pickup_datetime"]},
 		},
 		pdk.BitMapper{
 			Frame:   "dropTime",
 			Mapper:  pdk.TimeOfDayMapper{Res: 48},
 			Parsers: []pdk.Parser{tp},
-			Fields:  []int{Lpep_dropoff_datetime},
+			Fields:  []int{fields["dropoff_datetime"]},
 		},
 		pdk.BitMapper{
 			Frame:   "dropDay",
 			Mapper:  pdk.DayOfWeekMapper{},
 			Parsers: []pdk.Parser{tp},
-			Fields:  []int{Lpep_dropoff_datetime},
+			Fields:  []int{fields["dropoff_datetime"]},
 		},
 		pdk.BitMapper{
 			Frame:   "dropMonth",
 			Mapper:  pdk.MonthMapper{},
 			Parsers: []pdk.Parser{tp},
-			Fields:  []int{Lpep_dropoff_datetime},
+			Fields:  []int{fields["dropoff_datetime"]},
 		},
 		pdk.BitMapper{
 			Frame:   "dropYear",
 			Mapper:  pdk.YearMapper{},
 			Parsers: []pdk.Parser{tp},
-			Fields:  []int{Lpep_dropoff_datetime},
+			Fields:  []int{fields["dropoff_datetime"]},
 		},
 		pdk.BitMapper{
 			Frame:   "dist_miles", // note "_miles" is a unit annotation
 			Mapper:  lfm,
 			Parsers: []pdk.Parser{pdk.FloatParser{}},
-			Fields:  []int{Trip_distance},
+			Fields:  []int{fields["trip_distance"]},
 		},
 		pdk.BitMapper{
 			Frame:   "duration_minutes",
 			Mapper:  durm,
 			Parsers: []pdk.Parser{tp, tp},
-			Fields:  []int{Lpep_pickup_datetime, Lpep_dropoff_datetime},
+			Fields:  []int{fields["pickup_datetime"], fields["dropoff_datetime"]},
 		},
 		pdk.BitMapper{
 			Frame:   "speed_mph",
 			Mapper:  speedm,
 			Parsers: []pdk.Parser{tp, tp, pdk.FloatParser{}},
-			Fields:  []int{Lpep_pickup_datetime, Lpep_dropoff_datetime, Trip_distance},
+			Fields:  []int{fields["pickup_datetime"], fields["dropoff_datetime"], fields["trip_distance"]},
 		},
 		pdk.BitMapper{
 			Frame:   "pickupGridID",
 			Mapper:  gm,
 			Parsers: []pdk.Parser{pdk.FloatParser{}, pdk.FloatParser{}},
-			Fields:  []int{Pickup_longitude, Pickup_latitude},
+			Fields:  []int{fields["pickup_longitude"], fields["pickup_latitude"]},
 		},
 		pdk.BitMapper{
 			Frame:   "dropGridID",
 			Mapper:  gm,
 			Parsers: []pdk.Parser{pdk.FloatParser{}, pdk.FloatParser{}},
-			Fields:  []int{Dropoff_longitude, Dropoff_latitude},
+			Fields:  []int{fields["dropoff_longitude"], fields["dropoff_latitude"]},
 		},
 	}
 
@@ -413,6 +534,24 @@ func (m *Main) BytesProcessed() (num int64) {
 	m.bytesLock.Lock()
 	num = m.totalBytes
 	m.bytesLock.Unlock()
+	return
+}
+
+type Counter struct {
+	num  int64
+	lock sync.Mutex
+}
+
+func (c *Counter) Add(n int) {
+	c.lock.Lock()
+	c.num += int64(n)
+	c.lock.Unlock()
+}
+
+func (c *Counter) Get() (ret int64) {
+	c.lock.Lock()
+	ret = c.num
+	c.lock.Unlock()
 	return
 }
 
