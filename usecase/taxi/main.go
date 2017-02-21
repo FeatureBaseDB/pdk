@@ -205,9 +205,12 @@ func (m *Main) readURLs() error {
 
 func (m *Main) printStats() *time.Ticker {
 	t := time.NewTicker(time.Second * 10)
+	start := time.Now()
 	go func() {
 		for range t.C {
-			log.Printf("Profiles: %d, Bytes: %s, Records: %v", m.nexter.Last(), pdk.Bytes(m.BytesProcessed()), m.totalRecs.Get())
+			duration := time.Since(start)
+			bytes := m.BytesProcessed()
+			log.Printf("Profiles: %d, Bytes: %s, Records: %v, Duration: %v, Rate: %v/s", m.nexter.Last(), pdk.Bytes(bytes), m.totalRecs.Get(), duration, pdk.Bytes(float64(bytes)/duration.Seconds()))
 			log.Printf("Skipped: %v, badLocs: %v, nullLocs: %v, badSpeeds: %v, badTotalAmnts: %v, badDurations: %v, badUnknowns: %v, badPassCounts: %v, badDist: %v", m.skippedRecs.Get(), m.badLocs.Get(), m.nullLocs.Get(), m.badSpeeds.Get(), m.badTotalAmnts.Get(), m.badDurations.Get(), m.badUnknowns.Get(), m.badPassCounts.Get(), m.badDist.Get())
 		}
 	}()
