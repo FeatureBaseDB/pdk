@@ -351,27 +351,27 @@ Records:
 					m.skippedRecs.Add(1)
 					continue Records
 				}
-				if bm.Frame == "speed_mph" && strings.Contains(err.Error(), "out of range") {
+				if bm.Frame == "speed_mph.n" && strings.Contains(err.Error(), "out of range") {
 					m.badSpeeds.Add(1)
 					m.skippedRecs.Add(1)
 					continue Records
 				}
-				if bm.Frame == "totalAmount_dollars" && strings.Contains(err.Error(), "out of range") {
+				if bm.Frame == "totalAmount_dollars.n" && strings.Contains(err.Error(), "out of range") {
 					m.badTotalAmnts.Add(1)
 					m.skippedRecs.Add(1)
 					continue Records
 				}
-				if bm.Frame == "duration_minutes" && strings.Contains(err.Error(), "out of range") {
+				if bm.Frame == "duration_minutes.n" && strings.Contains(err.Error(), "out of range") {
 					m.badDurations.Add(1)
 					m.skippedRecs.Add(1)
 					continue Records
 				}
-				if bm.Frame == "passengerCount" && strings.Contains(err.Error(), "out of range") {
+				if bm.Frame == "passengerCount.n" && strings.Contains(err.Error(), "out of range") {
 					m.badPassCounts.Add(1)
 					m.skippedRecs.Add(1)
 					continue Records
 				}
-				if bm.Frame == "dist_miles" && strings.Contains(err.Error(), "out of range") {
+				if bm.Frame == "dist_miles.n" && strings.Contains(err.Error(), "out of range") {
 					m.badDist.Add(1)
 					m.skippedRecs.Add(1)
 					continue Records
