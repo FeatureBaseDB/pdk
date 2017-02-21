@@ -361,7 +361,7 @@ Records:
 					m.skippedRecs.Add(1)
 					continue Records
 				}
-				if bm.Frame == "passenger_count" && strings.Contains(err.Error(), "out of range") {
+				if bm.Frame == "passengerCount" && strings.Contains(err.Error(), "out of range") {
 					m.badPassCounts.Add(1)
 					m.skippedRecs.Add(1)
 					continue Records
