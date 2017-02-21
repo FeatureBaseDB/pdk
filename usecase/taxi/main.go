@@ -138,8 +138,8 @@ func (m *Main) Run() error {
 
 	ticker := m.printStats()
 
-	urls := make(chan string, 20)
-	records := make(chan Record, 10000)
+	urls := make(chan string)
+	records := make(chan Record)
 
 	go func() {
 		for _, url := range m.urls {
