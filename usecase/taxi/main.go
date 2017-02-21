@@ -133,7 +133,7 @@ func (m *Main) Run() error {
 		return err
 	}
 
-	frames := []string{"passengerCount", "totalAmount_dollars", "pickupTime", "pickupDay", "pickupMonth", "pickupYear", "dropTime", "dropDay", "dropMonth", "dropYear", "dist_miles", "duration_minutes", "speed_mph", "pickupGridID", "dropGridID"}
+	frames := []string{"passengerCount.n", "totalAmount_dollars.n", "pickupTime.n", "pickupDay.n", "pickupMonth.n", "pickupYear.n", "dropTime.n", "dropDay.n", "dropMonth.n", "dropYear.n", "dist_miles.n", "duration_minutes.n", "speed_mph.n", "pickupGridID.n", "dropGridID.n"}
 	m.importer = pdk.NewImportClient(m.PilosaHost, m.Database, frames, m.BufferSize)
 
 	ticker := m.printStats()
@@ -449,91 +449,91 @@ func getBitMappers(fields map[string]int) []pdk.BitMapper {
 
 	bms := []pdk.BitMapper{
 		pdk.BitMapper{
-			Frame:   "passengerCount",
+			Frame:   "passengerCount.n",
 			Mapper:  pdk.IntMapper{Min: 0, Max: 9},
 			Parsers: []pdk.Parser{pdk.IntParser{}},
 			Fields:  []int{fields["passenger_count"]},
 		},
 		pdk.BitMapper{
-			Frame:   "totalAmount_dollars",
+			Frame:   "totalAmount_dollars.n",
 			Mapper:  lfm,
 			Parsers: []pdk.Parser{pdk.FloatParser{}},
 			Fields:  []int{fields["total_amount"]},
 		},
 		pdk.BitMapper{
-			Frame:   "pickupTime",
+			Frame:   "pickupTime.n",
 			Mapper:  pdk.TimeOfDayMapper{Res: 48},
 			Parsers: []pdk.Parser{tp},
 			Fields:  []int{fields["pickup_datetime"]},
 		},
 		pdk.BitMapper{
-			Frame:   "pickupDay",
+			Frame:   "pickupDay.n",
 			Mapper:  pdk.DayOfWeekMapper{},
 			Parsers: []pdk.Parser{tp},
 			Fields:  []int{fields["pickup_datetime"]},
 		},
 		pdk.BitMapper{
-			Frame:   "pickupMonth",
+			Frame:   "pickupMonth.n",
 			Mapper:  pdk.MonthMapper{},
 			Parsers: []pdk.Parser{tp},
 			Fields:  []int{fields["pickup_datetime"]},
 		},
 		pdk.BitMapper{
-			Frame:   "pickupYear",
+			Frame:   "pickupYear.n",
 			Mapper:  pdk.YearMapper{},
 			Parsers: []pdk.Parser{tp},
 			Fields:  []int{fields["pickup_datetime"]},
 		},
 		pdk.BitMapper{
-			Frame:   "dropTime",
+			Frame:   "dropTime.n",
 			Mapper:  pdk.TimeOfDayMapper{Res: 48},
 			Parsers: []pdk.Parser{tp},
 			Fields:  []int{fields["dropoff_datetime"]},
 		},
 		pdk.BitMapper{
-			Frame:   "dropDay",
+			Frame:   "dropDay.n",
 			Mapper:  pdk.DayOfWeekMapper{},
 			Parsers: []pdk.Parser{tp},
 			Fields:  []int{fields["dropoff_datetime"]},
 		},
 		pdk.BitMapper{
-			Frame:   "dropMonth",
+			Frame:   "dropMonth.n",
 			Mapper:  pdk.MonthMapper{},
 			Parsers: []pdk.Parser{tp},
 			Fields:  []int{fields["dropoff_datetime"]},
 		},
 		pdk.BitMapper{
-			Frame:   "dropYear",
+			Frame:   "dropYear.n",
 			Mapper:  pdk.YearMapper{},
 			Parsers: []pdk.Parser{tp},
 			Fields:  []int{fields["dropoff_datetime"]},
 		},
 		pdk.BitMapper{
-			Frame:   "dist_miles", // note "_miles" is a unit annotation
+			Frame:   "dist_miles.n", // note "_miles" is a unit annotation
 			Mapper:  lfm,
 			Parsers: []pdk.Parser{pdk.FloatParser{}},
 			Fields:  []int{fields["trip_distance"]},
 		},
 		pdk.BitMapper{
-			Frame:   "duration_minutes",
+			Frame:   "duration_minutes.n",
 			Mapper:  durm,
 			Parsers: []pdk.Parser{tp, tp},
 			Fields:  []int{fields["pickup_datetime"], fields["dropoff_datetime"]},
 		},
 		pdk.BitMapper{
-			Frame:   "speed_mph",
+			Frame:   "speed_mph.n",
 			Mapper:  speedm,
 			Parsers: []pdk.Parser{tp, tp, pdk.FloatParser{}},
 			Fields:  []int{fields["pickup_datetime"], fields["dropoff_datetime"], fields["trip_distance"]},
 		},
 		pdk.BitMapper{
-			Frame:   "pickupGridID",
+			Frame:   "pickupGridID.n",
 			Mapper:  gm,
 			Parsers: []pdk.Parser{pdk.FloatParser{}, pdk.FloatParser{}},
 			Fields:  []int{fields["pickup_longitude"], fields["pickup_latitude"]},
 		},
 		pdk.BitMapper{
-			Frame:   "dropGridID",
+			Frame:   "dropGridID.n",
 			Mapper:  gm,
 			Parsers: []pdk.Parser{pdk.FloatParser{}, pdk.FloatParser{}},
 			Fields:  []int{fields["dropoff_longitude"], fields["dropoff_latitude"]},
