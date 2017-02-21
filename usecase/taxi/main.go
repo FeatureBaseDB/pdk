@@ -426,8 +426,8 @@ func getBitMappers(fields map[string]int) []pdk.BitMapper {
 	// this set of bins is equivalent to rounding to nearest int (TODO verify)
 	lfm := pdk.LinearFloatMapper{
 		Min: -0.5,
-		Max: 3600,
-		Res: 201,
+		Max: 3600.5,
+		Res: 3601,
 	}
 
 	// map the (pickupTime, dropTime) pair, according to the duration in minutes, binned using `fm`
