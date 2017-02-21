@@ -327,7 +327,10 @@ Records:
 					continue Records
 				}
 				parsedField, err := parser.Parse(fields[fieldnum])
-				if err != nil {
+				if err != nil && fields[fieldnum] == "" {
+					m.skippedRecs.Add(1)
+					continue Records
+				} else if err != nil {
 					log.Printf("parsing: field: %v err: %v bm: %v rec: %v", fields[fieldnum], err, bm, record)
 					m.skippedRecs.Add(1)
 					continue Records
