@@ -36,7 +36,7 @@ func NewImportClient(host, db string, frames []string, bufsize int) *ImportClien
 	ic.channels = make(map[string]chan Bit, len(frames))
 	for _, frame := range frames {
 		ic.wg.Add(1)
-		ic.channels[frame] = make(chan Bit, bufsize/10)
+		ic.channels[frame] = make(chan Bit, bufsize/2)
 		go writer(ic.channels[frame], host, db, frame, ic.BufferSize, &ic.wg)
 	}
 	return ic
