@@ -133,7 +133,7 @@ func (m *Main) Run() error {
 		return err
 	}
 
-	frames := []string{"passengerCount.n", "totalAmount_dollars.n", "pickupTime.n", "pickupDay.n", "pickupMonth.n", "pickupYear.n", "dropTime.n", "dropDay.n", "dropMonth.n", "dropYear.n", "dist_miles.n", "duration_minutes.n", "speed_mph.n", "pickupGridID.n", "dropGridID.n"}
+	frames := []string{"cabType.n", "passengerCount.n", "totalAmount_dollars.n", "pickupTime.n", "pickupDay.n", "pickupMonth.n", "pickupYear.n", "dropTime.n", "dropDay.n", "dropMonth.n", "dropYear.n", "dist_miles.n", "duration_minutes.n", "speed_mph.n", "pickupGridID.n", "dropGridID.n"}
 	m.importer = pdk.NewImportClient(m.PilosaHost, m.Database, frames, m.BufferSize)
 
 	ticker := m.printStats()
@@ -302,10 +302,13 @@ Records:
 			continue
 		}
 		var bms []pdk.BitMapper
+		var cabType uint64
 		if record.Type == 'g' {
 			bms = m.greenBms
+			cabType = 0
 		} else if record.Type == 'y' {
 			bms = m.yellowBms
+			cabType = 1
 		} else {
 			log.Println("unknown record type")
 			m.badUnknowns.Add(1)
@@ -313,7 +316,7 @@ Records:
 			continue
 		}
 		bitsToSet := make([]BitFrame, 0)
-
+		bitsToSet = append(bitsToSet, BitFrame{Bit: cabType, Frame: "cabType.n"})
 		for _, bm := range bms {
 			if len(bm.Fields) != len(bm.Parsers) {
 				// TODO if len(pm.Parsers) == 1, use that for all fields
