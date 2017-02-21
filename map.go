@@ -260,7 +260,7 @@ func (m GridMapper) ID(xyi ...interface{}) (bitmapIDs []int64, err error) {
 	}
 
 	// compute x bin
-	xInt := int64(float64(m.Xres) * (x - m.Xmin) / (m.Xmax - m.Ymin))
+	xInt := int64(float64(m.Xres) * (x - m.Xmin) / (m.Xmax - m.Xmin))
 	// compute y bin
 	yInt := int64(float64(m.Yres) * (y - m.Ymin) / (m.Ymax - m.Ymin))
 
