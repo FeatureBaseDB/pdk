@@ -98,6 +98,7 @@ type Main struct {
 	badTotalAmnts *Counter
 	badDurations  *Counter
 	badPassCounts *Counter
+	badDist       *Counter
 	badUnknowns   *Counter
 }
 
@@ -115,6 +116,7 @@ func NewMain() *Main {
 		badTotalAmnts: &Counter{},
 		badDurations:  &Counter{},
 		badPassCounts: &Counter{},
+		badDist:       &Counter{},
 		badUnknowns:   &Counter{},
 	}
 
@@ -206,7 +208,7 @@ func (m *Main) printStats() *time.Ticker {
 	go func() {
 		for range t.C {
 			log.Printf("Profiles: %d, Bytes: %s, Records: %v", m.nexter.Last(), pdk.Bytes(m.BytesProcessed()), m.totalRecs.Get())
-			log.Printf("Skipped: %v, badLocs: %v, nullLocs: %v, badSpeeds: %v, badTotalAmnts: %v, badDurations: %v, badUnknowns: %v, badPassCounts: %v,", m.skippedRecs.Get(), m.badLocs.Get(), m.nullLocs.Get(), m.badSpeeds.Get(), m.badTotalAmnts.Get(), m.badDurations.Get(), m.badUnknowns.Get(), m.badPassCounts.Get())
+			log.Printf("Skipped: %v, badLocs: %v, nullLocs: %v, badSpeeds: %v, badTotalAmnts: %v, badDurations: %v, badUnknowns: %v, badPassCounts: %v, badDist: %v", m.skippedRecs.Get(), m.badLocs.Get(), m.nullLocs.Get(), m.badSpeeds.Get(), m.badTotalAmnts.Get(), m.badDurations.Get(), m.badUnknowns.Get(), m.badPassCounts.Get(), m.badDist.Get())
 		}
 	}()
 	return t
@@ -244,7 +246,7 @@ func (m *Main) fetch(urls <-chan string, records chan<- Record) {
 		correctLine := false
 		if scan.Scan() {
 			header := scan.Text()
-			if strings.HasPrefix(header, "vendor_name") {
+			if strings.HasPrefix(header, "vendor_") {
 				correctLine = true
 			}
 		}
@@ -363,6 +365,11 @@ Records:
 				}
 				if bm.Frame == "passengerCount" && strings.Contains(err.Error(), "out of range") {
 					m.badPassCounts.Add(1)
+					m.skippedRecs.Add(1)
+					continue Records
+				}
+				if bm.Frame == "dist_miles" && strings.Contains(err.Error(), "out of range") {
+					m.badDist.Add(1)
 					m.skippedRecs.Add(1)
 					continue Records
 				}
