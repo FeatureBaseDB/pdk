@@ -13,9 +13,9 @@ import (
 	"github.com/pilosa/pilosa/pql"
 )
 
-// Mapper describes the functionality which the proxy server requires to
+// Translator describes the functionality which the proxy server requires to
 // translate bitmap ids to what they were mapped from.
-type Mapper interface {
+type Translator interface {
 	// Get must be safe for concurrent access
 	Get(frame string, id uint64) interface{}
 	GetID(frame string, val interface{}) (uint64, error)
@@ -23,10 +23,10 @@ type Mapper interface {
 
 // StartMappingProxy listens for incoming http connections on `bind` and
 // forwards all requests to `pilosa`. It inspects pilosa responses and runs the
-// bitmap ids through the Mapper `m` to translate them to whatever they were
+// bitmap ids through the Translator `m` to translate them to whatever they were
 // mapped from. This function does not return unless there is a problem (like
 // http.ListenAndServe).
-func StartMappingProxy(bind, pilosa string, m Mapper) error {
+func StartMappingProxy(bind, pilosa string, m Translator) error {
 	handler := &pilosaForwarder{phost: pilosa, m: m}
 	s := http.Server{
 		Addr:    bind,
@@ -38,7 +38,7 @@ func StartMappingProxy(bind, pilosa string, m Mapper) error {
 type pilosaForwarder struct {
 	phost  string
 	client http.Client
-	m      Mapper
+	m      Translator
 }
 
 func (p *pilosaForwarder) ServeHTTP(w http.ResponseWriter, req *http.Request) {
@@ -49,7 +49,7 @@ func (p *pilosaForwarder) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	// inspect the request to determine which queries have a frame - the Mapper
+	// inspect the request to determine which queries have a frame - the Translator
 	// needs the frame for it's lookups.
 	frames, err := getFrames(body)
 	if err != nil {

@@ -48,7 +48,7 @@ type Main struct {
 }
 
 func (m *Main) Run() {
-	m.client = pdk.NewImportClient(m.PilosaHost, m.Database, Frames)
+	m.client = pdk.NewImportClient(m.PilosaHost, m.Database, Frames, 10000000)
 	defer m.client.Close()
 
 	go func() {
@@ -61,7 +61,7 @@ func (m *Main) Run() {
 	go func() {
 		for range c {
 			m.lenLock.Lock()
-			log.Printf("Total captured traffic: %v, num packets: %v", Bytes(m.totalLen), m.nexter.Last())
+			log.Printf("Total captured traffic: %v, num packets: %v", pdk.Bytes(m.totalLen), m.nexter.Last())
 			m.lenLock.Unlock()
 			os.Exit(0)
 		}
@@ -72,7 +72,7 @@ func (m *Main) Run() {
 	go func() {
 		for range nt.C {
 			m.lenLock.Lock()
-			log.Printf("Total captured traffic: %v, num packets: %v", Bytes(m.totalLen), m.nexter.Last())
+			log.Printf("Total captured traffic: %v, num packets: %v", pdk.Bytes(m.totalLen), m.nexter.Last())
 			m.lenLock.Unlock()
 		}
 	}()

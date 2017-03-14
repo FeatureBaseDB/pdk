@@ -23,17 +23,21 @@ type Bit struct {
 }
 
 type ImportClient struct {
+	BufferSize int
+
 	channels map[string]chan Bit
 	wg       sync.WaitGroup
 }
 
-func NewImportClient(host, db string, frames []string) *ImportClient {
-	ic := &ImportClient{}
+func NewImportClient(host, db string, frames []string, bufsize int) *ImportClient {
+	ic := &ImportClient{
+		BufferSize: bufsize,
+	}
 	ic.channels = make(map[string]chan Bit, len(frames))
 	for _, frame := range frames {
 		ic.wg.Add(1)
-		ic.channels[frame] = make(chan Bit, 0)
-		go writer(ic.channels[frame], host, db, frame, &ic.wg)
+		ic.channels[frame] = make(chan Bit, bufsize)
+		go writer(ic.channels[frame], host, db, frame, ic.BufferSize, &ic.wg)
 	}
 	return ic
 }
@@ -42,7 +46,7 @@ func (ic *ImportClient) SetBit(bitmapID, profileID uint64, frame string) {
 	ic.channels[frame] <- Bit{row: bitmapID, col: profileID}
 }
 
-func writer(bits <-chan Bit, host, db, frame string, wg *sync.WaitGroup) {
+func writer(bits <-chan Bit, host, db, frame string, bufsize int, wg *sync.WaitGroup) {
 	defer wg.Done()
 	pipeR, pipeW := io.Pipe()
 	defer pipeW.Close()
@@ -51,7 +55,7 @@ func writer(bits <-chan Bit, host, db, frame string, wg *sync.WaitGroup) {
 		Database:   db,
 		Frame:      frame,
 		Paths:      []string{"-"},
-		BufferSize: 10000000,
+		BufferSize: bufsize,
 		Stdin:      pipeR,
 		Stdout:     os.Stdout,
 		Stderr:     os.Stderr,

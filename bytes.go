@@ -1,4 +1,4 @@
-package network
+package pdk
 
 // This code adapted from https://github.com/cloudfoundry/bytefmt (Apache V2)
 
