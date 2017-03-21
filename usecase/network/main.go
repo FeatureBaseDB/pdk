@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -48,6 +49,10 @@ type Main struct {
 
 	totalLen int64
 	lenLock  sync.Mutex
+
+	Stdin  io.Reader
+	Stdout io.Writer
+	Stderr io.Writer
 }
 
 func (m *Main) Run() error {
@@ -290,7 +295,7 @@ func (m *Main) AddLength(num int) {
 	m.lenLock.Unlock()
 }
 
-func NewMain() *Main {
+func NewMain(stdin io.Reader, stdout, stderr io.Writer) *Main {
 	return &Main{
 		netEndpointIDs:   NewStringIDs(),
 		transEndpointIDs: NewStringIDs(),
@@ -300,5 +305,9 @@ func NewMain() *Main {
 		methodIDs:        NewStringIDs(),
 		userAgentIDs:     NewStringIDs(),
 		hostnameIDs:      NewStringIDs(),
+
+		Stdin:  stdin,
+		Stdout: stdout,
+		Stderr: stderr,
 	}
 }
