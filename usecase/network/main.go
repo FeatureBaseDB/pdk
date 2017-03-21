@@ -3,6 +3,7 @@ package network
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"fmt"
 	"log"
 	"net/http"
@@ -16,6 +17,7 @@ import (
 	"github.com/google/gopacket/layers"
 	"github.com/google/gopacket/pcap"
 	"github.com/pilosa/pdk"
+	"github.com/pilosa/pilosa"
 )
 
 type Main struct {
@@ -29,6 +31,7 @@ type Main struct {
 	Filter        string
 	Database      string
 	BindAddr      string
+	BufSize       int
 
 	netEndpointIDs   *StringIDs
 	transEndpointIDs *StringIDs
@@ -47,8 +50,22 @@ type Main struct {
 	lenLock  sync.Mutex
 }
 
-func (m *Main) Run() {
-	m.client = pdk.NewImportClient(m.PilosaHost, m.Database, Frames, 10000000)
+func (m *Main) Run() error {
+	setupClient, err := pilosa.NewClient(m.PilosaHost)
+	if err != nil {
+		return err
+	}
+	err = setupClient.CreateDB(context.Background(), m.Database, pilosa.DBOptions{})
+	if err != nil {
+		return fmt.Errorf("creating database '%v': %v", m.Database, err)
+	}
+	for _, frame := range Frames {
+		err = setupClient.CreateFrame(context.Background(), m.Database, frame, pilosa.FrameOptions{})
+		if err != nil {
+			return fmt.Errorf("creating frame '%v': %v", frame, err)
+		}
+	}
+	m.client = pdk.NewImportClient(m.PilosaHost, m.Database, Frames, m.BufSize)
 	defer m.client.Close()
 
 	go func() {
@@ -79,19 +96,18 @@ func (m *Main) Run() {
 	defer nt.Stop()
 
 	var h *pcap.Handle
-	var err error
 	if m.Filename != "" {
 		h, err = pcap.OpenOffline(m.Filename)
 	} else {
 		h, err = pcap.OpenLive(m.Iface, m.Snaplen, m.Promisc, m.Timeout)
 	}
 	if err != nil {
-		log.Fatalf("Open error: %v", err)
+		return fmt.Errorf("open error: %v", err)
 	}
 
 	err = h.SetBPFFilter(m.Filter)
 	if err != nil {
-		log.Fatalf("error setting bpf filter")
+		return fmt.Errorf("error setting bpf filter: %v", err)
 	}
 	packetSource := gopacket.NewPacketSource(h, h.LinkType())
 	packets := packetSource.Packets()
@@ -105,6 +121,7 @@ func (m *Main) Run() {
 		}()
 	}
 	extractorWG.Wait()
+	return nil
 }
 
 func (m *Main) extractAndPost(packets chan gopacket.Packet) {

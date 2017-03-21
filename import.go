@@ -9,7 +9,8 @@ import (
 
 	"context"
 
-	"github.com/pilosa/pilosa/pilosactl"
+	"github.com/pilosa/pilosa"
+	"github.com/pilosa/pilosa/ctl"
 )
 
 type PilosaImporter interface {
@@ -50,15 +51,14 @@ func writer(bits <-chan Bit, host, db, frame string, bufsize int, wg *sync.WaitG
 	defer wg.Done()
 	pipeR, pipeW := io.Pipe()
 	defer pipeW.Close()
-	importer := pilosactl.ImportCommand{
+	importer := ctl.ImportCommand{
 		Host:       host,
 		Database:   db,
 		Frame:      frame,
 		Paths:      []string{"-"},
 		BufferSize: bufsize,
-		Stdin:      pipeR,
-		Stdout:     os.Stdout,
-		Stderr:     os.Stderr,
+
+		CmdIO: pilosa.NewCmdIO(pipeR, os.Stdout, os.Stderr),
 	}
 
 	go func() {
