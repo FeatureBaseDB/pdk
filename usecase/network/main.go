@@ -3,7 +3,6 @@ package network
 import (
 	"bufio"
 	"bytes"
-	"context"
 	"fmt"
 	"io"
 	"log"
@@ -17,8 +16,8 @@ import (
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
 	"github.com/google/gopacket/pcap"
+	pcli "github.com/pilosa/go-client-pilosa"
 	"github.com/pilosa/pdk"
-	"github.com/pilosa/pilosa"
 )
 
 type Main struct {
@@ -56,19 +55,8 @@ type Main struct {
 }
 
 func (m *Main) Run() error {
-	setupClient, err := pilosa.NewClient(m.PilosaHost)
-	if err != nil {
-		return err
-	}
-	err = setupClient.CreateDB(context.Background(), m.Database, pilosa.DBOptions{})
-	if err != nil {
-		return fmt.Errorf("creating database '%v': %v", m.Database, err)
-	}
-	for _, frame := range Frames {
-		err = setupClient.CreateFrame(context.Background(), m.Database, frame, pilosa.FrameOptions{})
-		if err != nil {
-			return fmt.Errorf("creating frame '%v': %v", frame, err)
-		}
+	if err := m.Setup(); err != nil {
+		return fmt.Errorf("setting up db and frames: %v", err)
 	}
 	m.client = pdk.NewImportClient(m.PilosaHost, m.Database, Frames, m.BufSize)
 	defer m.client.Close()
@@ -101,6 +89,7 @@ func (m *Main) Run() error {
 	defer nt.Stop()
 
 	var h *pcap.Handle
+	var err error
 	if m.Filename != "" {
 		h, err = pcap.OpenOffline(m.Filename)
 	} else {
@@ -126,6 +115,33 @@ func (m *Main) Run() error {
 		}()
 	}
 	extractorWG.Wait()
+	return nil
+}
+
+func (m *Main) Setup() error {
+	pilosaURI, err := pcli.NewURIFromAddress(m.PilosaHost)
+	if err != nil {
+		return fmt.Errorf("interpreting pilosaHost '%v': %v", m.PilosaHost, err)
+	}
+	setupClient := pcli.NewClientWithAddress(pilosaURI)
+	db, err := pcli.NewDatabase(m.Database)
+	if err != nil {
+		return fmt.Errorf("making database: %v", err)
+	}
+	err = setupClient.EnsureDatabaseExists(db)
+	if err != nil {
+		return fmt.Errorf("ensuring db existence: %v", err)
+	}
+	for _, frame := range Frames {
+		fram, err := db.Frame(frame)
+		if err != nil {
+			return fmt.Errorf("making frame: %v", err)
+		}
+		err = setupClient.EnsureFrameExists(fram)
+		if err != nil {
+			return fmt.Errorf("creating frame '%v': %v", frame, err)
+		}
+	}
 	return nil
 }
 
