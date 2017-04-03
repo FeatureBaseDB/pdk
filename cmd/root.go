@@ -10,15 +10,33 @@ import (
 	"github.com/spf13/viper"
 )
 
+var (
+	Version   string
+	BuildTime string
+)
+
+func setupVersionBuild() {
+	if Version == "" {
+		Version = "v0.0.0"
+	}
+	if BuildTime == "" {
+		BuildTime = "not recorded"
+	}
+}
+
 var subcommandFns = map[string]func(stdin io.Reader, stdout, stderr io.Writer) *cobra.Command{}
 
 func NewRootCommand(stdin io.Reader, stdout, stderr io.Writer) *cobra.Command {
+	setupVersionBuild()
 	rc := &cobra.Command{
 		Use:   "pdk",
 		Short: "pdk - Pilosa Dev Kit and Examples",
 		Long: `A collection of libraries and worked examples
-                for getting data into and out of Pilosa.
-                Complete documentation is available at http://pilosa.com/docs`,
+for getting data into and out of Pilosa.
+Complete documentation is available at http://pilosa.com/docs/pdk
+
+Version: ` + Version + `
+Build Time: ` + BuildTime + "\n",
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			v := viper.New()
 			err := setAllConfig(v, cmd.Flags(), "PDK")
