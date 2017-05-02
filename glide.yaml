@@ -5,9 +5,10 @@ import:
   subpackages:
   - layers
   - pcap
-- package: github.com/pilosa/go-client-pilosa
-- package: github.com/pilosa/pilosa
+- package: github.com/pilosa/go-pilosa
   version: master
+- package: github.com/pilosa/pilosa
+  version: ^0.3.1
   subpackages:
   - ctl
   - pql

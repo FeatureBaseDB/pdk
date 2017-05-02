@@ -141,7 +141,7 @@ func (p *pilosaForwarder) mapResult(frame string, res interface{}) (mappedRes in
 		}, len(result))
 		for i, intpair := range result {
 			if pair, ok := intpair.(map[string]interface{}); ok {
-				pairkey, gotKey := pair["key"]
+				pairkey, gotKey := pair["id"]
 				paircount, gotCount := pair["count"]
 				if !(gotKey && gotCount) {
 					return nil, fmt.Errorf("expected pilosa.Pair, but have wrong keys: got %v", pair)

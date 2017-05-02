@@ -1,19 +1,19 @@
 package network
 
 const (
-	netSrcFrame      = "netsrc.n"
-	netDstFrame      = "netdst.n"
-	transSrcFrame    = "transsrc.n"
-	transDstFrame    = "transdst.n"
-	netProtoFrame    = "netproto.n"
-	transProtoFrame  = "transproto.n"
-	appProtoFrame    = "appproto.n"
-	hostnameFrame    = "hostname.n"
-	methodFrame      = "method.n"
-	contentTypeFrame = "contenttype.n"
-	userAgentFrame   = "useragent.n"
-	packetSizeFrame  = "packetsize.n"
-	TCPFlagsFrame    = "tcpflags.n"
+	netSrcFrame      = "netsrc"
+	netDstFrame      = "netdst"
+	transSrcFrame    = "transsrc"
+	transDstFrame    = "transdst"
+	netProtoFrame    = "netproto"
+	transProtoFrame  = "transproto"
+	appProtoFrame    = "appproto"
+	hostnameFrame    = "hostname"
+	methodFrame      = "method"
+	contentTypeFrame = "contenttype"
+	userAgentFrame   = "useragent"
+	packetSizeFrame  = "packetsize"
+	TCPFlagsFrame    = "tcpflags"
 )
 
 var Frames = []string{netSrcFrame, netDstFrame, transSrcFrame, transDstFrame, netProtoFrame, transProtoFrame, appProtoFrame, hostnameFrame, methodFrame, contentTypeFrame, userAgentFrame, packetSizeFrame, TCPFlagsFrame}
