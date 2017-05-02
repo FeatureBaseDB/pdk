@@ -14,7 +14,9 @@ import (
 
 	_ "net/http/pprof"
 
+	pcli "github.com/pilosa/go-pilosa"
 	"github.com/pilosa/pdk"
+	"github.com/pilosa/pilosa"
 )
 
 /***************
@@ -76,7 +78,7 @@ type Main struct {
 	PilosaHost  string
 	URLFile     string
 	Concurrency int
-	Database    string
+	Index       string
 	BufferSize  int
 
 	importer  pdk.PilosaImporter
@@ -133,8 +135,32 @@ func (m *Main) Run() error {
 		return err
 	}
 
-	frames := []string{"cabType.n", "passengerCount.n", "totalAmount_dollars.n", "pickupTime.n", "pickupDay.n", "pickupMonth.n", "pickupYear.n", "dropTime.n", "dropDay.n", "dropMonth.n", "dropYear.n", "dist_miles.n", "duration_minutes.n", "speed_mph.n", "pickupGridID.n", "dropGridID.n"}
-	m.importer = pdk.NewImportClient(m.PilosaHost, m.Database, frames, m.BufferSize)
+	frames := []string{"cab_type", "passenger_count", "total_amount_dollars", "pickup_time", "pickup_day", "pickup_month", "pickup_year", "drop_time", "drop_day", "drop_month", "drop_year", "dist_miles", "duration_minutes", "speed_mph", "pickup_grid_id", "drop_grid_id"}
+	m.importer = pdk.NewImportClient(m.PilosaHost, m.Index, frames, m.BufferSize)
+
+	pilosaURI, err := pcli.NewURIFromAddress(m.PilosaHost)
+	if err != nil {
+		return fmt.Errorf("interpreting pilosaHost '%v': %v", m.PilosaHost, err)
+	}
+	setupClient := pcli.NewClientWithURI(pilosaURI)
+	index, err := pcli.NewIndex(m.Index, &pcli.IndexOptions{})
+	if err != nil {
+		return fmt.Errorf("making index: %v", err)
+	}
+	err = setupClient.EnsureIndex(index)
+	if err != nil {
+		return fmt.Errorf("ensuring index existence: %v", err)
+	}
+	for _, frame := range frames {
+		fram, err := index.Frame(frame, &pcli.FrameOptions{CacheType: pilosa.CacheTypeRanked})
+		if err != nil {
+			return fmt.Errorf("making frame: %v", err)
+		}
+		err = setupClient.EnsureFrame(fram)
+		if err != nil {
+			return fmt.Errorf("creating frame '%v': %v", frame, err)
+		}
+	}
 
 	ticker := m.printStats()
 
