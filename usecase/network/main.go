@@ -16,8 +16,9 @@ import (
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
 	"github.com/google/gopacket/pcap"
-	pcli "github.com/pilosa/go-client-pilosa"
+	pcli "github.com/pilosa/go-pilosa"
 	"github.com/pilosa/pdk"
+	"github.com/pilosa/pilosa"
 )
 
 type Main struct {
@@ -29,7 +30,7 @@ type Main struct {
 	NumExtractors int
 	PilosaHost    string
 	Filter        string
-	Database      string
+	Index         string
 	BindAddr      string
 	BufSize       int
 
@@ -56,9 +57,9 @@ type Main struct {
 
 func (m *Main) Run() error {
 	if err := m.Setup(); err != nil {
-		return fmt.Errorf("setting up db and frames: %v", err)
+		return fmt.Errorf("setting up index and frames: %v", err)
 	}
-	m.client = pdk.NewImportClient(m.PilosaHost, m.Database, Frames, m.BufSize)
+	m.client = pdk.NewImportClient(m.PilosaHost, m.Index, Frames, m.BufSize)
 	defer m.client.Close()
 
 	go func() {
@@ -123,21 +124,21 @@ func (m *Main) Setup() error {
 	if err != nil {
 		return fmt.Errorf("interpreting pilosaHost '%v': %v", m.PilosaHost, err)
 	}
-	setupClient := pcli.NewClientWithAddress(pilosaURI)
-	db, err := pcli.NewDatabase(m.Database)
+	setupClient := pcli.NewClientWithURI(pilosaURI)
+	index, err := pcli.NewIndex(m.Index, &pcli.IndexOptions{})
 	if err != nil {
-		return fmt.Errorf("making database: %v", err)
+		return fmt.Errorf("making index: %v", err)
 	}
-	err = setupClient.EnsureDatabaseExists(db)
+	err = setupClient.EnsureIndex(index)
 	if err != nil {
-		return fmt.Errorf("ensuring db existence: %v", err)
+		return fmt.Errorf("ensuring index existence: %v", err)
 	}
 	for _, frame := range Frames {
-		fram, err := db.Frame(frame)
+		fram, err := index.Frame(frame, &pcli.FrameOptions{CacheType: pilosa.CacheTypeRanked})
 		if err != nil {
 			return fmt.Errorf("making frame: %v", err)
 		}
-		err = setupClient.EnsureFrameExists(fram)
+		err = setupClient.EnsureFrame(fram)
 		if err != nil {
 			return fmt.Errorf("creating frame '%v': %v", frame, err)
 		}

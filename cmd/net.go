@@ -43,7 +43,7 @@ func NewNetCommand(stdin io.Reader, stdout, stderr io.Writer) *cobra.Command {
 	flags.IntVarP(&Net.NumExtractors, "concurrency", "c", 1, "Number of goroutines working on packets")
 	flags.StringVarP(&Net.PilosaHost, "pilosa", "l", "localhost:10101", "Address of pilosa host to write to")
 	flags.StringVarP(&Net.Filter, "filter", "b", "", "BPF style filter for packet capture - i.e. 'dst port 80' would capture only traffic headed for port 80")
-	flags.StringVarP(&Net.Database, "database", "d", "net", "Pilosa db to write to")
+	flags.StringVarP(&Net.Index, "index", "", "net", "Pilosa index to write to")
 	flags.StringVarP(&Net.BindAddr, "bind-addr", "a", "localhost:10102", "Address which mapping proxy will bind to")
 
 	return netCommand

@@ -30,7 +30,7 @@ type ImportClient struct {
 	wg       sync.WaitGroup
 }
 
-func NewImportClient(host, db string, frames []string, bufsize int) *ImportClient {
+func NewImportClient(host, index string, frames []string, bufsize int) *ImportClient {
 	ic := &ImportClient{
 		BufferSize: bufsize,
 	}
@@ -38,7 +38,7 @@ func NewImportClient(host, db string, frames []string, bufsize int) *ImportClien
 	for _, frame := range frames {
 		ic.wg.Add(1)
 		ic.channels[frame] = make(chan Bit, bufsize)
-		go writer(ic.channels[frame], host, db, frame, ic.BufferSize, &ic.wg)
+		go writer(ic.channels[frame], host, index, frame, ic.BufferSize, &ic.wg)
 	}
 	return ic
 }
@@ -47,13 +47,13 @@ func (ic *ImportClient) SetBit(bitmapID, profileID uint64, frame string) {
 	ic.channels[frame] <- Bit{row: bitmapID, col: profileID}
 }
 
-func writer(bits <-chan Bit, host, db, frame string, bufsize int, wg *sync.WaitGroup) {
+func writer(bits <-chan Bit, host, index, frame string, bufsize int, wg *sync.WaitGroup) {
 	defer wg.Done()
 	pipeR, pipeW := io.Pipe()
 	defer pipeW.Close()
 	importer := ctl.ImportCommand{
 		Host:       host,
-		Database:   db,
+		Index:      index,
 		Frame:      frame,
 		Paths:      []string{"-"},
 		BufferSize: bufsize,

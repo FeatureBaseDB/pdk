@@ -1,10 +1,10 @@
-hash: 346089a8f7494b0d0497b3c8861975ce178c5d174527b7b4215037ee6ff5e551
-updated: 2017-04-03T11:34:49.643642033-05:00
+hash: 3da4046006b203130a1fa3e27b0a240e36b3e074f275f50dcc88131128eb0dc3
+updated: 2017-05-01T23:02:18.780776376-05:00
 imports:
 - name: github.com/boltdb/bolt
   version: 4b1ebc1869ad66568b313d0dc410e2be72670dda
 - name: github.com/fsnotify/fsnotify
-  version: 7d7316ed6e1ed2de075aab8dfc76de5d158d66e1
+  version: 4da3e2cfbabc9f751898f250b49f2439785783a1
 - name: github.com/gogo/protobuf
   version: a9cd0c35b97daf74d0ebf3514c5254814b2703b4
   subpackages:
@@ -14,7 +14,7 @@ imports:
   subpackages:
   - lru
 - name: github.com/golang/protobuf
-  version: 888eb0692c857ec880338addf316bd662d5e630e
+  version: 18c9bb3261723cd5401db4d0c9fbc5c3b6c70fe8
   subpackages:
   - proto
 - name: github.com/google/gopacket
@@ -22,8 +22,12 @@ imports:
   subpackages:
   - layers
   - pcap
+- name: github.com/gorilla/context
+  version: 08b5f424b9271eedf6f9f0ce86cb9396ed337a42
+- name: github.com/gorilla/mux
+  version: 392c28fe23e1c45ddba891b0320b3b5df220beea
 - name: github.com/hashicorp/hcl
-  version: 630949a3c5fa3c613328e1b8256052cbc2327c9b
+  version: 7fa7fff964d035e8a162cce3a164b3ad02ad651b
   subpackages:
   - hcl/ast
   - hcl/parser
@@ -36,47 +40,52 @@ imports:
 - name: github.com/inconshreveable/mousetrap
   version: 76626ae9c91c4f2a10f34cad8ce83ea42c93bb75
 - name: github.com/magiconair/properties
-  version: b3b15ef068fd0b17ddf408a23669f20811d194d2
+  version: 51463bfca2576e06c62a8504b5c0f06d61312647
 - name: github.com/mitchellh/mapstructure
-  version: db1efb556f84b25a0a13a04aad883943538ad2e0
+  version: cc8532a8e9a55ea36402aa21efdf403a60d34096
 - name: github.com/pelletier/go-buffruneio
   version: c37440a7cf42ac63b919c752ca73a85067e05992
 - name: github.com/pelletier/go-toml
-  version: 13d49d4606eb801b8f01ae542b4afc4c6ee3d84a
-- name: github.com/pilosa/go-client-pilosa
-  version: eb9b2249a6cd05925675b063cdc153d4cdd46bae
+  version: fe206efb84b2bc8e8cfafe6b4c1826622be969e3
+- name: github.com/pilosa/go-pilosa
+  version: 04986e9f751f45f59d4f02fd29ad2a2ee7adadef
   subpackages:
   - internal
 - name: github.com/pilosa/pilosa
-  version: dcb23d4bc51b60cc1f02819d2805beca0c96fc72
+  version: 40ea7584a0deacafe2968b26c654466b9c45325b
   subpackages:
   - ctl
   - internal
   - pql
   - roaring
+  - statik
+- name: github.com/rakyll/statik
+  version: 89fe3459b5c829c32e89bdff9c43f18aad728f2f
+  subpackages:
+  - fs
 - name: github.com/spf13/afero
   version: 9be650865eab0c12963d8753212f4f9c66cdcf12
   subpackages:
   - mem
 - name: github.com/spf13/cast
-  version: 4f1683a2242a92e62d6ff705a30e435cbf2b50a3
+  version: acbeb36b902d72a7a4c18e8f3241075e7ab763e4
 - name: github.com/spf13/cobra
-  version: fcd0c5a1df88f5d6784cb4feead962c3f3d0b66c
+  version: 69f86e6d5d7a67467ecd43b4a3c98d9c143d11c4
 - name: github.com/spf13/jwalterweatherman
   version: fa7ca7e836cf3a8bb4ebf799f472c12d7e903d66
 - name: github.com/spf13/pflag
-  version: 9ff6c6923cfffbcd502984b8e0c80539a94968b7
+  version: f1d95a35e132e8a1868023a08932b14f0b8b8fcb
 - name: github.com/spf13/viper
-  version: 7538d73b4eb9511d85a9f1dfef202eeb8ac260f4
+  version: 0967fc9aceab2ce9da34061253ac10fb99bba5b2
 - name: golang.org/x/sys
   version: c200b10b5d5e122be351b67af224adc6128af5bf
   subpackages:
   - unix
 - name: golang.org/x/text
-  version: 5a42fa2464759cbb7ee0af9de00b54d69f09a29c
+  version: 470f45bf29f4147d6fbd7dfd0a02a848e49f5bf4
   subpackages:
   - transform
   - unicode/norm
 - name: gopkg.in/yaml.v2
-  version: a3f3340b5840cee44f372bddb5880fcbc419b46a
+  version: cd8b52f8269e0feb286dfeef29f8fe4d5b397e0b
 testImports: []
