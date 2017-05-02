@@ -19,6 +19,8 @@ If you want to try out the full data set, run this:
 
 Note that this url file represents 1+ billion rows of data.
 
+After importing, you can try a few example queries at https://github.com/alanbernstein/pilosa-notebooks/blob/master/taxi-use-case.ipynb .
+
 ## Net usecase
 
 To get started immediately, run this:
