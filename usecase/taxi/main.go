@@ -14,7 +14,9 @@ import (
 
 	_ "net/http/pprof"
 
+	pcli "github.com/pilosa/go-pilosa"
 	"github.com/pilosa/pdk"
+	"github.com/pilosa/pilosa"
 )
 
 /***************
@@ -76,7 +78,7 @@ type Main struct {
 	PilosaHost  string
 	URLFile     string
 	Concurrency int
-	Database    string
+	Index       string
 	BufferSize  int
 
 	importer  pdk.PilosaImporter
@@ -133,8 +135,32 @@ func (m *Main) Run() error {
 		return err
 	}
 
-	frames := []string{"cabType.n", "passengerCount.n", "totalAmount_dollars.n", "pickupTime.n", "pickupDay.n", "pickupMonth.n", "pickupYear.n", "dropTime.n", "dropDay.n", "dropMonth.n", "dropYear.n", "dist_miles.n", "duration_minutes.n", "speed_mph.n", "pickupGridID.n", "dropGridID.n"}
-	m.importer = pdk.NewImportClient(m.PilosaHost, m.Database, frames, m.BufferSize)
+	frames := []string{"cab_type", "passenger_count", "total_amount_dollars", "pickup_time", "pickup_day", "pickup_month", "pickup_year", "drop_time", "drop_day", "drop_month", "drop_year", "dist_miles", "duration_minutes", "speed_mph", "pickup_grid_id", "drop_grid_id"}
+	m.importer = pdk.NewImportClient(m.PilosaHost, m.Index, frames, m.BufferSize)
+
+	pilosaURI, err := pcli.NewURIFromAddress(m.PilosaHost)
+	if err != nil {
+		return fmt.Errorf("interpreting pilosaHost '%v': %v", m.PilosaHost, err)
+	}
+	setupClient := pcli.NewClientWithURI(pilosaURI)
+	index, err := pcli.NewIndex(m.Index, &pcli.IndexOptions{})
+	if err != nil {
+		return fmt.Errorf("making index: %v", err)
+	}
+	err = setupClient.EnsureIndex(index)
+	if err != nil {
+		return fmt.Errorf("ensuring index existence: %v", err)
+	}
+	for _, frame := range frames {
+		fram, err := index.Frame(frame, &pcli.FrameOptions{CacheType: pilosa.CacheTypeRanked})
+		if err != nil {
+			return fmt.Errorf("making frame: %v", err)
+		}
+		err = setupClient.EnsureFrame(fram)
+		if err != nil {
+			return fmt.Errorf("creating frame '%v': %v", frame, err)
+		}
+	}
 
 	ticker := m.printStats()
 
@@ -316,7 +342,7 @@ Records:
 			continue
 		}
 		bitsToSet := make([]BitFrame, 0)
-		bitsToSet = append(bitsToSet, BitFrame{Bit: cabType, Frame: "cabType.n"})
+		bitsToSet = append(bitsToSet, BitFrame{Bit: cabType, Frame: "cab_type"})
 		for _, bm := range bms {
 			if len(bm.Fields) != len(bm.Parsers) {
 				// TODO if len(pm.Parsers) == 1, use that for all fields
@@ -352,32 +378,32 @@ Records:
 					m.skippedRecs.Add(1)
 					continue Records
 				}
-				if strings.Contains(bm.Frame, "GridID") && strings.Contains(err.Error(), "out of range") {
+				if strings.Contains(bm.Frame, "grid_id") && strings.Contains(err.Error(), "out of range") {
 					m.badLocs.Add(1)
 					m.skippedRecs.Add(1)
 					continue Records
 				}
-				if bm.Frame == "speed_mph.n" && strings.Contains(err.Error(), "out of range") {
+				if bm.Frame == "speed_mph" && strings.Contains(err.Error(), "out of range") {
 					m.badSpeeds.Add(1)
 					m.skippedRecs.Add(1)
 					continue Records
 				}
-				if bm.Frame == "totalAmount_dollars.n" && strings.Contains(err.Error(), "out of range") {
+				if bm.Frame == "total_amount_dollars" && strings.Contains(err.Error(), "out of range") {
 					m.badTotalAmnts.Add(1)
 					m.skippedRecs.Add(1)
 					continue Records
 				}
-				if bm.Frame == "duration_minutes.n" && strings.Contains(err.Error(), "out of range") {
+				if bm.Frame == "duration_minutes" && strings.Contains(err.Error(), "out of range") {
 					m.badDurations.Add(1)
 					m.skippedRecs.Add(1)
 					continue Records
 				}
-				if bm.Frame == "passengerCount.n" && strings.Contains(err.Error(), "out of range") {
+				if bm.Frame == "passenger_count" && strings.Contains(err.Error(), "out of range") {
 					m.badPassCounts.Add(1)
 					m.skippedRecs.Add(1)
 					continue Records
 				}
-				if bm.Frame == "dist_miles.n" && strings.Contains(err.Error(), "out of range") {
+				if bm.Frame == "dist_miles" && strings.Contains(err.Error(), "out of range") {
 					m.badDist.Add(1)
 					m.skippedRecs.Add(1)
 					continue Records
@@ -455,91 +481,91 @@ func getBitMappers(fields map[string]int) []pdk.BitMapper {
 
 	bms := []pdk.BitMapper{
 		pdk.BitMapper{
-			Frame:   "passengerCount.n",
+			Frame:   "passenger_count",
 			Mapper:  pdk.IntMapper{Min: 0, Max: 9},
 			Parsers: []pdk.Parser{pdk.IntParser{}},
 			Fields:  []int{fields["passenger_count"]},
 		},
 		pdk.BitMapper{
-			Frame:   "totalAmount_dollars.n",
+			Frame:   "total_amount_dollars",
 			Mapper:  lfm,
 			Parsers: []pdk.Parser{pdk.FloatParser{}},
 			Fields:  []int{fields["total_amount"]},
 		},
 		pdk.BitMapper{
-			Frame:   "pickupTime.n",
+			Frame:   "pickup_time",
 			Mapper:  pdk.TimeOfDayMapper{Res: 48},
 			Parsers: []pdk.Parser{tp},
 			Fields:  []int{fields["pickup_datetime"]},
 		},
 		pdk.BitMapper{
-			Frame:   "pickupDay.n",
+			Frame:   "pickup_day",
 			Mapper:  pdk.DayOfWeekMapper{},
 			Parsers: []pdk.Parser{tp},
 			Fields:  []int{fields["pickup_datetime"]},
 		},
 		pdk.BitMapper{
-			Frame:   "pickupMonth.n",
+			Frame:   "pickup_month",
 			Mapper:  pdk.MonthMapper{},
 			Parsers: []pdk.Parser{tp},
 			Fields:  []int{fields["pickup_datetime"]},
 		},
 		pdk.BitMapper{
-			Frame:   "pickupYear.n",
+			Frame:   "pickup_year",
 			Mapper:  pdk.YearMapper{},
 			Parsers: []pdk.Parser{tp},
 			Fields:  []int{fields["pickup_datetime"]},
 		},
 		pdk.BitMapper{
-			Frame:   "dropTime.n",
+			Frame:   "drop_time",
 			Mapper:  pdk.TimeOfDayMapper{Res: 48},
 			Parsers: []pdk.Parser{tp},
 			Fields:  []int{fields["dropoff_datetime"]},
 		},
 		pdk.BitMapper{
-			Frame:   "dropDay.n",
+			Frame:   "drop_day",
 			Mapper:  pdk.DayOfWeekMapper{},
 			Parsers: []pdk.Parser{tp},
 			Fields:  []int{fields["dropoff_datetime"]},
 		},
 		pdk.BitMapper{
-			Frame:   "dropMonth.n",
+			Frame:   "drop_month",
 			Mapper:  pdk.MonthMapper{},
 			Parsers: []pdk.Parser{tp},
 			Fields:  []int{fields["dropoff_datetime"]},
 		},
 		pdk.BitMapper{
-			Frame:   "dropYear.n",
+			Frame:   "drop_year",
 			Mapper:  pdk.YearMapper{},
 			Parsers: []pdk.Parser{tp},
 			Fields:  []int{fields["dropoff_datetime"]},
 		},
 		pdk.BitMapper{
-			Frame:   "dist_miles.n", // note "_miles" is a unit annotation
+			Frame:   "dist_miles", // note "_miles" is a unit annotation
 			Mapper:  lfm,
 			Parsers: []pdk.Parser{pdk.FloatParser{}},
 			Fields:  []int{fields["trip_distance"]},
 		},
 		pdk.BitMapper{
-			Frame:   "duration_minutes.n",
+			Frame:   "duration_minutes",
 			Mapper:  durm,
 			Parsers: []pdk.Parser{tp, tp},
 			Fields:  []int{fields["pickup_datetime"], fields["dropoff_datetime"]},
 		},
 		pdk.BitMapper{
-			Frame:   "speed_mph.n",
+			Frame:   "speed_mph",
 			Mapper:  speedm,
 			Parsers: []pdk.Parser{tp, tp, pdk.FloatParser{}},
 			Fields:  []int{fields["pickup_datetime"], fields["dropoff_datetime"], fields["trip_distance"]},
 		},
 		pdk.BitMapper{
-			Frame:   "pickupGridID.n",
+			Frame:   "pickup_grid_id",
 			Mapper:  gm,
 			Parsers: []pdk.Parser{pdk.FloatParser{}, pdk.FloatParser{}},
 			Fields:  []int{fields["pickup_longitude"], fields["pickup_latitude"]},
 		},
 		pdk.BitMapper{
-			Frame:   "dropGridID.n",
+			Frame:   "drop_grid_id",
 			Mapper:  gm,
 			Parsers: []pdk.Parser{pdk.FloatParser{}, pdk.FloatParser{}},
 			Fields:  []int{fields["dropoff_longitude"], fields["dropoff_latitude"]},
