@@ -25,6 +25,6 @@ After importing, you can try a few example queries at https://github.com/alanber
 
 To get started immediately, run this:
 
-`pdk net -i lo0`
+`pdk net -i en0`
 
-which will capture traffic on the interface `lo0`.
+which will capture traffic on the interface `en0` (see available interfaces with `ifconfig`).
