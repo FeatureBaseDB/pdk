@@ -1,9 +1,11 @@
 # pdk
 Pilosa Dev Kit - implementation tooling and use case examples are here!
 
+Documentation is here: https://www.pilosa.com/docs/pdk/
+
 First, get Pilosa running: https://www.pilosa.com/docs/getting-started/
 
-Clone, install, then run `pdk` and follow usage instructions.
+Clone, install with `make install`, then run `pdk` and follow usage instructions.
 
 ## Taxi usecase
 
