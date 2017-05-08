@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"sync"
+	"time"
 
 	"context"
 
@@ -15,12 +16,14 @@ import (
 
 type PilosaImporter interface {
 	SetBit(bitmapID, profileID uint64, frame string)
+	SetBitTimestamp(bitmapID, profileID uint64, frame string, timestamp time.Time)
 	Close()
 }
 
 type Bit struct {
 	row uint64
 	col uint64
+	ts  *time.Time
 }
 
 type ImportClient struct {
@@ -47,6 +50,10 @@ func (ic *ImportClient) SetBit(bitmapID, profileID uint64, frame string) {
 	ic.channels[frame] <- Bit{row: bitmapID, col: profileID}
 }
 
+func (ic *ImportClient) SetBitTimestamp(bitmapID, profileID uint64, frame string, timestamp time.Time) {
+	ic.channels[frame] <- Bit{row: bitmapID, col: profileID, ts: &timestamp}
+}
+
 func writer(bits <-chan Bit, host, index, frame string, bufsize int, wg *sync.WaitGroup) {
 	defer wg.Done()
 	pipeR, pipeW := io.Pipe()
@@ -69,7 +76,13 @@ func writer(bits <-chan Bit, host, index, frame string, bufsize int, wg *sync.Wa
 	}()
 
 	for bit := range bits {
-		_, err := pipeW.Write([]byte(fmt.Sprintf("%d,%d\n", bit.row, bit.col)))
+		var err error
+		if bit.ts == nil {
+			_, err = pipeW.Write([]byte(fmt.Sprintf("%d,%d\n", bit.row, bit.col)))
+		} else {
+			_, err = pipeW.Write([]byte(
+				fmt.Sprintf("%d,%d,%s\n", bit.row, bit.col, bit.ts.Format(pilosa.TimeFormat))))
+		}
 		if err != nil {
 			log.Printf("Error writing to import pipe frame: %s, err: %v", frame, err)
 		}
