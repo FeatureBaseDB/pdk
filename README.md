@@ -3,9 +3,21 @@ Pilosa Dev Kit - implementation tooling and use case examples are here!
 
 Documentation is here: https://www.pilosa.com/docs/pdk/
 
-First, get Pilosa running: https://www.pilosa.com/docs/getting-started/
+## Requirements
 
-Clone, install with `make install`, then run `pdk` and follow usage instructions.
+* A running instance of Pilosa. See: https://www.pilosa.com/docs/getting-started/
+
+* A recent version of Go.
+
+* libpcap with development headers. On Ubuntu/Debian, you can install it using `sudo apt install libpcap-dev`.
+
+## Installing
+
+We assume you are on a UNIX-like operating system. Otherwise adapt the following instructions for your platform.
+
+* `go get github.com/pilosa/pdk`
+* `cd $GOPATH/src/github.com/pilosa/pdk`
+* `make install`
 
 ## Taxi usecase
 
