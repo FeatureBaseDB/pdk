@@ -29,9 +29,9 @@ This will create and fill an index called `taxi`, using the short url list in us
 
 If you want to try out the full data set, run this:
 
-`pdk taxi -d taxi-big -f usecase/taxi/urls.txt`
+`pdk taxi -i taxi-big -f usecase/taxi/urls.txt`
 
-Note that this url file represents 1+ billion rows of data.
+Note that this url file represents 1+ billion rows of data and during import at least 27 GB of RAM is required (if PDK and Pilosa server is running on the same computer). Running a Pilosa server with the imported data requires 3.5 GB of RAM.
 
 After importing, you can try a few example queries at https://github.com/alanbernstein/pilosa-notebooks/blob/master/taxi-use-case.ipynb .
 
