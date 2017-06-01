@@ -1,3 +1,2 @@
 https://s3.amazonaws.com/nyc-tlc/trip+data/green_tripdata_2013-08.csv
-https://s3.amazonaws.com/nyc-tlc/trip+data/green_tripdata_2013-09.csv
-https://s3.amazonaws.com/nyc-tlc/trip+data/green_tripdata_2013-10.csv
+https://s3.amazonaws.com/nyc-tlc/trip+data/yellow_tripdata_2009-02.csv
