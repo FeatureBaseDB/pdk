@@ -14,7 +14,7 @@ import (
 )
 
 // Translator describes the functionality which the proxy server requires to
-// translate bitmap ids to what they were mapped from.
+// translate row ids to what they were mapped from.
 type Translator interface {
 	// Get must be safe for concurrent access
 	Get(frame string, id uint64) interface{}
@@ -23,7 +23,7 @@ type Translator interface {
 
 // StartMappingProxy listens for incoming http connections on `bind` and
 // forwards all requests to `pilosa`. It inspects pilosa responses and runs the
-// bitmap ids through the Translator `m` to translate them to whatever they were
+// row ids through the Translator `m` to translate them to whatever they were
 // mapped from. This function does not return unless there is a problem (like
 // http.ListenAndServe).
 func StartMappingProxy(bind, pilosa string, m Translator) error {
@@ -165,7 +165,7 @@ func (p *pilosaForwarder) mapResult(frame string, res interface{}) (mappedRes in
 		// SetBit/ClearBit
 		mappedRes = result
 	default:
-		// Range? SetBitmapAttrs?
+		// Range? SetRowAttrs?
 		mappedRes = result
 	}
 	return mappedRes, nil

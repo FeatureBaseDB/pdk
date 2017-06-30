@@ -182,7 +182,7 @@ func (m *Main) Run() error {
 	signal.Notify(c, os.Interrupt)
 	go func() {
 		for range c {
-			log.Printf("Profiles: %d, Bytes: %s", m.nexter.Last(), pdk.Bytes(m.BytesProcessed()))
+			log.Printf("Rides: %d, Bytes: %s", m.nexter.Last(), pdk.Bytes(m.BytesProcessed()))
 			os.Exit(0)
 		}
 	}()
@@ -236,7 +236,7 @@ func (m *Main) printStats() *time.Ticker {
 		for range t.C {
 			duration := time.Since(start)
 			bytes := m.BytesProcessed()
-			log.Printf("Profiles: %d, Bytes: %s, Records: %v, Duration: %v, Rate: %v/s", m.nexter.Last(), pdk.Bytes(bytes), m.totalRecs.Get(), duration, pdk.Bytes(float64(bytes)/duration.Seconds()))
+			log.Printf("Rides: %d, Bytes: %s, Records: %v, Duration: %v, Rate: %v/s", m.nexter.Last(), pdk.Bytes(bytes), m.totalRecs.Get(), duration, pdk.Bytes(float64(bytes)/duration.Seconds()))
 			log.Printf("Skipped: %v, badLocs: %v, nullLocs: %v, badSpeeds: %v, badTotalAmnts: %v, badDurations: %v, badUnknowns: %v, badPassCounts: %v, badDist: %v", m.skippedRecs.Get(), m.badLocs.Get(), m.nullLocs.Get(), m.badSpeeds.Get(), m.badTotalAmnts.Get(), m.badDurations.Get(), m.badUnknowns.Get(), m.badPassCounts.Get(), m.badDist.Get())
 		}
 	}()
@@ -417,9 +417,9 @@ Records:
 				bitsToSet = append(bitsToSet, BitFrame{Bit: uint64(id), Frame: bm.Frame})
 			}
 		}
-		profileID := m.nexter.Next()
+		columnID := m.nexter.Next()
 		for _, bit := range bitsToSet {
-			m.importer.SetBit(bit.Bit, profileID, bit.Frame)
+			m.importer.SetBit(bit.Bit, columnID, bit.Frame)
 		}
 	}
 }
@@ -606,13 +606,13 @@ func (c *Counter) Get() (ret int64) {
 	return
 }
 
-// Nexter generates unique bitmapIDs
+// Nexter generates unique sequential ids in a threadsafe way.
 type Nexter struct {
 	id   uint64
 	lock sync.Mutex
 }
 
-// Next generates a new bitmapID
+// Next generates a new id
 func (n *Nexter) Next() (nextID uint64) {
 	n.lock.Lock()
 	nextID = n.id
