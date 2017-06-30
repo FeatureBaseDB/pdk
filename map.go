@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-// Mapper represents a single method for mapping a specific data type to a slice of bitmap IDs.
+// Mapper represents a single method for mapping a specific data type to a slice of row IDs.
 // A data type might be composed of multiple fields (e.g. a 2D point).
 // A data type might use multiple mappers.
 type Mapper interface {
@@ -16,7 +16,7 @@ type Mapper interface {
 type BoolMapper struct {
 }
 
-// IntMapper is a Mapper for integer types, mapping each int in the range to a bitmap
+// IntMapper is a Mapper for integer types, mapping each int in the range to a row
 type IntMapper struct {
 	Min           int64
 	Max           int64
@@ -51,7 +51,7 @@ type MonthMapper struct {
 
 // YearMapper is a Mapper for timestamps, mapping the year only
 type YearMapper struct {
-	MinYear int64 // TODO? use this to eliminate empty bitmaps for year < 2000 or whatever
+	MinYear int64 // TODO? use this to eliminate empty rows for year < 2000 or whatever
 }
 
 // SparseIntMapper is a Mapper for integer types, mapping only relevant ints
@@ -60,7 +60,7 @@ type SparseIntMapper struct {
 	Max           int64
 	Map           map[int64]int64
 	allowExternal bool
-	// maintain a map of int->bitmapID, return existing value or allocate new one
+	// maintain a map of int->rowID, return existing value or allocate new one
 }
 
 // LinearFloatMapper is a Mapper for float types, mapping to regularly spaced buckets
@@ -99,7 +99,7 @@ type StringMatchesMapper struct {
 }
 
 // CustomMapper is a Mapper that applies a function to a slice of fields,
-// then applies a simple Mapper to the result of that, returning a bitmapID.
+// then applies a simple Mapper to the result of that, returning a rowID.
 // This is a generic way to support mappings which span multiple fields.
 // It is not supported by the importing config system.
 type CustomMapper struct {
@@ -137,42 +137,42 @@ type RegionMapper struct {
 }
 
 // ID maps a set of fields using a custom function
-func (m CustomMapper) ID(fields ...interface{}) (bitmapIDs []int64, err error) {
+func (m CustomMapper) ID(fields ...interface{}) (rowIDs []int64, err error) {
 	return m.Mapper.ID(m.Func(fields...))
 }
 
 // ID maps a timestamp to a time of day bucket
-func (m TimeOfDayMapper) ID(ti ...interface{}) (bitmapIDs []int64, err error) {
+func (m TimeOfDayMapper) ID(ti ...interface{}) (rowIDs []int64, err error) {
 	t := ti[0].(time.Time)
 	daySeconds := int64(t.Second() + t.Minute()*60 + t.Hour()*3600)
 	return []int64{int64(float64(daySeconds*m.Res) / 86400)}, nil // TODO eliminate extraneous casts
 }
 
 // ID maps a timestamp to a day of week bucket
-func (m DayOfWeekMapper) ID(ti ...interface{}) (bitmapIDs []int64, err error) {
+func (m DayOfWeekMapper) ID(ti ...interface{}) (rowIDs []int64, err error) {
 	t := ti[0].(time.Time)
 	return []int64{int64(t.Weekday())}, nil
 }
 
 // ID maps a timestamp to a month bucket
-func (m MonthMapper) ID(ti ...interface{}) (bitmapIDs []int64, err error) {
+func (m MonthMapper) ID(ti ...interface{}) (rowIDs []int64, err error) {
 	t := ti[0].(time.Time)
 	return []int64{int64(t.Month())}, nil
 }
 
 // ID maps a timestamp to a year bucket
-func (m YearMapper) ID(ti ...interface{}) (bitmapIDs []int64, err error) {
+func (m YearMapper) ID(ti ...interface{}) (rowIDs []int64, err error) {
 	t := ti[0].(time.Time)
 	return []int64{int64(t.Year())}, nil
 }
 
-// ID maps a bool to a bitmapID (identity mapper)
-func (m BoolMapper) ID(bi ...interface{}) (bitmapIDs []int64, err error) {
+// ID maps a bool to a rowID (identity mapper)
+func (m BoolMapper) ID(bi ...interface{}) (rowIDs []int64, err error) {
 	return []int64{bi[0].(int64)}, nil
 }
 
-// ID maps an int range to a bitmapID range
-func (m IntMapper) ID(ii ...interface{}) (bitmapIDs []int64, err error) {
+// ID maps an int range to a rowID range
+func (m IntMapper) ID(ii ...interface{}) (rowIDs []int64, err error) {
 	i := ii[0].(int64)
 	externalID := m.Res
 	if i < m.Min || i > m.Max {
@@ -185,13 +185,13 @@ func (m IntMapper) ID(ii ...interface{}) (bitmapIDs []int64, err error) {
 }
 
 // ID maps floats to binary bit sets
-func (m BinaryIntMapper) ID(ii ...interface{}) (bitmapIDs []int64, err error) {
+func (m BinaryIntMapper) ID(ii ...interface{}) (rowIDs []int64, err error) {
 	// TODO implement (have to redo the Mapper interface to return slice)
 	return []int64{0}, nil
 }
 
-// ID maps arbitrary ints to a bitmapID range
-func (m SparseIntMapper) ID(ii ...interface{}) (bitmapIDs []int64, err error) {
+// ID maps arbitrary ints to a rowID range
+func (m SparseIntMapper) ID(ii ...interface{}) (rowIDs []int64, err error) {
 	i := ii[0].(int64)
 	if _, ok := m.Map[i]; !ok {
 		m.Map[i] = int64(len(m.Map))
@@ -200,7 +200,7 @@ func (m SparseIntMapper) ID(ii ...interface{}) (bitmapIDs []int64, err error) {
 }
 
 // ID maps floats to regularly spaced buckets
-func (m LinearFloatMapper) ID(fi ...interface{}) (bitmapIDs []int64, err error) {
+func (m LinearFloatMapper) ID(fi ...interface{}) (rowIDs []int64, err error) {
 	f := fi[0].(float64)
 	externalID := int64(m.Res)
 
@@ -213,12 +213,12 @@ func (m LinearFloatMapper) ID(fi ...interface{}) (bitmapIDs []int64, err error) 
 	}
 
 	// compute bin
-	bitmapID := int64(m.Res * (f - m.Min) / (m.Max - m.Min))
-	return []int64{bitmapID}, nil
+	rowID := int64(m.Res * (f - m.Min) / (m.Max - m.Min))
+	return []int64{rowID}, nil
 }
 
 // ID maps floats to arbitrary buckets
-func (m FloatMapper) ID(fi ...interface{}) (bitmapIDs []int64, err error) {
+func (m FloatMapper) ID(fi ...interface{}) (rowIDs []int64, err error) {
 	f := fi[0].(float64)
 	externalID := int64(len(m.Buckets))
 	if f < m.Buckets[0] || f > m.Buckets[len(m.Buckets)-1] {
@@ -240,13 +240,13 @@ func (m FloatMapper) ID(fi ...interface{}) (bitmapIDs []int64, err error) {
 }
 
 // ID maps floats to binary bit sets
-func (m BinaryFloatMapper) ID(fi ...interface{}) (bitmapIDs []int64, err error) {
+func (m BinaryFloatMapper) ID(fi ...interface{}) (rowIDs []int64, err error) {
 	// TODO implement (have to redo the Mapper interface to handle slice)
 	return []int64{0}, nil
 }
 
 // ID maps pairs of floats to regular buckets
-func (m GridMapper) ID(xyi ...interface{}) (bitmapIDs []int64, err error) {
+func (m GridMapper) ID(xyi ...interface{}) (rowIDs []int64, err error) {
 	x := xyi[0].(float64)
 	y := xyi[1].(float64)
 	externalID := m.Xres * m.Yres
@@ -264,7 +264,7 @@ func (m GridMapper) ID(xyi ...interface{}) (bitmapIDs []int64, err error) {
 	// compute y bin
 	yInt := int64(float64(m.Yres) * (y - m.Ymin) / (m.Ymax - m.Ymin))
 
-	bitmapID := (m.Yres * xInt) + yInt
-	return []int64{bitmapID}, nil
+	rowID := (m.Yres * xInt) + yInt
+	return []int64{rowID}, nil
 
 }

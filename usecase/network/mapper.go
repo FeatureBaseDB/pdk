@@ -2,7 +2,7 @@ package network
 
 import "sync"
 
-// TODO SetBitmapAttrs to name=whatever for endpoint frames, hostname, useragent, and whatever else makes sense
+// TODO SetRowAttrs to name=whatever for endpoint frames, hostname, useragent, and whatever else makes sense
 // was planning on doing that in IDMappers since they know when these things are first setHeader
 // Might want to think more about how to persist this info between runs though since it's pretty useless without that. Also if this is being run from multiple places, they'll need to coordinate.
 

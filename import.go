@@ -15,8 +15,8 @@ import (
 )
 
 type PilosaImporter interface {
-	SetBit(bitmapID, profileID uint64, frame string)
-	SetBitTimestamp(bitmapID, profileID uint64, frame string, timestamp time.Time)
+	SetBit(rowID, columnID uint64, frame string)
+	SetBitTimestamp(rowID, columnID uint64, frame string, timestamp time.Time)
 	Close()
 }
 
@@ -46,12 +46,12 @@ func NewImportClient(host, index string, frames []string, bufsize int) *ImportCl
 	return ic
 }
 
-func (ic *ImportClient) SetBit(bitmapID, profileID uint64, frame string) {
-	ic.channels[frame] <- Bit{row: bitmapID, col: profileID}
+func (ic *ImportClient) SetBit(rowID, columnID uint64, frame string) {
+	ic.channels[frame] <- Bit{row: rowID, col: columnID}
 }
 
-func (ic *ImportClient) SetBitTimestamp(bitmapID, profileID uint64, frame string, timestamp time.Time) {
-	ic.channels[frame] <- Bit{row: bitmapID, col: profileID, ts: &timestamp}
+func (ic *ImportClient) SetBitTimestamp(rowID, columnID uint64, frame string, timestamp time.Time) {
+	ic.channels[frame] <- Bit{row: rowID, col: columnID, ts: &timestamp}
 }
 
 func writer(bits <-chan Bit, host, index, frame string, bufsize int, wg *sync.WaitGroup) {

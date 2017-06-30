@@ -147,7 +147,7 @@ func (m *Main) Setup() error {
 }
 
 func (m *Main) extractAndPost(packets chan gopacket.Packet) {
-	var profileID uint64
+	var columnID uint64
 	for packet := range packets {
 		errL := packet.ErrorLayer()
 		if errL != nil {
@@ -155,11 +155,11 @@ func (m *Main) extractAndPost(packets chan gopacket.Packet) {
 			fmt.Println()
 			continue
 		}
-		profileID = m.nexter.Next()
+		columnID = m.nexter.Next()
 
 		length := packet.Metadata().Length
 		m.AddLength(length)
-		m.client.SetBit(uint64(length), profileID, packetSizeFrame)
+		m.client.SetBit(uint64(length), columnID, packetSizeFrame)
 		// ts := packet.Metadata().Timestamp
 
 		netLayer := packet.NetworkLayer()
@@ -167,65 +167,65 @@ func (m *Main) extractAndPost(packets chan gopacket.Packet) {
 			continue
 		}
 		netProto := netLayer.LayerType()
-		m.client.SetBit(m.netProtoIDs.GetID(netProto.String()), profileID, netProtoFrame)
+		m.client.SetBit(m.netProtoIDs.GetID(netProto.String()), columnID, netProtoFrame)
 		netFlow := netLayer.NetworkFlow()
 		netSrc, netDst := netFlow.Endpoints()
-		m.client.SetBit(m.netEndpointIDs.GetID(netSrc.String()), profileID, netSrcFrame)
-		m.client.SetBit(m.netEndpointIDs.GetID(netDst.String()), profileID, netDstFrame)
+		m.client.SetBit(m.netEndpointIDs.GetID(netSrc.String()), columnID, netSrcFrame)
+		m.client.SetBit(m.netEndpointIDs.GetID(netDst.String()), columnID, netDstFrame)
 
 		transLayer := packet.TransportLayer()
 		if transLayer == nil {
 			continue
 		}
 		transProto := transLayer.LayerType()
-		m.client.SetBit(m.transProtoIDs.GetID(transProto.String()), profileID, transProtoFrame)
+		m.client.SetBit(m.transProtoIDs.GetID(transProto.String()), columnID, transProtoFrame)
 		transFlow := transLayer.TransportFlow()
 		transSrc, transDst := transFlow.Endpoints()
-		m.client.SetBit(m.transEndpointIDs.GetID(transSrc.String()), profileID, transSrcFrame)
-		m.client.SetBit(m.transEndpointIDs.GetID(transDst.String()), profileID, transDstFrame)
+		m.client.SetBit(m.transEndpointIDs.GetID(transSrc.String()), columnID, transSrcFrame)
+		m.client.SetBit(m.transEndpointIDs.GetID(transDst.String()), columnID, transDstFrame)
 		if tcpLayer, ok := transLayer.(*layers.TCP); ok {
 			if tcpLayer.FIN {
-				m.client.SetBit(uint64(FIN), profileID, TCPFlagsFrame)
+				m.client.SetBit(uint64(FIN), columnID, TCPFlagsFrame)
 			}
 			if tcpLayer.SYN {
-				m.client.SetBit(uint64(SYN), profileID, TCPFlagsFrame)
+				m.client.SetBit(uint64(SYN), columnID, TCPFlagsFrame)
 			}
 			if tcpLayer.RST {
-				m.client.SetBit(uint64(RST), profileID, TCPFlagsFrame)
+				m.client.SetBit(uint64(RST), columnID, TCPFlagsFrame)
 			}
 			if tcpLayer.PSH {
-				m.client.SetBit(uint64(PSH), profileID, TCPFlagsFrame)
+				m.client.SetBit(uint64(PSH), columnID, TCPFlagsFrame)
 			}
 			if tcpLayer.ACK {
-				m.client.SetBit(uint64(ACK), profileID, TCPFlagsFrame)
+				m.client.SetBit(uint64(ACK), columnID, TCPFlagsFrame)
 			}
 			if tcpLayer.URG {
-				m.client.SetBit(uint64(URG), profileID, TCPFlagsFrame)
+				m.client.SetBit(uint64(URG), columnID, TCPFlagsFrame)
 			}
 			if tcpLayer.ECE {
-				m.client.SetBit(uint64(ECE), profileID, TCPFlagsFrame)
+				m.client.SetBit(uint64(ECE), columnID, TCPFlagsFrame)
 			}
 			if tcpLayer.CWR {
-				m.client.SetBit(uint64(CWR), profileID, TCPFlagsFrame)
+				m.client.SetBit(uint64(CWR), columnID, TCPFlagsFrame)
 			}
 			if tcpLayer.NS {
-				m.client.SetBit(uint64(NS), profileID, TCPFlagsFrame)
+				m.client.SetBit(uint64(NS), columnID, TCPFlagsFrame)
 			}
 		}
 		appLayer := packet.ApplicationLayer()
 		if appLayer != nil {
 			appProto := appLayer.LayerType()
-			m.client.SetBit(m.appProtoIDs.GetID(appProto.String()), profileID, appProtoFrame)
+			m.client.SetBit(m.appProtoIDs.GetID(appProto.String()), columnID, appProtoFrame)
 			appBytes := appLayer.Payload()
 			buf := bytes.NewBuffer(appBytes)
 			req, err := http.ReadRequest(bufio.NewReader(buf))
 			if err == nil {
 				userAgent := req.UserAgent()
-				m.client.SetBit(m.userAgentIDs.GetID(userAgent), profileID, userAgentFrame)
+				m.client.SetBit(m.userAgentIDs.GetID(userAgent), columnID, userAgentFrame)
 				method := req.Method
-				m.client.SetBit(m.methodIDs.GetID(method), profileID, methodFrame)
+				m.client.SetBit(m.methodIDs.GetID(method), columnID, methodFrame)
 				hostname := req.Host
-				m.client.SetBit(m.hostnameIDs.GetID(hostname), profileID, hostnameFrame)
+				m.client.SetBit(m.hostnameIDs.GetID(hostname), columnID, hostnameFrame)
 			} else {
 				// try HTTP response?
 				// resp, err := http.ReadResponse(bufio.NewReader(buf))
