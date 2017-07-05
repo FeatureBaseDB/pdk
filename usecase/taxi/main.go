@@ -294,7 +294,11 @@ func (m *Main) fetch(urls <-chan string, records chan<- Record) {
 			}
 			records <- Record{Val: record, Type: typ}
 		}
-		err := content.Close()
+		err := scan.Err()
+		if err != nil {
+			log.Printf("scan error on %s, err: %v", url, err)
+		}
+		err = content.Close()
 		if err != nil {
 			log.Printf("closing %s, err: %v", url, err)
 		}
