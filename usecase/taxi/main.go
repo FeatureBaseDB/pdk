@@ -166,8 +166,8 @@ func (m *Main) Run() error {
 
 	ticker := m.printStats()
 
-	urls := make(chan string)
-	records := make(chan Record)
+	urls := make(chan string, 100)
+	records := make(chan Record, 100000)
 
 	go func() {
 		for _, url := range m.urls {
@@ -245,9 +245,29 @@ func (m *Main) printStats() *time.Ticker {
 	return t
 }
 
+// getNextURL fetches the next url from the channel, or if it is emtpy, gets a
+// url from the failedURLs map after 10 seconds of waiting on the channel. As
+// long as it gets a url, its boolean return value is true - if it does not get
+// a url, it returns false.
+func getNextURL(urls <-chan string, failedURLs map[string]int) (string, bool) {
+	select {
+	case url := <-urls:
+		return url, true
+	case <-time.After(time.Second * 10):
+		for url, _ := range failedURLs {
+			return url, true
+		}
+		return "", false
+	}
+}
+
 func (m *Main) fetch(urls <-chan string, records chan<- Record) {
-	failedUrls := make(map[string]int)
-	for url := range urls {
+	failedURLs := make(map[string]int)
+	for {
+		url, ok := getNextURL(urls, failedURLs)
+		if !ok {
+			break
+		}
 		var typ rune
 		if strings.Contains(url, "green") {
 			typ = 'g'
@@ -278,12 +298,17 @@ func (m *Main) fetch(urls <-chan string, records chan<- Record) {
 		// in the simplest way possible.
 		contentBytes, err := ioutil.ReadAll(content)
 		if err != nil {
-			failedUrls[url]++
-			if failedUrls[url] > 10 {
+			failedURLs[url]++
+			if failedURLs[url] > 10 {
 				log.Fatalf("Unrecoverable failure while fetching url: %v, err: %v. Could not read fully after 10 tries.", url, err)
 			}
-			return
+			continue
 		}
+		err = content.Close()
+		if err != nil {
+			log.Printf("closing %s, err: %v", url, err)
+		}
+
 		buf := bytes.NewBuffer(contentBytes)
 
 		scan := bufio.NewScanner(buf)
@@ -314,10 +339,7 @@ func (m *Main) fetch(urls <-chan string, records chan<- Record) {
 		if err != nil {
 			log.Printf("scan error on %s, err: %v", url, err)
 		}
-		err = content.Close()
-		if err != nil {
-			log.Printf("closing %s, err: %v", url, err)
-		}
+		delete(failedURLs, url)
 	}
 }
 
