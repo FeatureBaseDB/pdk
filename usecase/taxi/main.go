@@ -2,8 +2,10 @@ package taxi
 
 import (
 	"bufio"
+	"bytes"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -188,7 +190,7 @@ func (m *Main) Run() error {
 	}()
 
 	var wg sync.WaitGroup
-	for i := 0; i < m.Concurrency; i++ {
+	for i := 0; i < 2; i++ {
 		wg.Add(1)
 		go func() {
 			m.fetch(urls, records)
@@ -244,6 +246,7 @@ func (m *Main) printStats() *time.Ticker {
 }
 
 func (m *Main) fetch(urls <-chan string, records chan<- Record) {
+	failedUrls := make(map[string]int)
 	for url := range urls {
 		var typ rune
 		if strings.Contains(url, "green") {
@@ -269,8 +272,21 @@ func (m *Main) fetch(urls <-chan string, records chan<- Record) {
 			}
 			content = f
 		}
+		// we're using ReadAll here to ensure that we can read the entire
+		// file/url before we start putting it into Pilosa. Not great for memory
+		// usage or smooth performance, but we want to ensure repeatable results
+		// in the simplest way possible.
+		contentBytes, err := ioutil.ReadAll(content)
+		if err != nil {
+			failedUrls[url]++
+			if failedUrls[url] > 10 {
+				log.Fatalf("Unrecoverable failure while fetching url: %v, err: %v. Could not read fully after 10 tries.", url, err)
+			}
+			return
+		}
+		buf := bytes.NewBuffer(contentBytes)
 
-		scan := bufio.NewScanner(content)
+		scan := bufio.NewScanner(buf)
 		// discard header line
 		correctLine := false
 		if scan.Scan() {
@@ -294,7 +310,7 @@ func (m *Main) fetch(urls <-chan string, records chan<- Record) {
 			}
 			records <- Record{Val: record, Type: typ}
 		}
-		err := scan.Err()
+		err = scan.Err()
 		if err != nil {
 			log.Printf("scan error on %s, err: %v", url, err)
 		}
