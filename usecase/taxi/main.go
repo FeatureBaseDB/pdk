@@ -250,15 +250,14 @@ func (m *Main) printStats() *time.Ticker {
 // long as it gets a url, its boolean return value is true - if it does not get
 // a url, it returns false.
 func getNextURL(urls <-chan string, failedURLs map[string]int) (string, bool) {
-	select {
-	case url := <-urls:
-		return url, true
-	case <-time.After(time.Second * 10):
+	url, open := <-urls
+	if !open {
 		for url, _ := range failedURLs {
 			return url, true
 		}
 		return "", false
 	}
+	return url, true
 }
 
 func (m *Main) fetch(urls <-chan string, records chan<- Record) {
