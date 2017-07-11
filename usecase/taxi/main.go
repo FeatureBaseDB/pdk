@@ -167,7 +167,7 @@ func (m *Main) Run() error {
 	ticker := m.printStats()
 
 	urls := make(chan string, 100)
-	records := make(chan Record, 100000)
+	records := make(chan Record, 1000)
 
 	go func() {
 		for _, url := range m.urls {
@@ -190,7 +190,7 @@ func (m *Main) Run() error {
 	}()
 
 	var wg sync.WaitGroup
-	for i := 0; i < 2; i++ {
+	for i := 0; i < 1; i++ {
 		wg.Add(1)
 		go func() {
 			m.fetch(urls, records)
