@@ -135,7 +135,7 @@ func (m *Main) Run() error {
 		return err
 	}
 
-	frames := []string{"cab_type", "passenger_count", "total_amount_dollars", "pickup_time", "pickup_day", "pickup_month", "pickup_year", "drop_time", "drop_day", "drop_month", "drop_year", "dist_miles", "duration_minutes", "speed_mph", "pickup_grid_id", "drop_grid_id"}
+	frames := []string{"cab_type", "passenger_count", "total_amount_dollars", "pickup_time", "pickup_day", "pickup_mday", "pickup_month", "pickup_year", "drop_time", "drop_day", "drop_mday", "drop_month", "drop_year", "dist_miles", "duration_minutes", "speed_mph", "pickup_grid_id", "drop_grid_id"}
 	m.importer = pdk.NewImportClient(m.PilosaHost, m.Index, frames, m.BufferSize)
 
 	pilosaURI, err := pcli.NewURIFromAddress(m.PilosaHost)
@@ -509,6 +509,12 @@ func getBitMappers(fields map[string]int) []pdk.BitMapper {
 			Fields:  []int{fields["pickup_datetime"]},
 		},
 		pdk.BitMapper{
+			Frame:   "pickup_mday",
+			Mapper:  pdk.DayOfMonthMapper{},
+			Parsers: []pdk.Parser{tp},
+			Fields:  []int{fields["pickup_datetime"]},
+		},
+		pdk.BitMapper{
 			Frame:   "pickup_month",
 			Mapper:  pdk.MonthMapper{},
 			Parsers: []pdk.Parser{tp},
@@ -531,6 +537,12 @@ func getBitMappers(fields map[string]int) []pdk.BitMapper {
 			Mapper:  pdk.DayOfWeekMapper{},
 			Parsers: []pdk.Parser{tp},
 			Fields:  []int{fields["dropoff_datetime"]},
+		},
+		pdk.BitMapper{
+			Frame:   "drop_mday",
+			Mapper:  pdk.DayOfMonthMapper{},
+			Parsers: []pdk.Parser{tp},
+			Fields:  []int{fields["pickup_datetime"]},
 		},
 		pdk.BitMapper{
 			Frame:   "drop_month",
