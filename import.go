@@ -3,6 +3,7 @@ package pdk
 import (
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"os"
 	"sync"
@@ -68,6 +69,19 @@ func writer(bits <-chan Bit, host, index, frame string, bufsize int, wg *sync.Wa
 		CmdIO: pilosa.NewCmdIO(pipeR, os.Stdout, os.Stderr),
 	}
 
+	frameLog, err := ioutil.TempFile("", frame)
+	if err != nil {
+		log.Printf("Couldn't get temp file for frame %v, err: %v", frame, err)
+	} else {
+		log.Printf("Got log file: %v", frameLog.Name())
+		defer func() {
+			err := frameLog.Close()
+			if err != nil {
+				log.Printf("Error closing %v, err: %v", frameLog.Name(), err)
+			}
+		}()
+	}
+
 	go func() {
 		err := importer.Run(context.Background())
 		if err != nil {
@@ -78,7 +92,12 @@ func writer(bits <-chan Bit, host, index, frame string, bufsize int, wg *sync.Wa
 	for bit := range bits {
 		var err error
 		if bit.ts == nil {
-			_, err = pipeW.Write([]byte(fmt.Sprintf("%d,%d\n", bit.row, bit.col)))
+			line := []byte(fmt.Sprintf("%d,%d\n", bit.row, bit.col))
+			_, err = pipeW.Write(line)
+			_, err2 := frameLog.Write(line)
+			if err2 != nil {
+				log.Printf("Err writing to frame log %v, err: %v", frameLog.Name(), err)
+			}
 		} else {
 			_, err = pipeW.Write([]byte(
 				fmt.Sprintf("%d,%d,%s\n", bit.row, bit.col, bit.ts.Format(pilosa.TimeFormat))))
