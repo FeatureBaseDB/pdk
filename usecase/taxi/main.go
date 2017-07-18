@@ -2,8 +2,10 @@ package taxi
 
 import (
 	"bufio"
+	"bytes"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -135,7 +137,7 @@ func (m *Main) Run() error {
 		return err
 	}
 
-	frames := []string{"cab_type", "passenger_count", "total_amount_dollars", "pickup_time", "pickup_day", "pickup_month", "pickup_year", "drop_time", "drop_day", "drop_month", "drop_year", "dist_miles", "duration_minutes", "speed_mph", "pickup_grid_id", "drop_grid_id"}
+	frames := []string{"cab_type", "passenger_count", "total_amount_dollars", "pickup_time", "pickup_day", "pickup_month", "pickup_year", "drop_time", "drop_day", "drop_month", "drop_year", "dist_miles", "duration_minutes", "speed_mph", "pickup_grid_id", "drop_grid_id", "pickup_elevation", "drop_elevation"}
 	m.importer = pdk.NewImportClient(m.PilosaHost, m.Index, frames, m.BufferSize)
 
 	pilosaURI, err := pcli.NewURIFromAddress(m.PilosaHost)
@@ -164,8 +166,8 @@ func (m *Main) Run() error {
 
 	ticker := m.printStats()
 
-	urls := make(chan string)
-	records := make(chan Record)
+	urls := make(chan string, 100)
+	records := make(chan Record, 1000)
 
 	go func() {
 		for _, url := range m.urls {
@@ -188,7 +190,7 @@ func (m *Main) Run() error {
 	}()
 
 	var wg sync.WaitGroup
-	for i := 0; i < m.Concurrency; i++ {
+	for i := 0; i < 1; i++ {
 		wg.Add(1)
 		go func() {
 			m.fetch(urls, records)
@@ -243,8 +245,28 @@ func (m *Main) printStats() *time.Ticker {
 	return t
 }
 
+// getNextURL fetches the next url from the channel, or if it is emtpy, gets a
+// url from the failedURLs map after 10 seconds of waiting on the channel. As
+// long as it gets a url, its boolean return value is true - if it does not get
+// a url, it returns false.
+func getNextURL(urls <-chan string, failedURLs map[string]int) (string, bool) {
+	url, open := <-urls
+	if !open {
+		for url, _ := range failedURLs {
+			return url, true
+		}
+		return "", false
+	}
+	return url, true
+}
+
 func (m *Main) fetch(urls <-chan string, records chan<- Record) {
-	for url := range urls {
+	failedURLs := make(map[string]int)
+	for {
+		url, ok := getNextURL(urls, failedURLs)
+		if !ok {
+			break
+		}
 		var typ rune
 		if strings.Contains(url, "green") {
 			typ = 'g'
@@ -269,8 +291,26 @@ func (m *Main) fetch(urls <-chan string, records chan<- Record) {
 			}
 			content = f
 		}
+		// we're using ReadAll here to ensure that we can read the entire
+		// file/url before we start putting it into Pilosa. Not great for memory
+		// usage or smooth performance, but we want to ensure repeatable results
+		// in the simplest way possible.
+		contentBytes, err := ioutil.ReadAll(content)
+		if err != nil {
+			failedURLs[url]++
+			if failedURLs[url] > 10 {
+				log.Fatalf("Unrecoverable failure while fetching url: %v, err: %v. Could not read fully after 10 tries.", url, err)
+			}
+			continue
+		}
+		err = content.Close()
+		if err != nil {
+			log.Printf("closing %s, err: %v", url, err)
+		}
 
-		scan := bufio.NewScanner(content)
+		buf := bytes.NewBuffer(contentBytes)
+
+		scan := bufio.NewScanner(buf)
 		// discard header line
 		correctLine := false
 		if scan.Scan() {
@@ -294,14 +334,11 @@ func (m *Main) fetch(urls <-chan string, records chan<- Record) {
 			}
 			records <- Record{Val: record, Type: typ}
 		}
-		err := scan.Err()
+		err = scan.Err()
 		if err != nil {
 			log.Printf("scan error on %s, err: %v", url, err)
 		}
-		err = content.Close()
-		if err != nil {
-			log.Printf("closing %s, err: %v", url, err)
-		}
+		delete(failedURLs, url)
 	}
 }
 
@@ -445,6 +482,14 @@ func getBitMappers(fields map[string]int) []pdk.BitMapper {
 		Yres: 100,
 	}
 
+	elevFloatMapper := pdk.LinearFloatMapper{
+		Min: -32,
+		Max: 195,
+		Res: 46,
+	}
+
+	gfm := pdk.NewGridToFloatMapper(gm, elevFloatMapper, elevations)
+
 	// map a float according to a custom set of bins
 	// seems like the LFM defined below is more sensible
 	/*
@@ -571,6 +616,18 @@ func getBitMappers(fields map[string]int) []pdk.BitMapper {
 		pdk.BitMapper{
 			Frame:   "drop_grid_id",
 			Mapper:  gm,
+			Parsers: []pdk.Parser{pdk.FloatParser{}, pdk.FloatParser{}},
+			Fields:  []int{fields["dropoff_longitude"], fields["dropoff_latitude"]},
+		},
+		pdk.BitMapper{
+			Frame:   "pickup_elevation",
+			Mapper:  gfm,
+			Parsers: []pdk.Parser{pdk.FloatParser{}, pdk.FloatParser{}},
+			Fields:  []int{fields["dropoff_longitude"], fields["dropoff_latitude"]},
+		},
+		pdk.BitMapper{
+			Frame:   "drop_elevation",
+			Mapper:  gfm,
 			Parsers: []pdk.Parser{pdk.FloatParser{}, pdk.FloatParser{}},
 			Fields:  []int{fields["dropoff_longitude"], fields["dropoff_latitude"]},
 		},
