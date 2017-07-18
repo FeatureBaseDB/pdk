@@ -45,6 +45,9 @@ type TimeOfDayMapper struct {
 type DayOfWeekMapper struct {
 }
 
+type DayOfMonthMapper struct {
+}
+
 // MonthMapper is a Mapper for timestamps, mapping the month only
 type MonthMapper struct {
 }
@@ -180,7 +183,13 @@ func (m DayOfWeekMapper) ID(ti ...interface{}) (rowIDs []int64, err error) {
 	return []int64{int64(t.Weekday())}, nil
 }
 
-// ID maps a timestamp to a month bucket
+// ID maps a timestamp to a day of month bucket (1-31)
+func (m DayOfMonthMapper) ID(ti ...interface{}) (rowIDs []int64, err error) {
+	t := ti[0].(time.Time)
+	return []int64{int64(t.Day())}, nil
+}
+
+// ID maps a timestamp to a month bucket (1-12)
 func (m MonthMapper) ID(ti ...interface{}) (rowIDs []int64, err error) {
 	t := ti[0].(time.Time)
 	return []int64{int64(t.Month())}, nil
