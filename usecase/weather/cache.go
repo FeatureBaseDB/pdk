@@ -1,25 +1,33 @@
 package weather
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
+	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
 type WeatherCache struct {
 	jsonPath string
+	URLFile  string
 	data     map[string]HistoryRecord
 }
 
 func NewWeatherCache(path string) *WeatherCache {
 	c := &WeatherCache{
-		jsonPath: path,
-		data:     make(map[string]HistoryRecord),
+		URLFile: path,
+		data:    make(map[string]HistoryRecord),
 	}
-	c.ReadAll()
+	err := c.ReadAll()
+	if err != nil {
+		fmt.Println(err)
+	}
 	return c
 }
 
@@ -41,6 +49,60 @@ func (c *WeatherCache) GetHourlyRecord(daytime time.Time) HourlyRecord {
 }
 
 func (c *WeatherCache) ReadAll() error {
+	// read URL file
+	if c.URLFile == "" {
+		return fmt.Errorf("Need to specify a URL File")
+	}
+	f, err := os.Open(c.URLFile)
+	if err != nil {
+		return err
+	}
+	urls := make([]string, 0)
+	s := bufio.NewScanner(f)
+	for s.Scan() {
+		urls = append(urls, s.Text())
+	}
+	if err := s.Err(); err != nil {
+		return err
+	}
+	fmt.Printf("read %d URLs from %s\n", len(urls), c.URLFile)
+
+	// read URLs
+	for _, url := range urls {
+		var content io.ReadCloser
+		if strings.HasPrefix(url, "http") {
+			resp, err := http.Get(url)
+			if err != nil {
+				fmt.Printf("error opening url: %v\n", url)
+				continue
+			}
+			content = resp.Body
+		} else {
+			f, err := os.Open(url)
+			if err != nil {
+				fmt.Printf("error opening url: %v\n", url)
+				continue
+			}
+			content = f
+		}
+		body, err := ioutil.ReadAll(content)
+		if err != nil {
+			fmt.Printf("error reading content: %v\n", url)
+			continue
+		}
+
+		record := new(RecordFile)
+		if err := json.Unmarshal(body, &record); err != nil {
+			fmt.Printf("error unmarshalling json %v: %v\n", url, err)
+			continue
+		}
+		datestr := url[len(url)-13 : len(url)-5]
+		c.data[datestr] = record.History
+	}
+	return nil
+}
+
+func (c *WeatherCache) ReadAllLocal() error {
 
 	dir, err := os.Open(c.jsonPath)
 	if err != nil {
@@ -54,16 +116,17 @@ func (c *WeatherCache) ReadAll() error {
 	}
 
 	for _, file := range files {
+		// check ends with json
 		filename := filepath.Base(file.Name())
 		datestr := filename[10:18]
-		fullRecord, _ := readWundergroundJson(c.jsonPath + "/" + filename)
+		fullRecord, _ := readWundergroundJsonFile(c.jsonPath + "/" + filename)
 		c.data[datestr] = fullRecord.History
 	}
 
 	return nil
 }
 
-func readWundergroundJson(filename string) (*RecordFile, error) {
+func readWundergroundJsonFile(filename string) (*RecordFile, error) {
 	record := new(RecordFile)
 	raw, _ := ioutil.ReadFile(filename)
 	if err := json.Unmarshal(raw, &record); err != nil {
@@ -107,9 +170,9 @@ type DailyRecord struct {
 	Tornado int `json:"tornado,string"`
 
 	// Humidity float32 `json:"humidity,string"`  // sometimes ""
-	Meantempi     float32 `json:"meantempi,string"`
-	Meanpressurei float32 `json:"meanpressurei,string"`
-	Precipi       float32 `json:"precipi,string"`
+	Meantempi     DumbFloat `json:"meantempi,string"`
+	Meanpressurei DumbFloat `json:"meanpressurei,string"`
+	Precipi       DumbFloat `json:"precipi,string"`
 }
 
 type HourlyRecord struct {
@@ -122,10 +185,10 @@ type HourlyRecord struct {
 	Thunder int `json:"thunder,string"`
 	Tornado int `json:"tornado,string"`
 
-	Humidity  float32 `json:"hum,string"`
-	Tempi     float32 `json:"tempi,string"`
-	Pressurei float32 `json:"pressurei,string"`
-	Precipi   float32 `json:"precipi,string"`
+	Humidity  DumbFloat `json:"hum,string"`
+	Tempi     DumbFloat `json:"tempi,string"`
+	Pressurei DumbFloat `json:"pressurei,string"`
+	Precipi   DumbFloat `json:"precipi,string"`
 
 	// CondString     string `json:"conds"`
 	Cond *Condition `json:"conds"`
@@ -139,6 +202,18 @@ func (c *Condition) UnmarshalJSON(b []byte) error {
 		return err
 	}
 	*c = Condition(conditionMap[condString])
+	return nil
+}
+
+type DumbFloat float32
+
+func (f *DumbFloat) UnmarshalJSON(b []byte) error {
+	var floatVal float32
+	if err := json.Unmarshal(b, &floatVal); err != nil {
+		*f = 0
+	} else {
+		*f = DumbFloat(floatVal)
+	}
 	return nil
 }
 
