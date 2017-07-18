@@ -8,11 +8,10 @@ import (
 	"time"
 )
 
-func testCache() {
-	c := NewWeatherCache("/Users/abernstein/.cache/wunderground-history")
-	fmt.Printf("Read %d weather records\n", len(c.data))
-	fmt.Printf("%+v\n", c.GetDailyRecord(time.Date(2010, 4, 3, 0, 0, 0, 0, time.UTC)))
-	fmt.Printf("%+v\n", c.GetHourlyRecord(time.Date(2010, 4, 3, 3, 0, 0, 0, time.UTC)))
+func (m *Main) testCache() {
+	fmt.Printf("Read %d weather records\n", len(m.weatherCache.data))
+	fmt.Printf("%+v\n", m.weatherCache.GetDailyRecord(time.Date(2010, 4, 3, 0, 0, 0, 0, time.UTC)))
+	fmt.Printf("%+v\n", m.weatherCache.GetHourlyRecord(time.Date(2010, 4, 3, 3, 0, 0, 0, time.UTC)))
 }
 
 type Main struct {
@@ -33,7 +32,7 @@ func NewMain() *Main {
 	m := &Main{
 		Concurrency:  1,
 		frames:       make(map[string]*pcli.Frame),
-		weatherCache: NewWeatherCache("/Users/abernstein/.cache/wunderground-history"),
+		weatherCache: NewWeatherCache("usecase/weather/urls.txt"),
 	}
 	return m
 }
@@ -94,9 +93,6 @@ func (m *Main) appendWeatherData() {
 }
 
 func (m *Main) Run() error {
-	//testCache()
-	//return nil
-
 	go func() {
 		fmt.Println(http.ListenAndServe("localhost:6060", nil))
 	}()
