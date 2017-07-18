@@ -10,8 +10,15 @@ import (
 
 func (m *Main) testCache() {
 	fmt.Printf("Read %d weather records\n", len(m.weatherCache.data))
-	fmt.Printf("%+v\n", m.weatherCache.GetDailyRecord(time.Date(2010, 4, 3, 0, 0, 0, 0, time.UTC)))
-	fmt.Printf("%+v\n", m.weatherCache.GetHourlyRecord(time.Date(2010, 4, 3, 3, 0, 0, 0, time.UTC)))
+	day, _ := m.weatherCache.GetDailyRecord(time.Date(2010, 4, 3, 0, 0, 0, 0, time.UTC))
+	fmt.Printf("%+v\n", day)
+	hour, _ := m.weatherCache.GetHourlyRecord(time.Date(2010, 4, 3, 3, 0, 0, 0, time.UTC))
+	fmt.Printf("%+v\n", hour)
+
+	day, err := m.weatherCache.GetDailyRecord(time.Date(2003, 4, 3, 0, 0, 0, 0, time.UTC))
+	fmt.Printf("%+v %v\n", day, err)
+	hour, err = m.weatherCache.GetHourlyRecord(time.Date(2003, 4, 3, 3, 0, 0, 0, time.UTC))
+	fmt.Printf("%+v %v\n", hour, err)
 }
 
 type Main struct {
@@ -53,11 +60,15 @@ func (m *Main) appendWeatherData() {
 	precipMapper := pdk.LinearFloatMapper{Min: 0, Max: 5, Res: 100}
 
 	startTime := time.Date(2009, 2, 1, 0, 0, 0, 0, time.UTC)
-	endTime := time.Date(2009, 2, 28, 0, 0, 0, 0, time.UTC)
-	// endTime := time.Date(2015, 12, 31, 0, 0, 0, 0, time.UTC)
+	// endTime := time.Date(2009, 2, 28, 0, 0, 0, 0, time.UTC)
+	endTime := time.Date(2015, 12, 31, 0, 0, 0, 0, time.UTC)
 
 	for t := startTime; endTime.After(t); t = t.Add(time.Hour) {
-		weather := m.weatherCache.GetHourlyRecord(t)
+		weather, err := m.weatherCache.GetHourlyRecord(t)
+		if err != nil {
+			fmt.Printf("couldn't get weather data for %v\n", t)
+			continue
+		}
 		timeBucket, _ := timeMapper.ID(t)
 		q := m.index.Intersect(
 			m.frames["pickup_year"].Bitmap(uint64(t.Year())),

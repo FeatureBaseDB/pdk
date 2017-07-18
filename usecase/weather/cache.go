@@ -31,13 +31,20 @@ func NewWeatherCache(path string) *WeatherCache {
 	return c
 }
 
-func (c *WeatherCache) GetDailyRecord(day time.Time) DailyRecord {
+func (c *WeatherCache) GetDailyRecord(day time.Time) (DailyRecord, error) {
 	dayKey := fmt.Sprintf("%d%02d%02d", day.Year(), day.Month(), day.Day())
-	return c.data[dayKey].DailyRecord[0]
+	if _, ok := c.data[dayKey]; !ok {
+		return DailyRecord{}, fmt.Errorf("not found")
+	}
+	return c.data[dayKey].DailyRecord[0], nil
 }
 
-func (c *WeatherCache) GetHourlyRecord(daytime time.Time) HourlyRecord {
+func (c *WeatherCache) GetHourlyRecord(daytime time.Time) (HourlyRecord, error) {
 	dayKey := fmt.Sprintf("%d%02d%02d", daytime.Year(), daytime.Month(), daytime.Day())
+	if _, ok := c.data[dayKey]; !ok {
+		return HourlyRecord{}, fmt.Errorf("not found")
+	}
+
 	hourly := c.data[dayKey].HourlyRecords
 	hourKey := daytime.Hour()
 	if hourKey >= len(hourly) {
@@ -45,7 +52,7 @@ func (c *WeatherCache) GetHourlyRecord(daytime time.Time) HourlyRecord {
 		// really should be interpolating the data anyway, at least nearest neighbor
 		hourKey = len(hourly) - 1
 	}
-	return hourly[hourKey]
+	return hourly[hourKey], nil
 }
 
 func (c *WeatherCache) ReadAll() error {
