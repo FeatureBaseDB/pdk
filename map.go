@@ -118,6 +118,32 @@ type GridMapper struct {
 	allowExternal bool
 }
 
+type GridToFloatMapper struct {
+	gm       GridMapper
+	lfm      LinearFloatMapper
+	gridVals []float64
+}
+
+func (m GridToFloatMapper) ID(vals ...interface{}) ([]int64, error) {
+	gridID, err := m.gm.ID(vals...)
+	if err != nil {
+		return nil, err
+	}
+	if gridID[0] >= int64(len(m.gridVals)) {
+		return nil, fmt.Errorf("grid mapper returned id out of range: %v", gridID)
+	}
+	fval := m.gridVals[gridID[0]]
+	return m.lfm.ID(fval)
+}
+
+func NewGridToFloatMapper(gm GridMapper, lfm LinearFloatMapper, gridVals []float64) GridToFloatMapper {
+	return GridToFloatMapper{
+		gm:       gm,
+		lfm:      lfm,
+		gridVals: gridVals,
+	}
+}
+
 // Point is a point in a 2D space
 type Point struct {
 	X float64

@@ -137,7 +137,7 @@ func (m *Main) Run() error {
 		return err
 	}
 
-	frames := []string{"cab_type", "passenger_count", "total_amount_dollars", "pickup_time", "pickup_day", "pickup_month", "pickup_year", "drop_time", "drop_day", "drop_month", "drop_year", "dist_miles", "duration_minutes", "speed_mph", "pickup_grid_id", "drop_grid_id"}
+	frames := []string{"cab_type", "passenger_count", "total_amount_dollars", "pickup_time", "pickup_day", "pickup_month", "pickup_year", "drop_time", "drop_day", "drop_month", "drop_year", "dist_miles", "duration_minutes", "speed_mph", "pickup_grid_id", "drop_grid_id", "pickup_elevation", "drop_elevation"}
 	m.importer = pdk.NewImportClient(m.PilosaHost, m.Index, frames, m.BufferSize)
 
 	pilosaURI, err := pcli.NewURIFromAddress(m.PilosaHost)
@@ -482,6 +482,14 @@ func getBitMappers(fields map[string]int) []pdk.BitMapper {
 		Yres: 100,
 	}
 
+	elevFloatMapper := pdk.LinearFloatMapper{
+		Min: -32,
+		Max: 195,
+		Res: 46,
+	}
+
+	gfm := pdk.NewGridToFloatMapper(gm, elevFloatMapper, elevations)
+
 	// map a float according to a custom set of bins
 	// seems like the LFM defined below is more sensible
 	/*
@@ -608,6 +616,18 @@ func getBitMappers(fields map[string]int) []pdk.BitMapper {
 		pdk.BitMapper{
 			Frame:   "drop_grid_id",
 			Mapper:  gm,
+			Parsers: []pdk.Parser{pdk.FloatParser{}, pdk.FloatParser{}},
+			Fields:  []int{fields["dropoff_longitude"], fields["dropoff_latitude"]},
+		},
+		pdk.BitMapper{
+			Frame:   "pickup_elevation",
+			Mapper:  gfm,
+			Parsers: []pdk.Parser{pdk.FloatParser{}, pdk.FloatParser{}},
+			Fields:  []int{fields["dropoff_longitude"], fields["dropoff_latitude"]},
+		},
+		pdk.BitMapper{
+			Frame:   "drop_elevation",
+			Mapper:  gfm,
 			Parsers: []pdk.Parser{pdk.FloatParser{}, pdk.FloatParser{}},
 			Fields:  []int{fields["dropoff_longitude"], fields["dropoff_latitude"]},
 		},
