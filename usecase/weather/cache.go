@@ -100,7 +100,7 @@ func (c *WeatherCache) ReadAll() error {
 
 		record := new(RecordFile)
 		if err := json.Unmarshal(body, &record); err != nil {
-			fmt.Printf("error unmarshalling json %v: %v\n", url, err)
+			// fmt.Printf("error unmarshalling json %v: %v\n", url, err)
 			continue
 		}
 		datestr := url[len(url)-13 : len(url)-5]
