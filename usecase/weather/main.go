@@ -98,7 +98,6 @@ func (m *Main) appendWeatherData() {
 				m.importer.SetBit(uint64(humid[0]), ID, "humidity")
 			}
 		}
-		fmt.Printf("%v, %+v, %d\n", t, weather, len(response.Result().Bitmap.Bits))
 	}
 
 }
