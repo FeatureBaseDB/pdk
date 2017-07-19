@@ -42,17 +42,19 @@ func (c *WeatherCache) GetDailyRecord(day time.Time) (DailyRecord, error) {
 func (c *WeatherCache) GetHourlyRecord(daytime time.Time) (HourlyRecord, error) {
 	dayKey := fmt.Sprintf("%d%02d%02d", daytime.Year(), daytime.Month(), daytime.Day())
 	if _, ok := c.data[dayKey]; !ok {
-		return HourlyRecord{}, fmt.Errorf("not found")
+		return HourlyRecord{}, fmt.Errorf("day not found")
 	}
 
 	hourly := c.data[dayKey].HourlyRecords
 	hourKey := daytime.Hour()
-	if hourKey >= len(hourly) {
-		// this should be an error...
-		// really should be interpolating the data anyway, at least nearest neighbor
-		hourKey = len(hourly) - 1
+	// find first record with matching hour
+	// should interpolate with minute data as well
+	for _, rec := range hourly {
+		if rec.Time.Hour == hourKey {
+			return rec, nil
+		}
 	}
-	return hourly[hourKey], nil
+	return HourlyRecord{}, fmt.Errorf("hour not found")
 }
 
 func (c *WeatherCache) ReadAll() error {
@@ -183,7 +185,7 @@ type DailyRecord struct {
 }
 
 type HourlyRecord struct {
-	// Time TimeRecord `json:"date"`
+	Time TimeRecord `json:"date"`
 
 	Rain    int `json:"rain,string"`
 	Fog     int `json:"fog,string"`

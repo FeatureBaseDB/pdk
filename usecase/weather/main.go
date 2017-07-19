@@ -64,11 +64,6 @@ func (m *Main) appendWeatherData() {
 	endTime := time.Date(2015, 12, 31, 0, 0, 0, 0, time.UTC)
 
 	for t := startTime; endTime.After(t); t = t.Add(time.Hour) {
-		weather, err := m.weatherCache.GetHourlyRecord(t)
-		if err != nil {
-			fmt.Printf("couldn't get weather data for %v\n", t)
-			continue
-		}
 		timeBucket, _ := timeMapper.ID(t)
 		q := m.index.Intersect(
 			m.frames["pickup_year"].Bitmap(uint64(t.Year())),
@@ -77,25 +72,41 @@ func (m *Main) appendWeatherData() {
 			m.frames["pickup_time"].Bitmap(uint64(timeBucket[0])),
 		)
 		response, _ := m.client.Query(q, nil)
+		numBits := len(response.Result().Bitmap.Bits)
+		if numBits == 0 {
+			continue
+		}
+
+		weather, err := m.weatherCache.GetHourlyRecord(t)
+		if err != nil {
+			fmt.Printf("couldn't get weather data for %v: %v\n", t, err)
+			continue
+		}
+		condID := uint64(*weather.Cond)
+		precip, err1 := precipMapper.ID(float64(weather.Precipi))
+		precipID := uint64(precip[0])
+		temp, err2 := tempMapper.ID(float64(weather.Tempi))
+		tempID := uint64(temp[0])
+		pressure, err3 := pressureMapper.ID(float64(weather.Pressurei))
+		pressureID := uint64(pressure[0])
+		humid, err4 := humidityMapper.ID(float64(weather.Humidity))
+		humidID := uint64(humid[0])
 
 		for _, ID := range response.Result().Bitmap.Bits {
 			// SetBit(weather.precip_code, ID, "precipitation_type")  // not implemented in weatherCache
-			m.importer.SetBit(uint64(*weather.Cond), ID, "weather_condition")
-			precip, err := precipMapper.ID(float64(weather.Precipi))
-			if err != nil {
-				m.importer.SetBit(uint64(precip[0]), ID, "precipitation_inches")
+			m.importer.SetBit(condID, ID, "weather_condition")
+
+			if err1 == nil && weather.Precipi > -100 {
+				m.importer.SetBit(precipID, ID, "precipitation_inches")
 			}
-			temp, err := tempMapper.ID(float64(weather.Tempi))
-			if err != nil {
-				m.importer.SetBit(uint64(temp[0]), ID, "temp_f")
+			if err2 == nil {
+				m.importer.SetBit(tempID, ID, "temp_f")
 			}
-			pressure, err := pressureMapper.ID(float64(weather.Pressurei))
-			if err != nil {
-				m.importer.SetBit(uint64(pressure[0]), ID, "pressure_i")
+			if err3 == nil {
+				m.importer.SetBit(pressureID, ID, "pressure_i")
 			}
-			humid, err := humidityMapper.ID(float64(weather.Humidity))
-			if err != nil {
-				m.importer.SetBit(uint64(humid[0]), ID, "humidity")
+			if err4 == nil && weather.Humidity > 10 {
+				m.importer.SetBit(humidID, ID, "humidity")
 			}
 		}
 	}
