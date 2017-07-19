@@ -9,15 +9,15 @@ import (
 )
 
 func (m *Main) testCache() {
-	fmt.Printf("Read %d weather records\n", len(m.weatherCache.data))
-	day, _ := m.weatherCache.GetDailyRecord(time.Date(2010, 4, 3, 0, 0, 0, 0, time.UTC))
+	fmt.Printf("Read %d weather records\n", len(m.WeatherCache.data))
+	day, _ := m.WeatherCache.GetDailyRecord(time.Date(2010, 4, 3, 0, 0, 0, 0, time.UTC))
 	fmt.Printf("%+v\n", day)
-	hour, _ := m.weatherCache.GetHourlyRecord(time.Date(2010, 4, 3, 3, 0, 0, 0, time.UTC))
+	hour, _ := m.WeatherCache.GetHourlyRecord(time.Date(2010, 4, 3, 3, 0, 0, 0, time.UTC))
 	fmt.Printf("%+v\n", hour)
 
-	day, err := m.weatherCache.GetDailyRecord(time.Date(2003, 4, 3, 0, 0, 0, 0, time.UTC))
+	day, err := m.WeatherCache.GetDailyRecord(time.Date(2003, 4, 3, 0, 0, 0, 0, time.UTC))
 	fmt.Printf("%+v %v\n", day, err)
-	hour, err = m.weatherCache.GetHourlyRecord(time.Date(2003, 4, 3, 3, 0, 0, 0, time.UTC))
+	hour, err = m.WeatherCache.GetHourlyRecord(time.Date(2003, 4, 3, 3, 0, 0, 0, time.UTC))
 	fmt.Printf("%+v %v\n", hour, err)
 }
 
@@ -26,20 +26,21 @@ type Main struct {
 	Concurrency int
 	Index       string
 	BufferSize  int
+	URLFile     string
 
 	importer pdk.PilosaImporter
 	client   *pcli.Client
 	frames   map[string]*pcli.Frame
 	index    *pcli.Index
 
-	weatherCache *WeatherCache
+	WeatherCache *WeatherCache
 }
 
 func NewMain() *Main {
 	m := &Main{
 		Concurrency:  1,
 		frames:       make(map[string]*pcli.Frame),
-		weatherCache: NewWeatherCache("usecase/weather/urls.txt"),
+		WeatherCache: NewWeatherCache(),
 	}
 	return m
 }
@@ -77,7 +78,7 @@ func (m *Main) appendWeatherData() {
 			continue
 		}
 
-		weather, err := m.weatherCache.GetHourlyRecord(t)
+		weather, err := m.WeatherCache.GetHourlyRecord(t)
 		if err != nil {
 			fmt.Printf("couldn't get weather data for %v: %v\n", t, err)
 			continue
@@ -157,6 +158,11 @@ func (m *Main) Run() error {
 		if err != nil {
 			return fmt.Errorf("creating frame '%v': %v", frame, err)
 		}
+	}
+
+	err = m.WeatherCache.ReadAll()
+	if err != nil {
+		return err
 	}
 
 	m.appendWeatherData()

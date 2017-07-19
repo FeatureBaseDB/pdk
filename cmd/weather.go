@@ -32,6 +32,7 @@ func NewWeatherCommand(stdin io.Reader, stdout, stderr io.Writer) *cobra.Command
 	flags.IntVarP(&WeatherMain.BufferSize, "buffer-size", "b", 1000000, "Size of buffer for importers - heavily affects memory usage")
 	flags.StringVarP(&WeatherMain.PilosaHost, "pilosa", "p", "localhost:10101", "Pilosa host")
 	flags.StringVarP(&WeatherMain.Index, "index", "i", "taxi", "Pilosa db to write to")
+	flags.StringVarP(&WeatherMain.WeatherCache.URLFile, "url-file", "f", "usecase/weather/urls.txt", "File to get raw data urls from. Urls may be http or local files.")
 
 	return weatherCommand
 }

@@ -8,25 +8,18 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
 )
 
 type WeatherCache struct {
-	jsonPath string
-	URLFile  string
-	data     map[string]HistoryRecord
+	URLFile string
+	data    map[string]HistoryRecord
 }
 
-func NewWeatherCache(path string) *WeatherCache {
+func NewWeatherCache() *WeatherCache {
 	c := &WeatherCache{
-		URLFile: path,
-		data:    make(map[string]HistoryRecord),
-	}
-	err := c.ReadAll()
-	if err != nil {
-		fmt.Println(err)
+		data: make(map[string]HistoryRecord),
 	}
 	return c
 }
@@ -109,39 +102,6 @@ func (c *WeatherCache) ReadAll() error {
 		c.data[datestr] = record.History
 	}
 	return nil
-}
-
-func (c *WeatherCache) ReadAllLocal() error {
-
-	dir, err := os.Open(c.jsonPath)
-	if err != nil {
-		return err
-	}
-	defer dir.Close()
-
-	files, err := dir.Readdir(-1)
-	if err != nil {
-		return err
-	}
-
-	for _, file := range files {
-		// check ends with json
-		filename := filepath.Base(file.Name())
-		datestr := filename[10:18]
-		fullRecord, _ := readWundergroundJsonFile(c.jsonPath + "/" + filename)
-		c.data[datestr] = fullRecord.History
-	}
-
-	return nil
-}
-
-func readWundergroundJsonFile(filename string) (*RecordFile, error) {
-	record := new(RecordFile)
-	raw, _ := ioutil.ReadFile(filename)
-	if err := json.Unmarshal(raw, &record); err != nil {
-		return record, err
-	}
-	return record, nil
 }
 
 type RecordFile struct {
