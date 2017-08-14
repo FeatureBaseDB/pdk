@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"strings"
 
 	"github.com/pilosa/pilosa"
 	"github.com/pilosa/pilosa/pql"
@@ -27,6 +28,9 @@ type Translator interface {
 // mapped from. This function does not return unless there is a problem (like
 // http.ListenAndServe).
 func StartMappingProxy(bind, pilosa string, m Translator) error {
+	if !strings.HasPrefix(pilosa, "http://") {
+		pilosa = "http://" + pilosa
+	}
 	handler := &pilosaForwarder{phost: pilosa, m: m}
 	s := http.Server{
 		Addr:    bind,

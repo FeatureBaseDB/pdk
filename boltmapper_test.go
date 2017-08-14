@@ -31,7 +31,7 @@ func TestBoltTranslator(t *testing.T) {
 		t.Fatalf("unexpected value for hello id in f2: %s", val)
 	}
 
-	err = bt.db.Close()
+	err = bt.Db.Close()
 	if err != nil {
 		t.Fatalf("closing bolt db: %v", err)
 	}
