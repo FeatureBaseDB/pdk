@@ -191,11 +191,11 @@ func (p *pilosaForwarder) mapRequest(body []byte) ([]byte, error) {
 
 func (p *pilosaForwarder) mapCall(call *pql.Call) error {
 	if call.Name == "Bitmap" {
-		id, err := p.m.GetID(call.Args["frame"].(string), call.Args["id"])
+		id, err := p.m.GetID(call.Args["frame"].(string), call.Args["rowID"])
 		if err != nil {
 			return err
 		}
-		call.Args["id"] = id
+		call.Args["rowID"] = id
 		return nil
 	}
 	for _, child := range call.Children {
