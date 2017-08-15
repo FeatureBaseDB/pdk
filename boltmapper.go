@@ -16,7 +16,8 @@ var (
 	valBucket = []byte("valKey")
 )
 
-// BoltTranslator is a Translator which stores the two way val/id mapping in boltdb
+// BoltTranslator is a Translator which stores the two way val/id mapping in
+// boltdb. It only accepts string values to map.
 type BoltTranslator struct {
 	Db     *bolt.DB
 	fmu    sync.RWMutex
@@ -81,7 +82,7 @@ func (bt *BoltTranslator) addFrame(ib, vb *bolt.Bucket, frame string) (fib, fvb 
 }
 
 // Get returns the previously mapped to the monotonic id generated from GetID.
-// For BoltTranslator, val will always be a byte slice.
+// For BoltTranslator, val will always be a string.
 func (bt *BoltTranslator) Get(frame string, id uint64) (val interface{}) {
 	bt.fmu.RLock()
 	if _, ok := bt.frames[frame]; !ok {
@@ -99,10 +100,10 @@ func (bt *BoltTranslator) Get(frame string, id uint64) (val interface{}) {
 	if err != nil {
 		panic(err)
 	}
-	return val
+	return string(val.([]byte))
 }
 
-// GetID maps val (which must be a string or byte slice) to a monotonic id
+// GetID maps val (which must be a string) to a monotonic id.
 func (bt *BoltTranslator) GetID(frame string, val interface{}) (id uint64, err error) {
 	// ensure frame existence
 	bt.fmu.RLock()
@@ -122,15 +123,11 @@ func (bt *BoltTranslator) GetID(frame string, val interface{}) (id uint64, err e
 	}
 
 	// check that val is of a supported type
-	var bsval []byte
-	switch tval := val.(type) {
-	case string:
-		bsval = []byte(tval)
-	case []byte:
-		bsval = tval
-	default:
-		return 0, errors.Errorf("val %v of type %T for frame %v not supported by BoltTranslator. Type must be string or []byte", tval, tval, frame)
+	sval, ok := val.(string)
+	if !ok {
+		return 0, errors.Errorf("val %v of type %T for frame %v not supported by BoltTranslator - must be a string. ", val, val, frame)
 	}
+	bsval := []byte(sval)
 
 	// look up to see if this val is already mapped to an id
 	var ret []byte
