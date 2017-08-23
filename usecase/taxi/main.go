@@ -77,11 +77,12 @@ use case implementation
 // TODO read ParserMapper config from file (cant do CustomMapper)
 
 type Main struct {
-	PilosaHost  string
-	URLFile     string
-	Concurrency int
-	Index       string
-	BufferSize  int
+	PilosaHost       string
+	URLFile          string
+	FetchConcurrency int
+	Concurrency      int
+	Index            string
+	BufferSize       int
 
 	importer  pdk.PilosaImporter
 	urls      []string
@@ -108,9 +109,10 @@ type Main struct {
 
 func NewMain() *Main {
 	m := &Main{
-		Concurrency: 1,
-		nexter:      &Nexter{},
-		urls:        make([]string, 0),
+		Concurrency:      1,
+		FetchConcurrency: 1,
+		nexter:           &Nexter{},
+		urls:             make([]string, 0),
 
 		totalRecs:     &Counter{},
 		skippedRecs:   &Counter{},
@@ -167,7 +169,7 @@ func (m *Main) Run() error {
 	ticker := m.printStats()
 
 	urls := make(chan string, 100)
-	records := make(chan Record, 1000)
+	records := make(chan Record, 10000)
 
 	go func() {
 		for _, url := range m.urls {
@@ -190,7 +192,7 @@ func (m *Main) Run() error {
 	}()
 
 	var wg sync.WaitGroup
-	for i := 0; i < 1; i++ {
+	for i := 0; i < m.FetchConcurrency; i++ {
 		wg.Add(1)
 		go func() {
 			m.fetch(urls, records)
