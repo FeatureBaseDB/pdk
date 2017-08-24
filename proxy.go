@@ -155,7 +155,13 @@ func (p *pilosaForwarder) mapResult(frame string, res interface{}) (mappedRes in
 				if !(isKeyFloat && isCountFloat) {
 					return nil, fmt.Errorf("expected pilosa.Pair, but have wrong value types: got %v", pair)
 				}
-				mr[i].Key = p.m.Get(frame, uint64(keyFloat))
+				keyVal := p.m.Get(frame, uint64(keyFloat))
+				switch kv := keyVal.(type) {
+				case []byte:
+					mr[i].Key = string(kv)
+				default:
+					mr[i].Key = keyVal
+				}
 				mr[i].Count = uint64(countFloat)
 			} else {
 				return nil, fmt.Errorf("unknown type in inner slice: %v", intpair)
