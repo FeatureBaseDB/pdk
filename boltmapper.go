@@ -82,7 +82,7 @@ func (bt *BoltTranslator) addFrame(ib, vb *bolt.Bucket, frame string) (fib, fvb 
 }
 
 // Get returns the previously mapped to the monotonic id generated from GetID.
-// For BoltTranslator, val will always be a string.
+// For BoltTranslator, val will always be a []byte.
 func (bt *BoltTranslator) Get(frame string, id uint64) (val interface{}) {
 	bt.fmu.RLock()
 	if _, ok := bt.frames[frame]; !ok {
@@ -100,10 +100,10 @@ func (bt *BoltTranslator) Get(frame string, id uint64) (val interface{}) {
 	if err != nil {
 		panic(err)
 	}
-	return string(val.([]byte))
+	return val
 }
 
-// GetID maps val (which must be a string) to a monotonic id.
+// GetID maps val (which must be a byte slice) to a monotonic id.
 func (bt *BoltTranslator) GetID(frame string, val interface{}) (id uint64, err error) {
 	// ensure frame existence
 	bt.fmu.RLock()
@@ -123,11 +123,10 @@ func (bt *BoltTranslator) GetID(frame string, val interface{}) (id uint64, err e
 	}
 
 	// check that val is of a supported type
-	sval, ok := val.(string)
+	bsval, ok := val.([]byte)
 	if !ok {
-		return 0, errors.Errorf("val %v of type %T for frame %v not supported by BoltTranslator - must be a string. ", val, val, frame)
+		return 0, errors.Errorf("val %v of type %T for frame %v not supported by BoltTranslator - must be a []byte. ", val, val, frame)
 	}
-	bsval := []byte(sval)
 
 	// look up to see if this val is already mapped to an id
 	var ret []byte
@@ -175,7 +174,7 @@ func (bt *BoltTranslator) GetID(frame string, val interface{}) (id uint64, err e
 	return id, nil
 }
 
-func (bt *BoltTranslator) BulkAdd(frame string, values []string) error {
+func (bt *BoltTranslator) BulkAdd(frame string, values [][]byte) error {
 	var batchSize uint64 = 10000
 	var batch uint64 = 0
 	for batch*batchSize < uint64(len(values)) {
@@ -186,7 +185,7 @@ func (bt *BoltTranslator) BulkAdd(frame string, values []string) error {
 			for i := batch * batchSize; i < (batch+1)*batchSize && i < uint64(len(values)); i++ {
 				idBytes := make([]byte, 8)
 				binary.BigEndian.PutUint64(idBytes, i)
-				valBytes := []byte(values[i])
+				valBytes := values[i]
 				err := fib.Put(idBytes, valBytes)
 				if err != nil {
 					return errors.Wrap(err, "putting into idKey bucket")
