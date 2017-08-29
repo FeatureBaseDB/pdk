@@ -1,7 +1,6 @@
 package pdk
 
 import (
-	"fmt"
 	"sync"
 	"time"
 
@@ -32,15 +31,14 @@ func (bt *BoltTranslator) Close() error {
 	return bt.Db.Close()
 }
 
-func NewBoltTranslator(filename string, frames ...string) (bt *BoltTranslator, err error) { //TODO frames handling
+func NewBoltTranslator(filename string, frames ...string) (bt *BoltTranslator, err error) {
 	bt = &BoltTranslator{
 		frames: make(map[string]struct{}),
 	}
-	bt.Db, err = bolt.Open(filename, 0600, &bolt.Options{Timeout: 1 * time.Second, InitialMmapSize: 500000000, NoGrowSync: true})
+	bt.Db, err = bolt.Open(filename, 0600, &bolt.Options{Timeout: 1 * time.Second, InitialMmapSize: 50000000, NoGrowSync: true})
 	if err != nil {
 		return nil, errors.Wrapf(err, "opening db file '%v'", filename)
 	}
-	bt.Db.NoSync = true
 	bt.Db.MaxBatchDelay = 400 * time.Microsecond
 	err = bt.Db.Update(func(tx *bolt.Tx) error {
 		ib, err := tx.CreateBucketIfNotExists(idBucket)
@@ -133,16 +131,6 @@ func (bt *BoltTranslator) GetID(frame string, val interface{}) (id uint64, err e
 	err = bt.Db.View(func(tx *bolt.Tx) error {
 		vb := tx.Bucket(valBucket)
 		fvb := vb.Bucket([]byte(frame))
-		if fvb == nil {
-			fmt.Println("valBucket - ", frame)
-			err2 := vb.ForEach(func(name []byte, val []byte) error {
-				fmt.Println("BUCKET!!", string(name), string(val))
-				return nil
-			})
-			if err2 != nil {
-				fmt.Println("fetching vb buckets: ", err2)
-			}
-		}
 		ret = fvb.Get(bsval)
 		return nil
 	})
