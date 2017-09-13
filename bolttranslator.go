@@ -79,8 +79,8 @@ func (bt *BoltTranslator) addFrame(ib, vb *bolt.Bucket, frame string) (fib, fvb 
 	return fib, fvb, nil
 }
 
-// Get returns the previously mapped to the monotonic id generated from GetID.
-// For BoltTranslator, val will always be a []byte.
+// Get returns the previously mapped value to the monotonic id generated from
+// GetID. For BoltTranslator, val will always be a []byte.
 func (bt *BoltTranslator) Get(frame string, id uint64) (val interface{}) {
 	bt.fmu.RLock()
 	if _, ok := bt.frames[frame]; !ok {
@@ -105,8 +105,9 @@ func (bt *BoltTranslator) Get(frame string, id uint64) (val interface{}) {
 func (bt *BoltTranslator) GetID(frame string, val interface{}) (id uint64, err error) {
 	// ensure frame existence
 	bt.fmu.RLock()
-	if _, ok := bt.frames[frame]; !ok {
-		bt.fmu.RUnlock()
+	_, ok := bt.frames[frame]
+	bt.fmu.RUnlock()
+	if !ok {
 		err = bt.Db.Update(func(tx *bolt.Tx) error {
 			ib := tx.Bucket(idBucket)
 			vb := tx.Bucket(valBucket)
@@ -116,8 +117,6 @@ func (bt *BoltTranslator) GetID(frame string, val interface{}) (id uint64, err e
 		if err != nil {
 			return 0, errors.Wrap(err, "adding frames in GetID")
 		}
-	} else {
-		bt.fmu.RUnlock()
 	}
 
 	// check that val is of a supported type
