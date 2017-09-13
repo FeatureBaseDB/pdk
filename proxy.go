@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"strings"
 
 	"github.com/pilosa/pilosa"
 	"github.com/pilosa/pilosa/pql"
@@ -27,6 +28,9 @@ type Translator interface {
 // mapped from. This function does not return unless there is a problem (like
 // http.ListenAndServe).
 func StartMappingProxy(bind, pilosa string, m Translator) error {
+	if !strings.HasPrefix(pilosa, "http://") {
+		pilosa = "http://" + pilosa
+	}
 	handler := &pilosaForwarder{phost: pilosa, m: m}
 	s := http.Server{
 		Addr:    bind,
@@ -151,7 +155,13 @@ func (p *pilosaForwarder) mapResult(frame string, res interface{}) (mappedRes in
 				if !(isKeyFloat && isCountFloat) {
 					return nil, fmt.Errorf("expected pilosa.Pair, but have wrong value types: got %v", pair)
 				}
-				mr[i].Key = p.m.Get(frame, uint64(keyFloat))
+				keyVal := p.m.Get(frame, uint64(keyFloat))
+				switch kv := keyVal.(type) {
+				case []byte:
+					mr[i].Key = string(kv)
+				default:
+					mr[i].Key = keyVal
+				}
 				mr[i].Count = uint64(countFloat)
 			} else {
 				return nil, fmt.Errorf("unknown type in inner slice: %v", intpair)
@@ -187,11 +197,11 @@ func (p *pilosaForwarder) mapRequest(body []byte) ([]byte, error) {
 
 func (p *pilosaForwarder) mapCall(call *pql.Call) error {
 	if call.Name == "Bitmap" {
-		id, err := p.m.GetID(call.Args["frame"].(string), call.Args["id"])
+		id, err := p.m.GetID(call.Args["frame"].(string), call.Args["rowID"])
 		if err != nil {
 			return err
 		}
-		call.Args["id"] = id
+		call.Args["rowID"] = id
 		return nil
 	}
 	for _, child := range call.Children {

@@ -63,7 +63,7 @@ func (m *Main) Run() error {
 	defer m.client.Close()
 
 	go func() {
-		log.Fatal(pdk.StartMappingProxy(m.BindAddr, "http://"+m.PilosaHost, m))
+		log.Fatal(pdk.StartMappingProxy(m.BindAddr, m.PilosaHost, m))
 	}()
 
 	// print total captured traffic when killed via Ctrl-c
