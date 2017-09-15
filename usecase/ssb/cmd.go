@@ -2,12 +2,12 @@ package ssb
 
 import (
 	"bufio"
-	"bytes"
 	"fmt"
 	"io"
 	"log"
 	"os"
 	"strconv"
+	"strings"
 	"sync"
 
 	"github.com/pilosa/pdk"
@@ -60,7 +60,7 @@ func (m *Main) Run() (err error) {
 
 	go func() {
 		m.runReaders(rc, custs, parts, supps, dates)
-		m.index.Close() // close import channels
+		close(rc)
 	}()
 
 	log.Println("running mappers")
@@ -80,6 +80,7 @@ func (m *Main) runMappers(rc <-chan *record) {
 		}()
 	}
 	wg.Wait()
+	m.index.Close() // close import channels
 }
 
 func (m *Main) mapRecords(rc <-chan *record) {
@@ -218,23 +219,23 @@ func (m *Main) runReaders(rc chan<- *record, custs map[int]customer, parts map[i
 func parseLineOrder(r io.Reader, rc chan<- *record, custs map[int]customer, parts map[int]part, supps map[int]supplier, dates map[int]date) {
 	scanner := bufio.NewScanner(r)
 	for scanner.Scan() {
-		line := bytes.Split(scanner.Bytes(), []byte{'|'})
-		custkey, err := strconv.Atoi(string(line[2]))
+		line := strings.Split(scanner.Text(), "|")
+		custkey, err := strconv.Atoi(line[2])
 		if err != nil {
 			log.Printf("Lineorder line %v. Converting cust key to int: %v", line, err)
 			continue
 		}
-		partkey, err := strconv.Atoi(string(line[3]))
+		partkey, err := strconv.Atoi(line[3])
 		if err != nil {
 			log.Printf("Lineorder line %v. Converting supplier key to int: %v", line, err)
 			continue
 		}
-		suppkey, err := strconv.Atoi(string(line[4]))
+		suppkey, err := strconv.Atoi(line[4])
 		if err != nil {
 			log.Printf("Lineorder line %v. Converting part key to int: %v", line, err)
 			continue
 		}
-		datekey, err := strconv.Atoi(string(line[5]))
+		datekey, err := strconv.Atoi(line[5])
 		if err != nil {
 			log.Printf("Lineorder line %v. Converting date key to int: %v", line, err)
 			continue
@@ -247,33 +248,30 @@ func parseLineOrder(r io.Reader, rc chan<- *record, custs map[int]customer, part
 			log.Printf("FK lookup fail: %v:%v, %v:%v, %v:%v, %v:%v", custkey, okcust, partkey, okpar, suppkey, oksupp, datekey, okdat)
 			continue
 		}
-		quantity, err := strconv.Atoi(string(line[8]))
+		quantity, err := strconv.Atoi(line[8])
 		if err != nil {
 			log.Printf("Lineorder line %v. Converting quantity to int: %v", line, err)
 			continue
 		}
-		extendedprice, err := strconv.Atoi(string(line[9]))
+		extendedprice, err := strconv.Atoi(line[9])
 		if err != nil {
 			log.Printf("Lineorder line %v. Converting extendedprice to int: %v", line, err)
 			continue
 		}
-		discount, err := strconv.Atoi(string(line[11]))
+		discount, err := strconv.Atoi(line[11])
 		if err != nil {
 			log.Printf("Lineorder line %v. Converting discount to int: %v", line, err)
 			continue
 		}
-		revenue, err := strconv.Atoi(string(line[12]))
+		revenue, err := strconv.Atoi(line[12])
 		if err != nil {
 			log.Printf("Lineorder line %v. Converting revenue to int: %v", line, err)
 			continue
 		}
-		supplycost, err := strconv.Atoi(string(line[13]))
+		supplycost, err := strconv.Atoi(line[13])
 		if err != nil {
 			log.Printf("Lineorder line %v. Converting supplycost to int: %v", line, err)
 			continue
-		}
-		if bytes.Contains(dat.month, []byte(",")) {
-			log.Printf("got bad date for lineorder: %s, date: %v", line, dat)
 		}
 
 		rc <- &record{
@@ -407,17 +405,17 @@ func mapCustomer(f io.Reader, sf int) map[int]customer {
 	i := -1
 	for scanner.Scan() {
 		i++
-		line := bytes.Split(scanner.Bytes(), []byte{'|'})
+		line := strings.Split(scanner.Text(), "|")
 		key, err := strconv.Atoi(string(line[0]))
 		if err != nil {
 			log.Printf("Line %v of customer table: %v. Converting key to int: %v", i, line, err)
 			continue
 		}
 		cmap[key] = customer{
-			city:       line[3],
-			nation:     line[4],
-			region:     line[5],
-			mktsegment: line[7],
+			city:       []byte(line[3]),
+			nation:     []byte(line[4]),
+			region:     []byte(line[5]),
+			mktsegment: []byte(line[7]),
 		}
 	}
 	return cmap
@@ -435,16 +433,16 @@ func mapSupplier(f io.Reader, sf int) map[int]supplier {
 	i := -1
 	for scanner.Scan() {
 		i++
-		line := bytes.Split(scanner.Bytes(), []byte{'|'})
+		line := strings.Split(scanner.Text(), "|")
 		key, err := strconv.Atoi(string(line[0]))
 		if err != nil {
 			log.Printf("Line %v of supplier table: %v. Converting key to int: %v", i, line, err)
 			continue
 		}
 		cmap[key] = supplier{
-			city:   line[3],
-			nation: line[4],
-			region: line[5],
+			city:   []byte(line[3]),
+			nation: []byte(line[4]),
+			region: []byte(line[5]),
 		}
 	}
 	return cmap
@@ -462,16 +460,16 @@ func mapPart(f io.Reader, sf int) map[int]part {
 	i := -1
 	for scanner.Scan() {
 		i++
-		line := bytes.Split(scanner.Bytes(), []byte{'|'})
-		key, err := strconv.Atoi(string(line[0]))
+		line := strings.Split(scanner.Text(), "|")
+		key, err := strconv.Atoi(line[0])
 		if err != nil {
 			log.Printf("Line %v of part table: %v. Converting key to int: %v", i, line, err)
 			continue
 		}
 		cmap[key] = part{
-			mfgr:     line[2],
-			category: line[3],
-			brand1:   line[4],
+			mfgr:     []byte(line[2]),
+			category: []byte(line[3]),
+			brand1:   []byte(line[4]),
 		}
 	}
 	return cmap
@@ -493,27 +491,25 @@ func mapDate(f io.Reader, sf int) map[int]date {
 	i := -1
 	for scanner.Scan() {
 		i++
-		line := bytes.Split(scanner.Bytes(), []byte{'|'})
-		key, err := strconv.Atoi(string(line[0]))
+		line := strings.Split(scanner.Text(), "|")
+		key, err := strconv.Atoi(line[0])
 		if err != nil {
 			log.Printf("Line %v of date table: %v. Converting key to int: %v", i, line, err)
 			continue
 		}
-		year, err := strconv.Atoi(string(line[4]))
+		year, err := strconv.Atoi(line[4])
 		if err != nil {
 			log.Printf("Line %v of date table: %v. Converting year to int: %v", i, line, err)
 			continue
 		}
-		weeknum, err := strconv.Atoi(string(line[11]))
+		weeknum, err := strconv.Atoi(line[11])
 		if err != nil {
 			log.Printf("Line %v of date table: %v. Converting weeknum to int: %v", i, line, err)
 			continue
 		}
-		month := make([]byte, len(line[3]))
-		copy(month, line[3])
 		d := date{
 			year:    year,
-			month:   month,
+			month:   []byte(line[3]),
 			weeknum: weeknum,
 		}
 		cmap[key] = d
