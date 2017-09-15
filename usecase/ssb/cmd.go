@@ -107,6 +107,18 @@ func (m *Main) mapRecords(rc <-chan *record) {
 		}
 		m.index.AddBit("lo_weeknum", col, id)
 
+		id, err = m.trans.GetID("lo_discount_b", rec.lo_discount)
+		if err != nil {
+			log.Printf("Couldn't map record col: %v, rec: %v, err: %v", col, rec, err)
+		}
+		m.index.AddBit("lo_discount_b", col, id)
+
+		id, err = m.trans.GetID("lo_quantity_b", rec.lo_quantity)
+		if err != nil {
+			log.Printf("Couldn't map record col: %v, rec: %v, err: %v", col, rec, err)
+		}
+		m.index.AddBit("lo_quantity_b", col, id)
+
 		m.index.AddValue("lo_quantity", col, uint64(rec.lo_quantity))
 		m.index.AddValue("lo_extendedprice", col, uint64(rec.lo_extendedprice))
 		m.index.AddValue("lo_discount", col, uint64(rec.lo_discount))
@@ -365,6 +377,8 @@ var frames = []pdk.FrameSpec{
 	pdk.NewRankedFrameSpec("lo_year", 10),
 	pdk.NewRankedFrameSpec("lo_month", 12),
 	pdk.NewRankedFrameSpec("lo_weeknum", 52),
+	pdk.NewRankedFrameSpec("lo_quantity_b", 65),
+	pdk.NewRankedFrameSpec("lo_discount_b", 20),
 	pdk.NewFieldFrameSpec("lo_quantity", 0, 63),
 	pdk.NewFieldFrameSpec("lo_extendedprice", 0, 65535),
 	pdk.NewFieldFrameSpec("lo_discount", 0, 15),

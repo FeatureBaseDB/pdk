@@ -28,7 +28,7 @@ func (t *Translator) Get(frame string, id uint64) interface{} {
 		return string(val.([]byte))
 	case "lo_month":
 		return monthsSlice[id]
-	case "lo_weeknum", "lo_year":
+	case "lo_weeknum", "lo_year", "lo_quantity_b", "lo_discount_b":
 		return id
 	default:
 		log.Printf("Unimplemented in ssb.Translator.Get frame: %v, id: %v", frame, id)
@@ -47,10 +47,10 @@ func (t *Translator) GetID(frame string, val interface{}) (uint64, error) {
 			return 0, fmt.Errorf("Val '%s' is not a month", val)
 		}
 		return m, nil
-	case "lo_weeknum":
+	case "lo_weeknum", "lo_quantity_b", "lo_discount_b":
 		val8, ok := val.(uint8)
 		if !ok {
-			return 0, fmt.Errorf("Val '%v' is not a valid weeknum (not uint8)", val)
+			return 0, fmt.Errorf("Val '%v' is not a valid weeknum/quantity/discount (not uint8)", val)
 		}
 		return uint64(val8), nil
 	case "lo_year":
