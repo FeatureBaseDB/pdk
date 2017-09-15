@@ -174,20 +174,20 @@ type record struct {
 	lo_revenue       uint16
 	lo_supplycost    uint32
 
-	c_city   []byte
-	c_nation []byte
-	c_region []byte
+	c_city   string
+	c_nation string
+	c_region string
 
-	s_city   []byte
-	s_nation []byte
-	s_region []byte
+	s_city   string
+	s_nation string
+	s_region string
 
-	p_mfgr     []byte
-	p_category []byte
-	p_brand1   []byte
+	p_mfgr     string
+	p_category string
+	p_brand1   string
 
 	order_year    uint16
-	order_month   []byte
+	order_month   string
 	order_weeknum uint8
 }
 
@@ -393,10 +393,10 @@ var frames = []pdk.FrameSpec{
 }
 
 type customer struct {
-	city       []byte
-	nation     []byte
-	region     []byte
-	mktsegment []byte
+	city       string
+	nation     string
+	region     string
+	mktsegment string
 }
 
 func mapCustomer(f io.Reader, sf int) map[int]customer {
@@ -412,19 +412,19 @@ func mapCustomer(f io.Reader, sf int) map[int]customer {
 			continue
 		}
 		cmap[key] = customer{
-			city:       []byte(line[3]),
-			nation:     []byte(line[4]),
-			region:     []byte(line[5]),
-			mktsegment: []byte(line[7]),
+			city:       line[3],
+			nation:     line[4],
+			region:     line[5],
+			mktsegment: line[7],
 		}
 	}
 	return cmap
 }
 
 type supplier struct {
-	city   []byte
-	nation []byte
-	region []byte
+	city   string
+	nation string
+	region string
 }
 
 func mapSupplier(f io.Reader, sf int) map[int]supplier {
@@ -440,18 +440,18 @@ func mapSupplier(f io.Reader, sf int) map[int]supplier {
 			continue
 		}
 		cmap[key] = supplier{
-			city:   []byte(line[3]),
-			nation: []byte(line[4]),
-			region: []byte(line[5]),
+			city:   line[3],
+			nation: line[4],
+			region: line[5],
 		}
 	}
 	return cmap
 }
 
 type part struct {
-	mfgr     []byte
-	category []byte
-	brand1   []byte
+	mfgr     string
+	category string
+	brand1   string
 }
 
 func mapPart(f io.Reader, sf int) map[int]part {
@@ -467,9 +467,9 @@ func mapPart(f io.Reader, sf int) map[int]part {
 			continue
 		}
 		cmap[key] = part{
-			mfgr:     []byte(line[2]),
-			category: []byte(line[3]),
-			brand1:   []byte(line[4]),
+			mfgr:     line[2],
+			category: line[3],
+			brand1:   line[4],
 		}
 	}
 	return cmap
@@ -477,7 +477,7 @@ func mapPart(f io.Reader, sf int) map[int]part {
 
 type date struct {
 	year    int
-	month   []byte
+	month   string
 	weeknum int
 }
 
@@ -509,7 +509,7 @@ func mapDate(f io.Reader, sf int) map[int]date {
 		}
 		d := date{
 			year:    year,
-			month:   []byte(line[3]),
+			month:   line[3],
 			weeknum: weeknum,
 		}
 		cmap[key] = d

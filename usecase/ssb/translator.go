@@ -24,7 +24,8 @@ func NewTranslator(storedir string) (*Translator, error) {
 func (t *Translator) Get(frame string, id uint64) interface{} {
 	switch frame {
 	case "c_city", "c_nation", "c_region", "s_city", "s_nation", "s_region", "p_mfgr", "p_category", "p_brand1":
-		return t.lt.Get(frame, id)
+		val := t.lt.Get(frame, id)
+		return string(val.([]byte))
 	case "lo_month":
 		return monthsSlice[id]
 	case "lo_weeknum", "lo_year":
@@ -68,10 +69,10 @@ var monthsSlice = []string{
 func (t *Translator) GetID(frame string, val interface{}) (uint64, error) {
 	switch frame {
 	case "c_city", "c_nation", "c_region", "s_city", "s_nation", "s_region", "p_mfgr", "p_category", "p_brand1":
-		return t.lt.GetID(frame, val)
+		return t.lt.GetID(frame, []byte(val.(string)))
 	case "lo_month":
-		valbytes := val.([]byte)
-		m, ok := months[string(valbytes)]
+		valstring := val.(string)
+		m, ok := months[valstring]
 		if !ok {
 			return 0, fmt.Errorf("Val '%s' is not a month", val)
 		}
