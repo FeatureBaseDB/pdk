@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/pilosa/pdk"
 	"github.com/pkg/errors"
@@ -223,6 +224,8 @@ func (m *Main) runReaders(rc chan<- *record, custs map[int]customer, parts map[i
 
 func parseLineOrder(r io.Reader, rc chan<- *record, custs map[int]customer, parts map[int]part, supps map[int]supplier, dates map[int]date) {
 	i := -1
+	start := time.Now()
+	last := start
 	scanner := bufio.NewScanner(r)
 	for scanner.Scan() {
 		i++
@@ -304,8 +307,13 @@ func parseLineOrder(r io.Reader, rc chan<- *record, custs map[int]customer, part
 			order_month:   dat.month,
 			order_weeknum: uint8(dat.weeknum),
 		}
-		if i%500000 == 0 {
-			log.Println("record chan length: %v", len(rc))
+		if i%1000000 == 0 && i > 1 {
+			now := time.Now()
+			elapsed := now.Sub(start)
+			overallThroughput := int(float64(i) / (float64(elapsed) / float64(time.Second)))
+			lastM := int(1000000.0 / (float64(now.Sub(last)) / float64(time.Second)))
+			log.Printf("Elapsed: %v, recs/s: %v, lastMil: %v, recordBuffer: %v", elapsed, overallThroughput, lastM, len(rc))
+			last = now
 		}
 	}
 	if err := scanner.Err(); err != nil {
