@@ -1,8 +1,12 @@
 package pdk
 
 import (
+	"bufio"
+	"bytes"
 	"io"
 	"log"
+	"os"
+	"strconv"
 	"time"
 
 	pcli "github.com/pilosa/go-pilosa"
@@ -13,6 +17,65 @@ type Indexer interface {
 	AddBit(frame string, col uint64, row uint64)
 	AddValue(frame string, col uint64, val uint64)
 	Close() error
+}
+
+type CsvLoggingIndexer struct {
+	fileCache     map[string]*bufio.Writer
+	fileDir       string
+	pilosaIndexer Indexer
+}
+
+func NewCSVLoggerIndexer(baseDir string) Indexer {
+	p := new(CsvLoggingIndexer)
+	//ensure path exists
+	p.fileCache = make(map[string]*bufio.Writer)
+	os.MkdirAll(baseDir, os.ModePerm)
+	p.fileDir = baseDir
+	p.pilosaIndexer = NewIndex()
+	return p
+}
+
+func (fl *CsvLoggingIndexer) getWriter(name string) (*bufio.Writer, error) {
+	w, cached := fl.fileCache[name]
+	if !cached {
+		path := fl.fileDir + "/" + name + ".csv"
+		f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, os.FileMode(int(0664)))
+		if err != nil {
+			return nil, err
+		}
+		//TODO add compression option
+		x := bufio.NewWriter(f)
+		fl.fileCache[name] = x
+		return x, nil
+	}
+	return w, nil
+}
+
+func (cfl *CsvLoggingIndexer) AddBit(frame string, row, col uint64) {
+	w, _ := cfl.getWriter(frame)
+	line := new(bytes.Buffer)
+	line.WriteString(strconv.FormatUint(row, 10))
+	line.WriteString(",")
+	line.WriteString(strconv.FormatUint(col, 10))
+	w.Write(line.Bytes())
+	cfl.pilosaIndexer.AddBit(frame, row, col)
+}
+
+func (cfl *CsvLoggingIndexer) AddValue(frame string, col uint64, val uint64) {
+	w, _ := cfl.getWriter(frame + "-" + frame) //TODO hack for fieldname
+	line := new(bytes.Buffer)
+	line.WriteString(strconv.FormatUint(col, 10))
+	line.WriteString(",")
+	line.WriteString(strconv.FormatUint(val, 10))
+	w.Write(line.Bytes())
+	cfl.pilosaIndexer.AddValue(frame, col, val)
+}
+
+func (fl *CsvLoggingIndexer) Close() error {
+	for _, f := range fl.fileCache {
+		f.Flush()
+	}
+	return nil
 }
 
 type Index struct {
