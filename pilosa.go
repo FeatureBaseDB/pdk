@@ -95,7 +95,7 @@ func NewFieldFrameSpec(name string, min int, max int) FrameSpec {
 }
 
 func SetupPilosa(hosts []string, index string, frames []FrameSpec) (Indexer, error) {
-	var BATCHSIZE uint = 100000
+	var BATCHSIZE uint = 1000000
 	indexer := NewIndex()
 	client, err := pcli.NewClientFromAddresses(hosts,
 		&pcli.ClientOptions{SocketTimeout: time.Minute * 60,
@@ -153,7 +153,7 @@ func SetupPilosa(hosts []string, index string, frames []FrameSpec) (Indexer, err
 }
 
 func NewChanBitIterator() ChanBitIterator {
-	return make(chan pcli.Bit, 100000)
+	return make(chan pcli.Bit, 200000)
 }
 
 type ChanBitIterator chan pcli.Bit
@@ -167,7 +167,7 @@ func (c ChanBitIterator) NextBit() (pcli.Bit, error) {
 }
 
 func NewChanValIterator() ChanValIterator {
-	return make(chan pcli.FieldValue, 100000)
+	return make(chan pcli.FieldValue, 200000)
 }
 
 type ChanValIterator chan pcli.FieldValue

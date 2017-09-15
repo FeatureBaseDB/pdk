@@ -36,6 +36,34 @@ func (t *Translator) Get(frame string, id uint64) interface{} {
 	}
 }
 
+func (t *Translator) GetID(frame string, val interface{}) (uint64, error) {
+	switch frame {
+	case "c_city", "c_nation", "c_region", "s_city", "s_nation", "s_region", "p_mfgr", "p_category", "p_brand1":
+		return t.lt.GetID(frame, []byte(val.(string)))
+	case "lo_month":
+		valstring := val.(string)
+		m, ok := months[valstring]
+		if !ok {
+			return 0, fmt.Errorf("Val '%s' is not a month", val)
+		}
+		return m, nil
+	case "lo_weeknum":
+		val8, ok := val.(uint8)
+		if !ok {
+			return 0, fmt.Errorf("Val '%v' is not a valid weeknum (not uint8)", val)
+		}
+		return uint64(val8), nil
+	case "lo_year":
+		val16, ok := val.(uint16)
+		if !ok {
+			return 0, fmt.Errorf("Val '%v' is not a valid year (not uint16)", val)
+		}
+		return uint64(val16), nil
+	default:
+		return 0, fmt.Errorf("Unimplemented in ssb.Translator.GetID frame: %v, val: %v", frame, val)
+	}
+}
+
 var months = map[string]uint64{
 	"January":   0,
 	"February":  1,
@@ -64,32 +92,4 @@ var monthsSlice = []string{
 	"Octorber",
 	"November",
 	"December",
-}
-
-func (t *Translator) GetID(frame string, val interface{}) (uint64, error) {
-	switch frame {
-	case "c_city", "c_nation", "c_region", "s_city", "s_nation", "s_region", "p_mfgr", "p_category", "p_brand1":
-		return t.lt.GetID(frame, []byte(val.(string)))
-	case "lo_month":
-		valstring := val.(string)
-		m, ok := months[valstring]
-		if !ok {
-			return 0, fmt.Errorf("Val '%s' is not a month", val)
-		}
-		return m, nil
-	case "lo_weeknum":
-		val8, ok := val.(uint8)
-		if !ok {
-			return 0, fmt.Errorf("Val '%v' is not a valid weeknum (not uint8)", val)
-		}
-		return uint64(val8), nil
-	case "lo_year":
-		val16, ok := val.(uint16)
-		if !ok {
-			return 0, fmt.Errorf("Val '%v' is not a valid year (not uint16)", val)
-		}
-		return uint64(val16), nil
-	default:
-		return 0, fmt.Errorf("Unimplemented in ssb.Translator.GetID frame: %v, val: %v", frame, val)
-	}
 }

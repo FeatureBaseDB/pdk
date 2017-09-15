@@ -19,8 +19,9 @@ type Main struct {
 	Hosts           []string
 	Index           string
 	SFHint          int
-	ReadConcurrency int // TODO tweak for perf
-	MapConcurrency  int // TODO tweak for perf
+	ReadConcurrency int
+	MapConcurrency  int
+	RecordBuf       int
 
 	trans  pdk.Translator
 	index  pdk.Indexer
@@ -35,7 +36,8 @@ func NewMain() (*Main, error) {
 	return &Main{
 		Index:           "ssb",
 		ReadConcurrency: 1,
-		MapConcurrency:  1,
+		MapConcurrency:  4,
+		RecordBuf:       1000000,
 
 		nexter: pdk.NewNexter(),
 		trans:  trans,
@@ -56,7 +58,7 @@ func (m *Main) Run() (err error) {
 	}
 
 	log.Println("reading lineorder table.")
-	rc := make(chan *record, 0) // TODO tweak for perf
+	rc := make(chan *record, m.RecordBuf) // TODO tweak for perf
 
 	go func() {
 		m.runReaders(rc, custs, parts, supps, dates)
@@ -110,6 +112,11 @@ func (m *Main) mapRecords(rc <-chan *record) {
 		m.index.AddValue("lo_revenue", col, uint64(rec.lo_revenue))
 		m.index.AddValue("lo_supplycost", col, uint64(rec.lo_supplycost))
 
+		revenueComputed := uint64(float64(rec.lo_extendedprice) * float64(rec.lo_discount) * 0.01)
+		m.index.AddValue("lo_revenue_computed", col, revenueComputed)
+		profitComputed := uint32(rec.lo_revenue) - rec.lo_supplycost
+		m.index.AddValue("lo_profit", col, uint64(profitComputed))
+
 		id, err = m.trans.GetID("c_city", rec.c_city)
 		if err != nil {
 			log.Printf("Couldn't map record col: %v, rec: %v, err: %v", col, rec, err)
@@ -161,8 +168,6 @@ func (m *Main) mapRecords(rc <-chan *record) {
 			log.Printf("Couldn't map record col: %v, rec: %v, err: %v", col, rec, err)
 		}
 		m.index.AddBit("p_brand1", col, id)
-
-		// TODO add computed fields - profit and revenue_computed
 	}
 }
 
@@ -217,8 +222,10 @@ func (m *Main) runReaders(rc chan<- *record, custs map[int]customer, parts map[i
 }
 
 func parseLineOrder(r io.Reader, rc chan<- *record, custs map[int]customer, parts map[int]part, supps map[int]supplier, dates map[int]date) {
+	i := -1
 	scanner := bufio.NewScanner(r)
 	for scanner.Scan() {
+		i++
 		line := strings.Split(scanner.Text(), "|")
 		custkey, err := strconv.Atoi(line[2])
 		if err != nil {
@@ -296,6 +303,9 @@ func parseLineOrder(r io.Reader, rc chan<- *record, custs map[int]customer, part
 			order_year:    uint16(dat.year),
 			order_month:   dat.month,
 			order_weeknum: uint8(dat.weeknum),
+		}
+		if i%500000 == 0 {
+			log.Println("record chan length: %v", len(rc))
 		}
 	}
 	if err := scanner.Err(); err != nil {
