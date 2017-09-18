@@ -36,6 +36,7 @@ func NewSSBCommand(stdin io.Reader, stdout, stderr io.Writer) *cobra.Command {
 	flags.StringSliceVarP(&SSBMain.Hosts, "pilosa-hosts", "p", []string{"localhost:10101"}, "Pilosa cluster.")
 	flags.IntVarP(&SSBMain.MapConcurrency, "map-concurrency", "m", 1, "Number of goroutines mapping parsed records.")
 	flags.IntVarP(&SSBMain.RecordBuf, "record-buffer", "r", 1000000, "Channel buffer size for parsed records.")
+	flags.StringVarP(&SSBMain.CsvDir, "csv-dir", "c", "", "if set will log csv output to this directory.")
 
 	return ssbCommand
 }

@@ -17,6 +17,7 @@ import (
 
 type Main struct {
 	Dir             string
+	CsvDir          string
 	Hosts           []string
 	Index           string
 	SFHint          int
@@ -48,6 +49,10 @@ func NewMain() (*Main, error) {
 func (m *Main) Run() (err error) {
 	log.Println("setting up pilosa")
 	m.index, err = pdk.SetupPilosa(m.Hosts, m.Index, frames)
+	if m.CsvDir != "" {
+		log.Println("going to log csv to", m.CsvDir)
+		m.index = pdk.NewCSVLoggerIndexer(m.CsvDir, m.index)
+	}
 	if err != nil {
 		return errors.Wrap(err, "setting up Pilosa")
 	}
