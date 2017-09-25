@@ -44,3 +44,24 @@ To get started immediately, run this:
 `pdk net -i en0`
 
 which will capture traffic on the interface `en0` (see available interfaces with `ifconfig`).
+
+## SSB
+
+The Star Schema Benchmark is a benchmark based on [TPC-H](www.tpc.org/tpch/) but tweaked for a somewhat difference use case. It has been implemented by some big data projects such as https://hortonworks.com/blog/sub-second-analytics-hive-druid/ .
+
+To execute the star schema benchmark with Pilosa, you must.
+
+1. Generate the SSB data at a particular scale factor.
+2. Import the data into Pilosa.
+3. Run the `demo-ssb` application for convenience which has all of the SSB queries pre-written.
+
+### Generating SSB data
+Use https://github.com/electrum/ssb-dbgen.git to generate the raw SSB data. This can be a bit finicky to work with - hit up @tgruben for tips (or maybe he'll update this section :wink:.
+
+When generating the data, you have to select a particular scale factor - the size of the generated data will be about 600MB * SF(scale factor), so SF=100 will generate about 60GB of data.
+
+### Import data into Pilosa.
+Use `pdk ssb` to import the data into Pilosa. You must specify the directory containing the `.tbl` files generated in the first step as well as the location of your pilosa cluster. There are a few other options which you can tweak which may help import performance. See `pdk ssb -h` for more information.
+
+### Run demo-ssb
+This repo https://github.com/pilosa/demo-ssb.git contains a small Go program which packages up the different queries which comprise the benchmark. Running demo-ssb starts a web server which executes queries against pilosa on your behalf. You can simply run (e.g.) `curl localhost:8000/query/1.1` to run an SSB query.

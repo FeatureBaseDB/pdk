@@ -116,12 +116,12 @@ func (lt *LevelTranslator) GetID(frame string, val interface{}) (id uint64, err 
 	var data []byte
 
 	// if you're expecting most of the mapping to already be done, this would be faster
-	// data, err = dbs.valMap.Get(valBytes, &opt.ReadOptions{})
-	// if err != nil && err != leveldb.ErrNotFound {
-	// 	return 0, errors.Wrap(err, "trying to read value map")
-	// } else if err == nil {
-	// 	return binary.BigEndian.Uint64(data), nil
-	// }
+	data, err = dbs.valMap.Get(valBytes, &opt.ReadOptions{})
+	if err != nil && err != leveldb.ErrNotFound {
+		return 0, errors.Wrap(err, "trying to read value map")
+	} else if err == nil {
+		return binary.BigEndian.Uint64(data), nil
+	}
 
 	// else, val not found
 	dbs.lock.Lock(valBytes)
