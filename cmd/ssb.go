@@ -14,6 +14,9 @@ var SSBMain *ssb.Main
 func NewSSBCommand(stdin io.Reader, stdout, stderr io.Writer) *cobra.Command {
 	var err error
 	SSBMain, err = ssb.NewMain()
+	if err != nil {
+		return err
+	}
 	ssbCommand := &cobra.Command{
 		Use:   "ssb",
 		Short: "ssb - run star schema benchmark",
