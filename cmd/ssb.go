@@ -14,9 +14,6 @@ var SSBMain *ssb.Main
 func NewSSBCommand(stdin io.Reader, stdout, stderr io.Writer) *cobra.Command {
 	var err error
 	SSBMain, err = ssb.NewMain()
-	if err != nil {
-		return err
-	}
 	ssbCommand := &cobra.Command{
 		Use:   "ssb",
 		Short: "ssb - run star schema benchmark",
@@ -33,6 +30,9 @@ func NewSSBCommand(stdin io.Reader, stdout, stderr io.Writer) *cobra.Command {
 			log.Println("Done: ", time.Since(start))
 			select {}
 		},
+	}
+	if err != nil {
+		return ssbCommand
 	}
 	flags := ssbCommand.Flags()
 	flags.StringVarP(&SSBMain.Dir, "data-dir", "d", "ssb1", "Directory containing ssb data files.")
