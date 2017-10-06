@@ -1,8 +1,6 @@
 package cmd
 
 import (
-	"bytes"
-	"encoding/gob"
 	"fmt"
 	"io"
 	"os"
@@ -12,16 +10,20 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var KafkaMain *kafka.Source
+var KafkaSource *kafka.Source
 
 func NewKafkaCommand(stdin io.Reader, stdout, stderr io.Writer) *cobra.Command {
-	KafkaMain = kafka.NewSource()
+	KafkaSource = kafka.NewSource()
 	kafkaCommand := &cobra.Command{
 		Use:   "kafka",
-		Short: "kafka - ingest data from Kafka",
-		Long:  `TODO`,
+		Short: "kafka - read from kafka using the PDK kafka.Source.",
+		Long: `The kakfa subcommand essentially exists to allow one to test the PDK's Kafka
+functionality. The PDK contains an implementation of its Source interface which
+reads records from Kafka. This command uses that and prints the records to
+stdout.
+`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			err := KafkaMain.Open()
+			err := KafkaSource.Open()
 			if err != nil {
 				return err
 			}
@@ -29,30 +31,28 @@ func NewKafkaCommand(stdin io.Reader, stdout, stderr io.Writer) *cobra.Command {
 			signal.Notify(signals, os.Interrupt)
 			go func() {
 				<-signals
-				err := KafkaMain.Close()
+				err := KafkaSource.Close()
 				if err != nil {
 				}
 			}()
 			for {
-				rec, err := KafkaMain.Record()
+				rec, err := KafkaSource.Record()
 				if err != nil {
 					return err
 				}
-				dec := gob.NewDecoder(bytes.NewBuffer(rec))
-				var val kafka.Record
-				err = dec.Decode(&val)
+				val, err := kafka.Decode(rec)
 				if err != nil {
 					return err
 				}
-				fmt.Printf("VAL: %s\n", val)
+				fmt.Fprintf(stdout, "Key: '%s', Val: '%s', Timestamp: '%s'\n", val.Key, val.Value, val.Timestamp)
 			}
 			return nil
 		},
 	}
 	flags := kafkaCommand.Flags()
-	flags.StringSliceVarP(&KafkaMain.KafkaHosts, "kafka-hosts", "k", []string{"localhost:9092"}, "Kafka cluster.")
-	flags.StringSliceVarP(&KafkaMain.Topics, "topics", "t", []string{"test"}, "Topics to consume from Kafka.")
-	flags.StringVarP(&KafkaMain.Group, "group", "g", "group0", "Group id to use when consuming from Kafka.")
+	flags.StringSliceVarP(&KafkaSource.KafkaHosts, "kafka-hosts", "k", []string{"localhost:9092"}, "Kafka cluster.")
+	flags.StringSliceVarP(&KafkaSource.Topics, "topics", "t", []string{"test"}, "Topics to consume from Kafka.")
+	flags.StringVarP(&KafkaSource.Group, "group", "g", "group0", "Group id to use when consuming from Kafka.")
 	return kafkaCommand
 }
 
