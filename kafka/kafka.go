@@ -60,6 +60,7 @@ func (s *Source) Record() ([]byte, error) {
 func (s *Source) Open() error {
 	// init (custom) config, enable errors and notifications
 	config := cluster.NewConfig()
+	config.Config.Version = sarama.V0_10_0_0
 	config.Consumer.Return.Errors = true
 	config.Consumer.Offsets.Initial = sarama.OffsetOldest
 	config.Group.Return.Notifications = true
