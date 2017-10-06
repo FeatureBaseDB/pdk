@@ -47,7 +47,7 @@ func NewMain() (*Main, error) {
 
 func (m *Main) Run() (err error) {
 	log.Println("setting up pilosa")
-	m.index, err = pdk.SetupPilosa(m.Hosts, m.Index, frames)
+	m.index, err = pdk.SetupPilosa(m.Hosts, m.Index, frames, 1000000)
 	if err != nil {
 		return errors.Wrap(err, "setting up Pilosa")
 	}
@@ -119,16 +119,16 @@ func (m *Main) mapRecords(rc <-chan *record) {
 		}
 		m.index.AddBit("lo_quantity_b", col, id)
 
-		m.index.AddValue("lo_quantity", col, uint64(rec.lo_quantity))
-		m.index.AddValue("lo_extendedprice", col, uint64(rec.lo_extendedprice))
-		m.index.AddValue("lo_discount", col, uint64(rec.lo_discount))
-		m.index.AddValue("lo_revenue", col, uint64(rec.lo_revenue))
-		m.index.AddValue("lo_supplycost", col, uint64(rec.lo_supplycost))
+		m.index.AddValue("lo_quantity", "lo_quantity", col, uint64(rec.lo_quantity))
+		m.index.AddValue("lo_extendedprice", "lo_extendedprice", col, uint64(rec.lo_extendedprice))
+		m.index.AddValue("lo_discount", "lo_discount", col, uint64(rec.lo_discount))
+		m.index.AddValue("lo_revenue", "lo_revenue", col, uint64(rec.lo_revenue))
+		m.index.AddValue("lo_supplycost", "lo_supplycost", col, uint64(rec.lo_supplycost))
 
 		revenueComputed := uint64(float64(rec.lo_extendedprice) * float64(rec.lo_discount) * 0.01)
-		m.index.AddValue("lo_revenue_computed", col, revenueComputed)
+		m.index.AddValue("lo_revenue_computed", "lo_revenue_computed", col, revenueComputed)
 		profitComputed := uint32(rec.lo_revenue) - rec.lo_supplycost
-		m.index.AddValue("lo_profit", col, uint64(profitComputed))
+		m.index.AddValue("lo_profit", "lo_profit", col, uint64(profitComputed))
 
 		id, err = m.trans.GetID("c_city", rec.c_city)
 		if err != nil {
