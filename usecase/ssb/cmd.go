@@ -47,7 +47,7 @@ func NewMain() (*Main, error) {
 
 func (m *Main) Run() (err error) {
 	log.Println("setting up pilosa")
-	m.index, err = pdk.SetupPilosa(m.Hosts, m.Index, frames)
+	m.index, err = pdk.SetupPilosa(m.Hosts, m.Index, frames, 1000000)
 	if err != nil {
 		return errors.Wrap(err, "setting up Pilosa")
 	}

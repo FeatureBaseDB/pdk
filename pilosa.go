@@ -99,8 +99,8 @@ func NewFieldFrameSpec(name string, min int, max int) FrameSpec {
 	return fs
 }
 
-func SetupPilosa(hosts []string, index string, frames []FrameSpec) (Indexer, error) {
-	var BATCHSIZE uint = 1000000
+func SetupPilosa(hosts []string, index string, frames []FrameSpec, batchsize uint) (Indexer, error) {
+	var BATCHSIZE uint = batchsize
 	indexer := NewIndex()
 	client, err := pcli.NewClientFromAddresses(hosts,
 		&pcli.ClientOptions{SocketTimeout: time.Minute * 60,
