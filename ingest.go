@@ -39,12 +39,12 @@ func (n *Ingester) Run() error {
 				}
 				val, err := n.parser.Parse(rec)
 				if err != nil {
-					log.Printf("couldn't parse record %s", rec)
+					log.Printf("couldn't parse record %s, err: %v", rec, err)
 					continue
 				}
 				pr, err := n.mapper.Map(val)
 				if err != nil {
-					log.Printf("couldn't map val: %s", val)
+					log.Printf("couldn't map val: %s, err: %v", val, err)
 					continue
 				}
 				for _, bit := range pr.Bits {
