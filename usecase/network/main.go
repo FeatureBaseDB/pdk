@@ -62,8 +62,9 @@ func (m *Main) Run() error {
 	m.client = pdk.NewImportClient(m.PilosaHost, m.Index, Frames, m.BufSize)
 	defer m.client.Close()
 
+	ph := pdk.NewPilosaForwarder(m.PilosaHost, m)
 	go func() {
-		log.Fatal(pdk.StartMappingProxy(m.BindAddr, m.PilosaHost, m))
+		log.Fatal(pdk.StartMappingProxy(m.BindAddr, ph))
 	}()
 
 	// print total captured traffic when killed via Ctrl-c
