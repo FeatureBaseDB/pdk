@@ -70,7 +70,8 @@ func (m *Main) Run() (err error) {
 	m.runMappers(rc)
 
 	log.Println("mappers finished - starting proxy")
-	return pdk.StartMappingProxy("localhost:3456", "localhost:10101", m.trans)
+	ph := pdk.NewPilosaForwarder("localhost:10101", m.trans)
+	return pdk.StartMappingProxy("localhost:3456", ph)
 }
 
 func (m *Main) runMappers(rc <-chan *record) {
