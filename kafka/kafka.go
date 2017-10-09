@@ -39,22 +39,29 @@ func Decode(raw []byte) (Record, error) {
 	return rec, errors.Wrap(err, "decoding bytes")
 }
 
+func Encode(rec Record) ([]byte, error) {
+	var b bytes.Buffer
+	enc := gob.NewEncoder(&b)
+	err := enc.Encode(rec)
+	if err != nil {
+		return nil, errors.Wrap(err, "serializing record to bytes")
+	}
+	return b.Bytes(), nil
+}
+
 func (s *Source) Record() ([]byte, error) {
 	msg, ok := <-s.consumer.Messages()
 	if ok {
 		rec := Record{Key: msg.Key, Value: msg.Value, Timestamp: msg.Timestamp}
-		var b bytes.Buffer
-		enc := gob.NewEncoder(&b)
-		err := enc.Encode(rec)
+		recBytes, err := Encode(rec)
 		if err != nil {
-			return nil, errors.Wrap(err, "serializing record to bytes")
+			return nil, err
 		}
 		s.consumer.MarkOffset(msg, "") // mark message as processed
-		return b.Bytes(), nil
+		return recBytes, nil
 	} else {
 		return nil, errors.New("messages channel closed")
 	}
-
 }
 
 func (s *Source) Open() error {
