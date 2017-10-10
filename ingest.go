@@ -60,5 +60,5 @@ func (n *Ingester) Run() error {
 		}()
 	}
 	pwg.Wait()
-	return nil
+	return n.indexer.Close()
 }
