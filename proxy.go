@@ -22,19 +22,26 @@ type Translator interface {
 	GetID(frame string, val interface{}) (uint64, error)
 }
 
+// KeyMapper describes the functionality for mapping the keys contained
+// in requests and responses.
+type KeyMapper interface {
+	MapRequest(body []byte) ([]byte, error)
+	MapResult(frame string, res interface{}) (interface{}, error)
+}
+
+// Proxy describes the functionality for proxying requests.
+type Proxy interface {
+	ProxyRequest(orig *http.Request, origbody []byte) (*http.Response, error)
+}
+
 // StartMappingProxy listens for incoming http connections on `bind` and
-// forwards all requests to `pilosa`. It inspects pilosa responses and runs the
-// row ids through the Translator `m` to translate them to whatever they were
-// mapped from. This function does not return unless there is a problem (like
+// and uses h to handle all requests.
+// This function does not return unless there is a problem (like
 // http.ListenAndServe).
-func StartMappingProxy(bind, pilosa string, m Translator) error {
-	if !strings.HasPrefix(pilosa, "http://") {
-		pilosa = "http://" + pilosa
-	}
-	handler := &pilosaForwarder{phost: pilosa, m: m}
+func StartMappingProxy(bind string, h http.Handler) error {
 	s := http.Server{
 		Addr:    bind,
-		Handler: handler,
+		Handler: h,
 	}
 	return s.ListenAndServe()
 }
@@ -42,7 +49,23 @@ func StartMappingProxy(bind, pilosa string, m Translator) error {
 type pilosaForwarder struct {
 	phost  string
 	client http.Client
-	m      Translator
+	km     KeyMapper
+	proxy  Proxy
+}
+
+// NewPilosaForwarder returns a new pilosaForwarder which forwards all requests
+// to `phost`. It inspects pilosa responses and runs the row ids through the
+// Translator `t` to translate them to whatever they were mapped from.
+func NewPilosaForwarder(phost string, t Translator) *pilosaForwarder {
+	if !strings.HasPrefix(phost, "http://") {
+		phost = "http://" + phost
+	}
+	f := &pilosaForwarder{
+		phost: phost,
+		km:    NewPilosaKeyMapper(t),
+	}
+	f.proxy = NewPilosaProxy(phost, &f.client)
+	return f
 }
 
 func (p *pilosaForwarder) ServeHTTP(w http.ResponseWriter, req *http.Request) {
@@ -55,20 +78,20 @@ func (p *pilosaForwarder) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 	// inspect the request to determine which queries have a frame - the Translator
 	// needs the frame for it's lookups.
-	frames, err := getFrames(body)
+	frames, err := GetFrames(body)
 	if err != nil {
 		http.Error(w, "getting frames: "+err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	body, err = p.mapRequest(body)
+	body, err = p.km.MapRequest(body)
 	if err != nil {
 		http.Error(w, "mapping request: "+err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	// forward the request and get the pilosa response
-	resp, err := p.proxyRequest(req, body)
+	resp, err := p.proxy.ProxyRequest(req, body)
 	if err != nil {
 		log.Println("here", err)
 		http.Error(w, err.Error(), http.StatusServiceUnavailable)
@@ -94,7 +117,7 @@ func (p *pilosaForwarder) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 			mappedResp.Results[i] = result
 			continue
 		}
-		mappedResult, err := p.mapResult(frames[i], result)
+		mappedResult, err := p.km.MapResult(frames[i], result)
 		if err != nil {
 			http.Error(w, "mapping result: "+err.Error(), http.StatusInternalServerError)
 			return
@@ -112,13 +135,27 @@ func (p *pilosaForwarder) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
+// pilosaProxy implements the Proxy interface.
+type pilosaProxy struct {
+	host   string
+	client *http.Client
+}
+
+// NewPilosaProxy returns a pilosaProxy based on `host` and `client`.
+func NewPilosaProxy(host string, client *http.Client) *pilosaProxy {
+	return &pilosaProxy{
+		host:   host,
+		client: client,
+	}
+}
+
 // proxyRequest modifies the http.Request object in place to change it from a
 // server side request object to the proxy server to a client side request and
 // sends it to pilosa, returning the response.
-func (p *pilosaForwarder) proxyRequest(orig *http.Request, origbody []byte) (*http.Response, error) {
-	reqURL, err := url.Parse(p.phost + orig.URL.String())
+func (p *pilosaProxy) ProxyRequest(orig *http.Request, origbody []byte) (*http.Response, error) {
+	reqURL, err := url.Parse(p.host + orig.URL.String())
 	if err != nil {
-		log.Printf("error parsing url: %v, err: %v", p.phost+orig.URL.String(), err)
+		log.Printf("error parsing url: %v, err: %v", p.host+orig.URL.String(), err)
 		return nil, err
 	}
 	orig.URL = reqURL
@@ -130,9 +167,20 @@ func (p *pilosaForwarder) proxyRequest(orig *http.Request, origbody []byte) (*ht
 	return resp, err
 }
 
-// mapResult converts the result of a single top level query (one element of
-// QueryResponse.Results) to it's mapped counterpart.
-func (p *pilosaForwarder) mapResult(frame string, res interface{}) (mappedRes interface{}, err error) {
+// PilosaKeyMapper implements the KeyMapper interface.
+type PilosaKeyMapper struct {
+	t Translator
+}
+
+func NewPilosaKeyMapper(t Translator) *PilosaKeyMapper {
+	return &PilosaKeyMapper{
+		t: t,
+	}
+}
+
+// MapResult converts the result of a single top level query (one element of
+// QueryResponse.Results) to its mapped counterpart.
+func (p *PilosaKeyMapper) MapResult(frame string, res interface{}) (mappedRes interface{}, err error) {
 	switch result := res.(type) {
 	case uint64:
 		// Count
@@ -155,7 +203,7 @@ func (p *pilosaForwarder) mapResult(frame string, res interface{}) (mappedRes in
 				if !(isKeyFloat && isCountFloat) {
 					return nil, fmt.Errorf("expected pilosa.Pair, but have wrong value types: got %v", pair)
 				}
-				keyVal := p.m.Get(frame, uint64(keyFloat))
+				keyVal := p.t.Get(frame, uint64(keyFloat))
 				switch kv := keyVal.(type) {
 				case []byte:
 					mr[i].Key = string(kv)
@@ -181,7 +229,7 @@ func (p *pilosaForwarder) mapResult(frame string, res interface{}) (mappedRes in
 	return mappedRes, nil
 }
 
-func (p *pilosaForwarder) mapRequest(body []byte) ([]byte, error) {
+func (p *PilosaKeyMapper) MapRequest(body []byte) ([]byte, error) {
 	query, err := pql.ParseString(string(body))
 	if err != nil {
 		return nil, err
@@ -195,9 +243,9 @@ func (p *pilosaForwarder) mapRequest(body []byte) ([]byte, error) {
 	return []byte(query.String()), nil
 }
 
-func (p *pilosaForwarder) mapCall(call *pql.Call) error {
+func (p *PilosaKeyMapper) mapCall(call *pql.Call) error {
 	if call.Name == "Bitmap" {
-		id, err := p.m.GetID(call.Args["frame"].(string), call.Args["rowID"])
+		id, err := p.t.GetID(call.Args["frame"].(string), call.Args["rowID"])
 		if err != nil {
 			return err
 		}
@@ -212,10 +260,10 @@ func (p *pilosaForwarder) mapCall(call *pql.Call) error {
 	return nil
 }
 
-// getFrames interprets body as pql queries and then tries to determine the
+// GetFrames interprets body as pql queries and then tries to determine the
 // frame of each. Some queries do not have frames, and the empty string will be
 // returned for these.
-func getFrames(body []byte) ([]string, error) {
+func GetFrames(body []byte) ([]string, error) {
 	query, err := pql.ParseString(string(body))
 	if err != nil {
 		return nil, fmt.Errorf("parsing query: %v", err.Error())
