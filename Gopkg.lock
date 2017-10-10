@@ -2,10 +2,28 @@
 
 
 [[projects]]
+  branch = "master"
+  name = "github.com/CAFxX/gcnotifier"
+  packages = ["."]
+  revision = "39b0596a2da3c92787b3319c6b5425a474b4e0da"
+
+[[projects]]
+  name = "github.com/DataDog/datadog-go"
+  packages = ["statsd"]
+  revision = "0ddda6bee21174ef6c4873647cb0d6ec9cba996f"
+  version = "1.1.0"
+
+[[projects]]
   name = "github.com/Shopify/sarama"
   packages = ["."]
   revision = "bbdbe644099b7fdc8327d5cc69c030945188b2e9"
   version = "v1.13.0"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/armon/go-metrics"
+  packages = ["."]
+  revision = "9a4b6e10bed6220a1665955aa2b75afc91eb10b3"
 
 [[projects]]
   name = "github.com/boltdb/bolt"
@@ -93,9 +111,51 @@
 
 [[projects]]
   branch = "master"
+  name = "github.com/hashicorp/errwrap"
+  packages = ["."]
+  revision = "7554cd9344cec97297fa6649b055a8c98c2a1e55"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/hashicorp/go-immutable-radix"
+  packages = ["."]
+  revision = "8aac2701530899b64bdea735a1de8da899815220"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/hashicorp/go-msgpack"
+  packages = ["codec"]
+  revision = "fa3f63826f7c23912c15263591e65d54d080b458"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/hashicorp/go-multierror"
+  packages = ["."]
+  revision = "83588e72410abfbe4df460eeb6f30841ae47d4c4"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/hashicorp/go-sockaddr"
+  packages = ["."]
+  revision = "41949a141473f6340abc6ba0fcd0f89da6f6f837"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/hashicorp/golang-lru"
+  packages = ["simplelru"]
+  revision = "0a025b7e63adc15a622f29b0b2c4c3848243bbf6"
+
+[[projects]]
+  branch = "master"
   name = "github.com/hashicorp/hcl"
   packages = [".","hcl/ast","hcl/parser","hcl/scanner","hcl/strconv","hcl/token","json/parser","json/scanner","json/token"]
   revision = "68e816d1c783414e79bc65b3994d9ab6b0a722ab"
+
+[[projects]]
+  name = "github.com/hashicorp/memberlist"
+  packages = ["."]
+  revision = "ce8abaa0c60c2d6bee7219f5ddf500e0a1457b28"
+  version = "v0.1.0"
 
 [[projects]]
   name = "github.com/inconshreveable/mousetrap"
@@ -108,6 +168,12 @@
   packages = ["."]
   revision = "be5ece7dd465ab0765a9682137865547526d1dfb"
   version = "v1.7.3"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/miekg/dns"
+  packages = [".","internal/socket"]
+  revision = "946bd9fbed05568b0f3cd188353d8aa28f38b688"
 
 [[projects]]
   branch = "master"
@@ -135,15 +201,14 @@
 
 [[projects]]
   name = "github.com/pilosa/go-pilosa"
-  packages = [".","gopilosa_pbuf"]
-  revision = "9e38e81bd015db250f907d583edac9190bbd82cd"
-  version = "v0.7.0"
+  packages = [".","internal"]
+  revision = "caab511e58850c3a9488f74e68558156b41ff489"
 
 [[projects]]
+  branch = "dep-fixes"
   name = "github.com/pilosa/pilosa"
-  packages = [".","ctl","internal","pql","roaring","statik"]
-  revision = "532bda0f1e896ec36081b23ffee969218202d6db"
-  version = "v0.3.2"
+  packages = [".","ctl","gossip","internal","pql","roaring","server","statik","statsd"]
+  revision = "20c7868d9ef63d4ddc9983ec8d8397754ef4e268"
 
 [[projects]]
   name = "github.com/pkg/errors"
@@ -162,6 +227,12 @@
   name = "github.com/rcrowley/go-metrics"
   packages = ["."]
   revision = "1f30fe9094a513ce4c700b9a54458bbb0c96996c"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/sean-/seed"
+  packages = ["."]
+  revision = "e2103e2c35297fb7e17febb81e49b312087a2372"
 
 [[projects]]
   branch = "master"
@@ -207,6 +278,18 @@
 
 [[projects]]
   branch = "master"
+  name = "golang.org/x/net"
+  packages = ["context"]
+  revision = "a04bdaca5b32abe1c069418fb7088ae607de5bd0"
+
+[[projects]]
+  branch = "master"
+  name = "golang.org/x/sync"
+  packages = ["errgroup"]
+  revision = "8e0aa688b654ef28caa72506fa5ec8dba9fc7690"
+
+[[projects]]
+  branch = "master"
   name = "golang.org/x/sys"
   packages = ["unix"]
   revision = "314a259e304ff91bd6985da2a7149bbf91237993"
@@ -226,6 +309,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "e3c86d041f6fb58ea5d2de9df776b77229f11d968f3901e8797da5727ad5da2e"
+  inputs-digest = "1624db005581f9175f8e247bc334bfc3d00d0bba83fa119e6056c9fe57147ad9"
   solver-name = "gps-cdcl"
   solver-version = 1
