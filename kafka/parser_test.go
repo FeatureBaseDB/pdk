@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/elodina/go-avro"
 	"github.com/linkedin/goavro"
 	"github.com/pkg/errors"
 )
@@ -15,28 +16,7 @@ import (
 func TestParse(t *testing.T) {
 	regURL := StartFakeRegistry(t)
 	parser := NewAvroParserRegistry(regURL)
-	codec, err := goavro.NewCodec(schema1)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	value := map[string]interface{}{
-		"thing_string": "blah",
-		"thing_int":    34,
-		"mysubthing": map[string]interface{}{
-			"com.pilosa.thing.SubThing": map[string]interface{}{
-				"substring": map[string]interface{}{"string": "blahsub"},
-				"subdub":    map[string]interface{}{"double": 3.14},
-			},
-		},
-	}
-	native := make(map[string]interface{})
-	native["com.pilosa.thing.Thing"] = value
-
-	data, err := codec.BinaryFromNative([]byte{}, native)
-	if err != nil {
-		t.Fatal(err)
-	}
+	data := GetAvroEncodedValue(t)
 	rec := Record{
 		Value: append([]byte{0, 0, 0, 0, 1}, data[1:]...),
 	}
@@ -49,10 +29,62 @@ func TestParse(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if parsedRec.(map[string]interface{})["com.pilosa.thing.Thing"].(map[string]interface{})["mysubthing"].(map[string]interface{})["com.pilosa.thing.SubThing"].(map[string]interface{})["subdub"].(map[string]interface{})["double"] != native["com.pilosa.thing.Thing"].(map[string]interface{})["mysubthing"].(map[string]interface{})["com.pilosa.thing.SubThing"].(map[string]interface{})["subdub"].(map[string]interface{})["double"] {
+	if parsedRec.(map[string]interface{})["com.pilosa.thing.Thing"].(map[string]interface{})["mysubthing"].(map[string]interface{})["com.pilosa.thing.SubThing"].(map[string]interface{})["subdub"].(map[string]interface{})["double"] != value["com.pilosa.thing.Thing"].(map[string]interface{})["mysubthing"].(map[string]interface{})["com.pilosa.thing.SubThing"].(map[string]interface{})["subdub"].(map[string]interface{})["double"] {
 		t.Fatalf("parsed and original are different")
 	}
 
+}
+
+var value map[string]interface{} = map[string]interface{}{
+	"com.pilosa.thing.Thing": map[string]interface{}{
+		"thing_string": "blah",
+		"thing_int":    34,
+		"mysubthing": map[string]interface{}{
+			"com.pilosa.thing.SubThing": map[string]interface{}{
+				"substring": map[string]interface{}{"string": "blahsub"},
+				"subdub":    map[string]interface{}{"double": 3.14},
+			},
+		},
+	},
+}
+
+func GetAvroEncodedValue(t *testing.T) []byte {
+	codec, err := goavro.NewCodec(schema1)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	data, err := codec.BinaryFromNative([]byte{}, value)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return data
+}
+
+func TestElodinaDecode(t *testing.T) {
+	data := GetAvroEncodedValue(t)
+
+	schema, err := avro.ParseSchema(schema1)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	reader := avro.NewGenericDatumReader()
+	// SetSchema must be called before calling Read
+	reader.SetSchema(schema)
+
+	// Create a new Decoder with a given buffer
+	decoder := avro.NewBinaryDecoder(data)
+
+	decodedRecord := avro.NewGenericRecord(schema)
+	// Read data into given GenericRecord with a given Decoder. The first parameter to Read should be something to read into
+	err = reader.Read(decodedRecord, decoder)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	gomap := decodedRecord.Map()
+	fmt.Printf("%T, %v\n", gomap, gomap)
 }
 
 func StartFakeRegistry(t *testing.T) string {

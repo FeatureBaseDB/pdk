@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"sync"
 
-	"github.com/linkedin/goavro"
+	"github.com/elodina/go-avro"
 	"github.com/pkg/errors"
 )
 
@@ -16,13 +16,13 @@ type AvroParser struct {
 	RegistryURL string
 
 	lock  sync.RWMutex
-	cache map[int32]*goavro.Codec
+	cache map[int32]avro.Schema
 }
 
 func NewAvroParserRegistry(registryURL string) *AvroParser {
 	return &AvroParser{
 		RegistryURL: registryURL,
-		cache:       make(map[int32]*goavro.Codec),
+		cache:       make(map[int32]avro.Schema),
 	}
 }
 
@@ -40,7 +40,7 @@ func (p *AvroParser) Parse(record []byte) (interface{}, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "getting avro codec")
 	}
-	val, _, err := codec.NativeFromBinary(append([]byte{0}, kr.Value[5:]...))
+	val, err := AvroDecode(codec, append([]byte{0}, kr.Value[5:]...))
 	return val, errors.Wrap(err, "decoding avro record")
 }
 
@@ -52,7 +52,7 @@ type Schema struct {
 	Id      int    `json:"id"`      // Registry's unique id
 }
 
-func (p *AvroParser) GetCodec(id int32) (*goavro.Codec, error) {
+func (p *AvroParser) GetCodec(id int32) (avro.Schema, error) {
 	p.lock.RLock()
 	if codec, ok := p.cache[id]; ok {
 		p.lock.RUnlock()
@@ -78,10 +78,28 @@ func (p *AvroParser) GetCodec(id int32) (*goavro.Codec, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "decoding schema from registry")
 	}
-	codec, err := goavro.NewCodec(schema.Schema)
+	codec, err := avro.ParseSchema(schema.Schema)
 	if err != nil {
-		return nil, errors.Wrap(err, "creating codec from schema")
+		return nil, errors.Wrap(err, "parsing schema")
 	}
 	p.cache[id] = codec
 	return codec, nil
+}
+
+func AvroDecode(codec avro.Schema, data []byte) (map[string]interface{}, error) {
+	reader := avro.NewGenericDatumReader()
+	// SetSchema must be called before calling Read
+	reader.SetSchema(codec)
+
+	// Create a new Decoder with a given buffer
+	decoder := avro.NewBinaryDecoder(data)
+
+	decodedRecord := avro.NewGenericRecord(codec)
+	// Read data into given GenericRecord with a given Decoder. The first parameter to Read should be something to read into
+	err := reader.Read(decodedRecord, decoder)
+	if err != nil {
+		return nil, errors.Wrap(err, "reading generic datum")
+	}
+
+	return decodedRecord.Map(), nil
 }

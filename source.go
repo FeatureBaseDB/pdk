@@ -1,12 +1,11 @@
 package pdk
 
-import "time"
-
 // Source is the interface for getting raw data one record at a time.
 // Implementations of Source should be thread safe.
 type Source interface {
 	Record() ([]byte, error)
 }
+<<<<<<< 98bd967c38cd14fded4418ca92e2c6b823734583
 
 // Parser is the interface for turning raw records from Source into Go objects.
 // Implementations of Parser should be thread safe. The current naming is a
@@ -46,3 +45,5 @@ type Val struct {
 	Field string
 	Value int64
 }
+=======
+>>>>>>> monster commit - avro registry stuff, generic translator, mapper
