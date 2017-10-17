@@ -103,3 +103,18 @@ func AvroDecode(codec avro.Schema, data []byte) (map[string]interface{}, error) 
 
 	return decodedRecord.Map(), nil
 }
+
+type JSONParser struct{}
+
+func (p *JSONParser) Parse(record []byte) (interface{}, error) {
+	kr, err := Decode(record)
+	if err != nil {
+		return nil, errors.Wrap(err, "couldn't decode kafka record")
+	}
+
+	parsed := make(map[string]interface{})
+
+	err = json.Unmarshal(kr.Value, parsed)
+	return parsed, errors.Wrap(err, "unmarshaling json")
+
+}

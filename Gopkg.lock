@@ -62,6 +62,12 @@
   version = "v1.0.2"
 
 [[projects]]
+  branch = "master"
+  name = "github.com/elodina/go-avro"
+  packages = ["."]
+  revision = "0c8185d9a3ba82aeac98db3313a268a5b6df99b5"
+
+[[projects]]
   name = "github.com/fsnotify/fsnotify"
   packages = ["."]
   revision = "629574ca2a5df945712d3079857300b5e4da0236"
@@ -70,8 +76,8 @@
 [[projects]]
   name = "github.com/gogo/protobuf"
   packages = ["proto"]
-  revision = "342cbe0a04158f6dcb03ca0079991a51a4248c02"
-  version = "v0.5"
+  revision = "100ba4e885062801d56799d78530b73b178a78f3"
+  version = "v0.4"
 
 [[projects]]
   branch = "master"
@@ -164,6 +170,12 @@
   version = "v1.0"
 
 [[projects]]
+  name = "github.com/linkedin/goavro"
+  packages = ["."]
+  revision = "dc8a75b5092af16ee96827a8105d5c7adb51aac8"
+  version = "v2.0.0"
+
+[[projects]]
   name = "github.com/magiconair/properties"
   packages = ["."]
   revision = "be5ece7dd465ab0765a9682137865547526d1dfb"
@@ -203,7 +215,7 @@
   branch = "master"
   name = "github.com/pilosa/go-pilosa"
   packages = [".","gopilosa_pbuf"]
-  revision = "7354889ee493d5cca2ce025b405a3b42a340a02c"
+  revision = "572aaf3a64c0ac37d60ee5f273e6435b99cb4c5e"
 
 [[projects]]
   branch = "master"
@@ -310,6 +322,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "50cdffb38cae33bc58d12ca96217ab676141609d2ebd3f85777e1c37e766c044"
+  inputs-digest = "438f407b5c378e45282e5ec647ac7efb56b75d9d5076414273dc3ae0a3ed2bb6"
   solver-name = "gps-cdcl"
   solver-version = 1
