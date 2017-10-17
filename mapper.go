@@ -2,6 +2,8 @@ package pdk
 
 import (
 	"fmt"
+	"reflect"
+	"strconv"
 	"time"
 
 	"github.com/pkg/errors"
@@ -15,12 +17,24 @@ type Mapppper interface {
 	Map(parsedRecord interface{}) (PilosaRecord, error)
 }
 
+// GenericMapper tries to make no assumptions about the value passed to its Map
+// method. Look at the type switch in the `mapInterface` method to see what
+// types it supports.
 type GenericMapper struct {
 	Nexter     INexter
 	Translator Translator
 	Framer     Framer
+
+	// if expandSlices is true, the slice index for any value in a slice will be
+	// added to the path for that value (which will generate a unique frame name
+	// for each index in the slice). Otherwise, each value in the slice will get
+	// have the same path, and so the same frame will have multiple values set
+	// for this particular column.
+	expandSlices bool
 }
 
+// NewDefaultGenericMapper returns a GenericMapper with a LocalNexter, in-memory
+// MapTranslator, and the simple DotFrame Framer.
 func NewDefaultGenericMapper() *GenericMapper {
 	return &GenericMapper{
 		Nexter:     NewNexter(),
@@ -29,6 +43,7 @@ func NewDefaultGenericMapper() *GenericMapper {
 	}
 }
 
+// Map of the GenericMapper tries to map any value into a PilosaRecord.
 func (m *GenericMapper) Map(parsedRecord interface{}) (PilosaRecord, error) {
 	pr := &PilosaRecord{}
 	err := m.mapInterface([]string{}, parsedRecord, pr)
@@ -39,26 +54,75 @@ func (m *GenericMapper) Map(parsedRecord interface{}) (PilosaRecord, error) {
 	return *pr, nil
 }
 
+// isArbitrarySlice returns true if rec is a slice of any type except []byte
+// (aka []uint8). Byte slices are handled specially by mapInterface and
+// mapByteSlice, and not by the generic mapSlice method.
+func isArbitrarySlice(rec interface{}) bool {
+	v := reflect.ValueOf(rec)
+	if v.Kind() == reflect.Slice {
+		if v.Type().Elem().Kind() != reflect.Uint8 {
+			return true
+		}
+	}
+	return false
+}
+
 func (m *GenericMapper) mapInterface(path []string, rec interface{}, pr *PilosaRecord) error {
+	if isArbitrarySlice(rec) {
+		return m.mapSlice(path, rec, pr)
+	}
 	switch vt := rec.(type) {
 	case map[string]interface{}:
-		err := m.mapMap(path, vt, pr)
-		if err != nil {
-			return err
-		}
+		return m.mapMap(path, vt, pr)
 	case string:
 		err := m.mapString(path, vt, pr)
-		if err != nil {
-			return errors.Wrap(err, "mapping string")
-		}
+		return errors.Wrap(err, "mapping string")
 	case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64:
 		err := m.mapInt(path, vt, pr)
-		if err != nil {
-			return errors.Wrap(err, "mapping int")
-		}
+		return errors.Wrap(err, "mapping int")
+	case bool:
+		err := m.mapBool(path, vt, pr)
+		return errors.Wrap(err, "mapping bool")
+	case []byte:
+		err := m.mapByteSlice(path, vt, pr)
+		return errors.Wrap(err, "mapping byte slice")
 	default:
 		return errors.Errorf("unsupported type %T, value: %#v", vt, vt)
 	}
+}
+
+func (m *GenericMapper) mapSlice(path []string, val interface{}, pr *PilosaRecord) error {
+	v := reflect.ValueOf(val)
+	for i := 0; i < v.Len(); i++ {
+		element := v.Index(i).Interface()
+		ipath := path
+		if m.expandSlices {
+			ipath = append(path, strconv.Itoa(i))
+		}
+		err := m.mapInterface(ipath, element, pr)
+		if err != nil {
+			return errors.Wrap(err, "mapping value in slice")
+		}
+	}
+	return nil
+}
+
+func (m *GenericMapper) mapByteSlice(path []string, val []byte, pr *PilosaRecord) error {
+	frame, err := m.Framer.Frame(path)
+	if err != nil {
+		return errors.Wrapf(err, "getting frame from path: '%v'", path)
+	}
+	if frame == "" {
+		return nil // err == nil and frame == "" means skip silently
+	}
+	id, err := m.Translator.GetID(frame, val)
+	if err != nil {
+		return errors.Wrap(err, "getting id from translator")
+	}
+	pr.Bits = append(pr.Bits, SetBit{
+		Frame: frame,
+		Row:   id,
+	})
 	return nil
 }
 
@@ -109,6 +173,25 @@ func (m *GenericMapper) mapMap(path []string, mapRec map[string]interface{}, pr 
 }
 
 func (m *GenericMapper) mapString(path []string, val string, pr *PilosaRecord) error {
+	frame, err := m.Framer.Frame(path)
+	if err != nil {
+		return errors.Wrapf(err, "getting frame from path: '%v'", path)
+	}
+	if frame == "" {
+		return nil // err == nil and frame == "" means skip silently
+	}
+	id, err := m.Translator.GetID(frame, val)
+	if err != nil {
+		return errors.Wrap(err, "getting id from translator")
+	}
+	pr.Bits = append(pr.Bits, SetBit{
+		Frame: frame,
+		Row:   id,
+	})
+	return nil
+}
+
+func (m *GenericMapper) mapBool(path []string, val bool, pr *PilosaRecord) error {
 	frame, err := m.Framer.Frame(path)
 	if err != nil {
 		return errors.Wrapf(err, "getting frame from path: '%v'", path)
