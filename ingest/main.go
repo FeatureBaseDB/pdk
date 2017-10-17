@@ -16,6 +16,18 @@ type Main struct {
 	BatchSize   uint
 }
 
+func NewMain() *Main {
+	return &Main{
+		KafkaHosts:  []string{"localhost:9092"},
+		KafkaTopics: []string{"test"},
+		KafkaGroup:  "group0",
+		RegistryURL: "localhost:8081",
+		PilosaHosts: []string{"localhost:10101"},
+		Index:       "pdk",
+		BatchSize:   1000,
+	}
+}
+
 func (m *Main) Run() error {
 	src := kafka.NewSource()
 	src.KafkaHosts = m.KafkaHosts
