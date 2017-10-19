@@ -11,7 +11,7 @@ import (
 
 type Indexer interface {
 	AddBit(frame string, col uint64, row uint64)
-	AddValue(frame string, col uint64, val uint64)
+	AddValue(frame, field string, col uint64, val uint64)
 	Close() error
 }
 
@@ -38,11 +38,16 @@ func (i *Index) AddBit(frame string, col uint64, row uint64) {
 	c <- pcli.Bit{RowID: row, ColumnID: col}
 }
 
-func (i *Index) AddValue(frame string, col uint64, val uint64) {
-	var c ChanValIterator
-	var ok bool
-	if c, ok = i.fieldChans[frame][frame]; !ok { // TODO should really have field name
+func (i *Index) AddValue(frame, field string, col uint64, val uint64) {
+	fieldmap, ok := i.fieldChans[frame]
+	if !ok {
 		log.Printf("Unknown frame in AddValue: %v", frame)
+		return
+	}
+	var c ChanValIterator
+	if c, ok = fieldmap[field]; !ok {
+		log.Printf("Unknown field in AddValue: %v", field)
+		return
 	}
 	c <- pcli.FieldValue{ColumnID: col, Value: val}
 }
@@ -94,8 +99,8 @@ func NewFieldFrameSpec(name string, min int, max int) FrameSpec {
 	return fs
 }
 
-func SetupPilosa(hosts []string, index string, frames []FrameSpec) (Indexer, error) {
-	var BATCHSIZE uint = 1000000
+func SetupPilosa(hosts []string, index string, frames []FrameSpec, batchsize uint) (Indexer, error) {
+	var BATCHSIZE uint = batchsize
 	indexer := NewIndex()
 	client, err := pcli.NewClientFromAddresses(hosts,
 		&pcli.ClientOptions{SocketTimeout: time.Minute * 60,
