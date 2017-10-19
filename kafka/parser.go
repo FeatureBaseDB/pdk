@@ -114,7 +114,7 @@ func (p *JSONParser) Parse(record []byte) (interface{}, error) {
 
 	parsed := make(map[string]interface{})
 
-	err = json.Unmarshal(kr.Value, parsed)
+	err = json.Unmarshal(kr.Value, &parsed)
 	return parsed, errors.Wrap(err, "unmarshaling json")
 
 }

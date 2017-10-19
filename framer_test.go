@@ -15,7 +15,7 @@ func TestDotFrame(t *testing.T) {
 	}{
 		{
 			path:     []string{"hello", "g", "a", "b"},
-			expected: "hello.g.a.b",
+			expected: "hello-g-a-b",
 			err:      nil,
 		},
 		{
@@ -26,7 +26,7 @@ func TestDotFrame(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		f, err := pdk.DotFrame(test.path)
+		f, err := pdk.DashFrame(test.path)
 		if err != test.err {
 			t.Fatal(err)
 			if f != test.expected {

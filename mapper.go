@@ -39,7 +39,7 @@ func NewDefaultGenericMapper() *GenericMapper {
 	return &GenericMapper{
 		Nexter:     NewNexter(),
 		Translator: NewMapTranslator(),
-		Framer:     DotFrame,
+		Framer:     DashFrame,
 	}
 }
 
@@ -86,6 +86,9 @@ func (m *GenericMapper) mapInterface(path []string, rec interface{}, pr *PilosaR
 	case []byte:
 		err := m.mapByteSlice(path, vt, pr)
 		return errors.Wrap(err, "mapping byte slice")
+	case float32, float64:
+		err := m.mapFloat(path, vt, pr)
+		return errors.Wrap(err, "mapping float")
 	default:
 		return errors.Errorf("unsupported type %T, value: %#v", vt, vt)
 	}
@@ -207,6 +210,25 @@ func (m *GenericMapper) mapBool(path []string, val bool, pr *PilosaRecord) error
 		Frame: frame,
 		Row:   id,
 	})
+	return nil
+}
+
+func (m *GenericMapper) mapFloat(path []string, val interface{}, pr *PilosaRecord) error {
+	frame, field, err := m.Framer.Field(path)
+	if err != nil {
+		return errors.Wrapf(err, "getting frame from path: '%v'", path)
+	}
+	if frame == "" || field == "" {
+		return nil // err == nil and frame or field == "" means skip silently
+	}
+	switch vt := val.(type) {
+	case float32:
+		pr.Vals = append(pr.Vals, Val{Frame: frame, Field: field, Value: uint64(vt)})
+	case float64:
+		pr.Vals = append(pr.Vals, Val{Frame: frame, Field: field, Value: uint64(vt)})
+	default:
+		panic(fmt.Sprintf("mapFloat called with non float type: %T, val: %v", vt, vt))
+	}
 	return nil
 }
 

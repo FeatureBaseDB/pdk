@@ -29,7 +29,7 @@ func TestParse(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if parsedRec.(map[string]interface{})["com.pilosa.thing.Thing"].(map[string]interface{})["mysubthing"].(map[string]interface{})["com.pilosa.thing.SubThing"].(map[string]interface{})["subdub"].(map[string]interface{})["double"] != value["com.pilosa.thing.Thing"].(map[string]interface{})["mysubthing"].(map[string]interface{})["com.pilosa.thing.SubThing"].(map[string]interface{})["subdub"].(map[string]interface{})["double"] {
+	if parsedRec.(map[string]interface{})["mysubthing"].(map[string]interface{})["subdub"] != 3.14 {
 		t.Fatalf("parsed and original are different")
 	}
 

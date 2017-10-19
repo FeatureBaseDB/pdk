@@ -1,7 +1,6 @@
 package pdk_test
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/pilosa/pdk"
@@ -36,9 +35,9 @@ func TestGenericMapper(t *testing.T) {
 		// Check Bits
 		expBits := map[pdk.SetBit]struct{}{
 			{Frame: "stringKey", Row: 0}:          struct{}{},
-			{Frame: "mapkey.innerstring", Row: 0}: struct{}{},
-			{Frame: "slicekey.skey", Row: 0}:      struct{}{},
-			{Frame: "slicekey.skey", Row: 1}:      struct{}{},
+			{Frame: "mapkey-innerstring", Row: 0}: struct{}{},
+			{Frame: "slicekey-skey", Row: 0}:      struct{}{},
+			{Frame: "slicekey-skey", Row: 1}:      struct{}{},
 			{Frame: "bs", Row: 0}:                 struct{}{},
 			{Frame: "boolkey", Row: 0}:            struct{}{},
 		}
@@ -47,13 +46,11 @@ func TestGenericMapper(t *testing.T) {
 			expBits[pdk.SetBit{Frame: "stringKey", Row: 1}] = struct{}{}
 		}
 		for _, sb := range pr.Bits {
-			fmt.Println(sb)
 			if _, ok := expBits[sb]; !ok {
 				t.Fatalf("%v not expected in set bits", sb)
 			} else {
 				delete(expBits, sb)
 			}
-			fmt.Println(len(expBits))
 		}
 		if len(expBits) != 0 {
 			t.Fatalf("leftover expected bits not found: %v", expBits)
@@ -62,8 +59,8 @@ func TestGenericMapper(t *testing.T) {
 		// Check Vals
 		expVals := map[pdk.Val]struct{}{
 			{Frame: "intkey", Field: "intkey", Value: 32}:           struct{}{},
-			{Frame: "mapkey.interkey", Field: "interkey", Value: 8}: struct{}{},
-			{Frame: "slicekey.s2key", Field: "s2key", Value: 127}:   struct{}{},
+			{Frame: "mapkey-interkey", Field: "interkey", Value: 8}: struct{}{},
+			{Frame: "slicekey-s2key", Field: "s2key", Value: 127}:   struct{}{},
 		}
 		for _, v := range pr.Vals {
 			if _, ok := expVals[v]; !ok {

@@ -42,10 +42,10 @@ func (f FramerFunc) Field(path []string) (string, string, error) {
 	return frame, field, errors.Wrap(err, "getting field")
 }
 
-func dotFrame(path []string) (string, error) {
-	return strings.Join(path, "."), nil
+func dashFrame(path []string) (string, error) {
+	return strings.Join(path, "-"), nil
 }
 
-// DotFrame creates a frame name from the path by joining the path elements with
+// DashFrame creates a frame name from the path by joining the path elements with
 // the "." character.
-var DotFrame = FramerFunc(dotFrame)
+var DashFrame = FramerFunc(dashFrame)

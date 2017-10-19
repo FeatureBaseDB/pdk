@@ -33,6 +33,10 @@ func (m *Main) Run() error {
 	src.KafkaHosts = m.KafkaHosts
 	src.Topics = m.KafkaTopics
 	src.Group = m.KafkaGroup
+	err := src.Open()
+	if err != nil {
+		return errors.Wrap(err, "opening kafka source")
+	}
 
 	var parser pdk.Parrrser
 	if m.RegistryURL != "" {
