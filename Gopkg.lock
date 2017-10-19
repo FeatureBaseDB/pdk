@@ -200,15 +200,16 @@
   version = "v0.1.1"
 
 [[projects]]
+  branch = "master"
   name = "github.com/pilosa/go-pilosa"
-  packages = [".","internal"]
-  revision = "caab511e58850c3a9488f74e68558156b41ff489"
+  packages = [".","gopilosa_pbuf"]
+  revision = "9ab4bcb1aa268806d78b5d0cf9d48c30f579778c"
 
 [[projects]]
-  branch = "dep-fixes"
+  branch = "master"
   name = "github.com/pilosa/pilosa"
   packages = [".","ctl","gossip","internal","pql","roaring","server","statik","statsd"]
-  revision = "20c7868d9ef63d4ddc9983ec8d8397754ef4e268"
+  revision = "27a91a6465603a23003f1393e41eef4a565f40e7"
 
 [[projects]]
   name = "github.com/pkg/errors"
@@ -309,6 +310,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "1624db005581f9175f8e247bc334bfc3d00d0bba83fa119e6056c9fe57147ad9"
+  inputs-digest = "50cdffb38cae33bc58d12ca96217ab676141609d2ebd3f85777e1c37e766c044"
   solver-name = "gps-cdcl"
   solver-version = 1
