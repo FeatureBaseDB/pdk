@@ -70,20 +70,20 @@
 [[projects]]
   name = "github.com/gogo/protobuf"
   packages = ["proto"]
-  revision = "100ba4e885062801d56799d78530b73b178a78f3"
-  version = "v0.4"
+  revision = "342cbe0a04158f6dcb03ca0079991a51a4248c02"
+  version = "v0.5"
 
 [[projects]]
   branch = "master"
   name = "github.com/golang/groupcache"
   packages = ["lru"]
-  revision = "b710c8433bd175204919eb38776e944233235d03"
+  revision = "84a468cf14b4376def5d68c722b139b881c450a4"
 
 [[projects]]
   branch = "master"
   name = "github.com/golang/protobuf"
   packages = ["proto"]
-  revision = "130e6b02ab059e7b717a096f397c5b60111cae74"
+  revision = "1643683e1b54a9e88ad26d98f81400c8c9d9f4f9"
 
 [[projects]]
   branch = "master"
@@ -137,7 +137,7 @@
   branch = "master"
   name = "github.com/hashicorp/go-sockaddr"
   packages = ["."]
-  revision = "41949a141473f6340abc6ba0fcd0f89da6f6f837"
+  revision = "9b4c5fa5b10a683339a270d664474b9f4aee62fc"
 
 [[projects]]
   branch = "master"
@@ -149,7 +149,7 @@
   branch = "master"
   name = "github.com/hashicorp/hcl"
   packages = [".","hcl/ast","hcl/parser","hcl/scanner","hcl/strconv","hcl/token","json/parser","json/scanner","json/token"]
-  revision = "68e816d1c783414e79bc65b3994d9ab6b0a722ab"
+  revision = "23c074d0eceb2b8a5bfdbb271ab780cde70f05a8"
 
 [[projects]]
   name = "github.com/hashicorp/memberlist"
@@ -173,13 +173,13 @@
   branch = "master"
   name = "github.com/miekg/dns"
   packages = [".","internal/socket"]
-  revision = "946bd9fbed05568b0f3cd188353d8aa28f38b688"
+  revision = "a5852667e3c36e2e0b0a69ab43869e00e95aacdf"
 
 [[projects]]
   branch = "master"
   name = "github.com/mitchellh/mapstructure"
   packages = ["."]
-  revision = "d0303fe809921458f417bcf828397a65db30a7e4"
+  revision = "06020f85339e21b2478f756a78e295255ffa4d6a"
 
 [[projects]]
   name = "github.com/pelletier/go-toml"
@@ -203,13 +203,13 @@
   branch = "master"
   name = "github.com/pilosa/go-pilosa"
   packages = [".","gopilosa_pbuf"]
-  revision = "9ab4bcb1aa268806d78b5d0cf9d48c30f579778c"
+  revision = "7354889ee493d5cca2ce025b405a3b42a340a02c"
 
 [[projects]]
   branch = "master"
   name = "github.com/pilosa/pilosa"
   packages = [".","ctl","gossip","internal","pql","roaring","server","statik","statsd"]
-  revision = "27a91a6465603a23003f1393e41eef4a565f40e7"
+  revision = "aaee9b202a5c6818aff1a502428e206494694aaf"
 
 [[projects]]
   name = "github.com/pkg/errors"
@@ -239,7 +239,7 @@
   branch = "master"
   name = "github.com/spf13/afero"
   packages = [".","mem"]
-  revision = "3de492c3cda9570c77bc1f495857bfbf4b760efd"
+  revision = "5660eeed305fe5f69c8fc6cf899132a459a97064"
 
 [[projects]]
   name = "github.com/spf13/cast"
@@ -251,7 +251,7 @@
   branch = "master"
   name = "github.com/spf13/cobra"
   packages = ["."]
-  revision = "d5bde60e022436203e377c47806e001418c16af3"
+  revision = "b3426bbac13d7110c4d8fce456ea0012f79f3b8b"
 
 [[projects]]
   branch = "master"
@@ -281,25 +281,25 @@
   branch = "master"
   name = "golang.org/x/net"
   packages = ["context"]
-  revision = "a04bdaca5b32abe1c069418fb7088ae607de5bd0"
+  revision = "ea0da6f35caf3ff91581c800469e22eef75076f4"
 
 [[projects]]
   branch = "master"
   name = "golang.org/x/sync"
   packages = ["errgroup"]
-  revision = "8e0aa688b654ef28caa72506fa5ec8dba9fc7690"
+  revision = "fd80eb99c8f653c847d294a001bdf2a3a6f768f5"
 
 [[projects]]
   branch = "master"
   name = "golang.org/x/sys"
   packages = ["unix"]
-  revision = "314a259e304ff91bd6985da2a7149bbf91237993"
+  revision = "95c6576299259db960f6c5b9b69ea52422860fce"
 
 [[projects]]
   branch = "master"
   name = "golang.org/x/text"
   packages = ["internal/gen","internal/triegen","internal/ucd","transform","unicode/cldr","unicode/norm"]
-  revision = "d82c1812e304abfeeabd31e995a115a2855bf642"
+  revision = "7d4e23b25beca3bc3b804ab134f0b12b4ca909d1"
 
 [[projects]]
   branch = "v2"
