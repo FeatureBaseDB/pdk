@@ -40,7 +40,7 @@ func (p *AvroParser) Parse(record []byte) (interface{}, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "getting avro codec")
 	}
-	val, err := AvroDecode(codec, append([]byte{0}, kr.Value[5:]...))
+	val, err := AvroDecode(codec, kr.Value[5:])
 	return val, errors.Wrap(err, "decoding avro record")
 }
 

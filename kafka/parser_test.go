@@ -18,7 +18,7 @@ func TestParse(t *testing.T) {
 	parser := NewAvroParserRegistry(regURL)
 	data := GetAvroEncodedValue(t)
 	rec := Record{
-		Value: append([]byte{0, 0, 0, 0, 1}, data[1:]...),
+		Value: append([]byte{0, 0, 0, 0, 1}, data...),
 	}
 	recbytes, err := Encode(rec)
 	if err != nil {
@@ -36,14 +36,12 @@ func TestParse(t *testing.T) {
 }
 
 var value map[string]interface{} = map[string]interface{}{
-	"com.pilosa.thing.Thing": map[string]interface{}{
-		"thing_string": "blah",
-		"thing_int":    34,
-		"mysubthing": map[string]interface{}{
-			"com.pilosa.thing.SubThing": map[string]interface{}{
-				"substring": map[string]interface{}{"string": "blahsub"},
-				"subdub":    map[string]interface{}{"double": 3.14},
-			},
+	"thing_string": "blah",
+	"thing_int":    34,
+	"mysubthing": map[string]interface{}{
+		"com.pilosa.thing.SubThing": map[string]interface{}{
+			"substring": map[string]interface{}{"string": "blahsub"},
+			"subdub":    map[string]interface{}{"double": 3.14},
 		},
 	},
 }
@@ -84,7 +82,9 @@ func TestElodinaDecode(t *testing.T) {
 	}
 
 	gomap := decodedRecord.Map()
-	fmt.Printf("%T, %v\n", gomap, gomap)
+	if gomap["thing_int"].(int32) != 34 {
+		t.Fatalf("unexpected decoded map: %v", gomap)
+	}
 }
 
 func StartFakeRegistry(t *testing.T) string {
@@ -99,8 +99,7 @@ func StartFakeRegistry(t *testing.T) string {
 	return ln.Addr().String()
 }
 
-var schema1 string = `[
-{
+var schema1 string = `{
     "fields": [
         {
             "name": "thing_string",
@@ -140,7 +139,7 @@ var schema1 string = `[
     "name": "Thing",
     "namespace": "com.pilosa.thing",
     "type": "record"
-}]`
+}`
 
 func RegistryHandler(w http.ResponseWriter, r *http.Request) {
 	var id int32
@@ -161,5 +160,23 @@ func RegistryHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, fmt.Sprintf("unknown id: %d", id), http.StatusNotFound)
 		return
 	}
+}
 
+func TestJSONParser(t *testing.T) {
+	js := []byte("{\"hello\": \"my name is joe\", \"nested\": {\"anint\": 32}}")
+	rec := Record{Value: js}
+	recBytes, err := Encode(rec)
+
+	jp := &JSONParser{}
+	vali, err := jp.Parse(recBytes)
+	if err != nil {
+		t.Fatal(err)
+	}
+	val := vali.(map[string]interface{})
+	if val["hello"] != "my name is joe" {
+		t.Fatalf("%v is not 'my name is joe'", val["hello"])
+	}
+	if val["nested"].(map[string]interface{})["anint"].(float64) != 32.0 {
+		t.Fatalf("nested int is not 32, map: %v", val)
+	}
 }

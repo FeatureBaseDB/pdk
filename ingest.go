@@ -54,8 +54,8 @@ func (n *Ingester) Run() error {
 					n.indexer.AddValue(val.Frame, val.Field, pr.Col, val.Value)
 				}
 			}
-			if err != io.EOF {
-				log.Println(err)
+			if err != io.EOF && err != nil {
+				log.Printf("error in ingest run loop: %v", err)
 			}
 		}()
 	}
