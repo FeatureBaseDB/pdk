@@ -223,9 +223,9 @@ func (m *GenericMapper) mapFloat(path []string, val interface{}, pr *PilosaRecor
 	}
 	switch vt := val.(type) {
 	case float32:
-		pr.Vals = append(pr.Vals, Val{Frame: frame, Field: field, Value: uint64(vt)})
+		pr.Vals = append(pr.Vals, Val{Frame: frame, Field: field, Value: int64(vt)})
 	case float64:
-		pr.Vals = append(pr.Vals, Val{Frame: frame, Field: field, Value: uint64(vt)})
+		pr.Vals = append(pr.Vals, Val{Frame: frame, Field: field, Value: int64(vt)})
 	default:
 		panic(fmt.Sprintf("mapFloat called with non float type: %T, val: %v", vt, vt))
 	}

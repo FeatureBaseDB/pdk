@@ -215,7 +215,7 @@
   branch = "master"
   name = "github.com/pilosa/go-pilosa"
   packages = [".","gopilosa_pbuf"]
-  revision = "572aaf3a64c0ac37d60ee5f273e6435b99cb4c5e"
+  revision = "7354889ee493d5cca2ce025b405a3b42a340a02c"
 
 [[projects]]
   branch = "master"
