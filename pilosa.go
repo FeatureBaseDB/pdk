@@ -11,7 +11,7 @@ import (
 
 type Indexer interface {
 	AddBit(frame string, col uint64, row uint64)
-	AddValue(frame, field string, col uint64, val uint64)
+	AddValue(frame, field string, col uint64, val int64)
 	Close() error
 }
 
@@ -38,7 +38,7 @@ func (i *Index) AddBit(frame string, col uint64, row uint64) {
 	c <- pcli.Bit{RowID: row, ColumnID: col}
 }
 
-func (i *Index) AddValue(frame, field string, col uint64, val uint64) {
+func (i *Index) AddValue(frame, field string, col uint64, val int64) {
 	fieldmap, ok := i.fieldChans[frame]
 	if !ok {
 		log.Printf("Unknown frame in AddValue: %v", frame)

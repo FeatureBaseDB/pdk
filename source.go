@@ -44,5 +44,5 @@ type SetBit struct {
 type Val struct {
 	Frame string
 	Field string
-	Value uint64
+	Value int64
 }
