@@ -43,21 +43,27 @@ func (i *Index) AddBit(frame string, col uint64, row uint64) {
 		defer i.lock.Unlock()
 		err := i.setupFrame(FrameSpec{Name: frame, CacheType: pcli.CacheTypeRanked, CacheSize: 100000})
 		if err != nil {
-			log.Println(errors.Wrapf(err, "setting up frame '%s'", frame)) // TODO make AddBit return err?
+			log.Println(errors.Wrapf(err, "setting up frame '%s'", frame)) // TODO make AddBit/AddValue return err?
 			return
 		}
 		c = i.bitChans[frame]
+	} else {
+		i.lock.RUnlock()
 	}
 	c <- pcli.Bit{RowID: row, ColumnID: col}
 }
 
 func (i *Index) AddValue(frame, field string, col uint64, val int64) {
 	var c ChanValIterator
+	i.lock.RLock()
 	fieldmap, ok := i.fieldChans[frame]
 	if ok {
 		c, ok = fieldmap[field]
 	}
 	if !ok {
+		i.lock.RUnlock()
+		i.lock.Lock()
+		defer i.lock.Unlock()
 		err := i.setupFrame(FrameSpec{
 			Name:      frame,
 			CacheType: pcli.CacheTypeRanked,
@@ -74,6 +80,8 @@ func (i *Index) AddValue(frame, field string, col uint64, val int64) {
 			return
 		}
 		c = i.fieldChans[frame][field]
+	} else {
+		i.lock.RUnlock()
 	}
 	c <- pcli.FieldValue{ColumnID: col, Value: val}
 }

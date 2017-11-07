@@ -19,6 +19,14 @@ We assume you are on a UNIX-like operating system. Otherwise adapt the following
 * `cd $GOPATH/src/github.com/pilosa/pdk`
 * `make install`
 
+## Running Tests
+
+To run unit tests
+`make test`
+
+To run unit and integration tests
+`make test TESTFLAGS="-tags=integration"`
+
 ## Taxi usecase
 
 To get started immediately, run this:
