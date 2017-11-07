@@ -47,15 +47,15 @@ func (n *Ingester) Run() error {
 					log.Printf("couldn't map val: %s, err: %v", val, err)
 					continue
 				}
-				for _, bit := range pr.Bits {
-					n.indexer.AddBit(bit.Frame, pr.Col, bit.Row)
+				for _, row := range pr.Rows {
+					n.indexer.AddBit(row.Frame, pr.Col, row.ID)
 				}
 				for _, val := range pr.Vals {
 					n.indexer.AddValue(val.Frame, val.Field, pr.Col, val.Value)
 				}
 			}
-			if err != io.EOF {
-				log.Println(err)
+			if err != io.EOF && err != nil {
+				log.Printf("error in ingest run loop: %v", err)
 			}
 		}()
 	}

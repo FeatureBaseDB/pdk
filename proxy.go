@@ -14,14 +14,6 @@ import (
 	"github.com/pilosa/pilosa/pql"
 )
 
-// Translator describes the functionality which the proxy server requires to
-// translate row ids to what they were mapped from.
-type Translator interface {
-	// Get must be safe for concurrent access
-	Get(frame string, id uint64) interface{}
-	GetID(frame string, val interface{}) (uint64, error)
-}
-
 // KeyMapper describes the functionality for mapping the keys contained
 // in requests and responses.
 type KeyMapper interface {
