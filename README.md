@@ -24,7 +24,11 @@ We assume you are on a UNIX-like operating system. Otherwise adapt the following
 To run unit tests
 `make test`
 
-To run unit and integration tests
+To run unit and integration tests, first, install and start the Confluent stack:
+1. Download tarball here: https://www.confluent.io/download 
+2. Decompress, enter directory, then,
+3. Run `./bin/confluent start kafka-rest`
+Now that's running, you can do
 `make test TESTFLAGS="-tags=integration"`
 
 ## Taxi usecase
