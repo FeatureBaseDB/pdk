@@ -33,19 +33,19 @@ func TestGenericMapper(t *testing.T) {
 		}
 
 		// Check Bits
-		expBits := map[pdk.SetBit]struct{}{
-			{Frame: "stringKey", Row: 0}:          struct{}{},
-			{Frame: "mapkey-innerstring", Row: 0}: struct{}{},
-			{Frame: "slicekey-skey", Row: 0}:      struct{}{},
-			{Frame: "slicekey-skey", Row: 1}:      struct{}{},
-			{Frame: "bs", Row: 0}:                 struct{}{},
-			{Frame: "boolkey", Row: 0}:            struct{}{},
+		expBits := map[pdk.Row]struct{}{
+			{Frame: "stringKey", ID: 0}:          struct{}{},
+			{Frame: "mapkey-innerstring", ID: 0}: struct{}{},
+			{Frame: "slicekey-skey", ID: 0}:      struct{}{},
+			{Frame: "slicekey-skey", ID: 1}:      struct{}{},
+			{Frame: "bs", ID: 0}:                 struct{}{},
+			{Frame: "boolkey", ID: 0}:            struct{}{},
 		}
 		if i == 2 {
-			delete(expBits, pdk.SetBit{Frame: "stringKey", Row: 0})
-			expBits[pdk.SetBit{Frame: "stringKey", Row: 1}] = struct{}{}
+			delete(expBits, pdk.Row{Frame: "stringKey", ID: 0})
+			expBits[pdk.Row{Frame: "stringKey", ID: 1}] = struct{}{}
 		}
-		for _, sb := range pr.Bits {
+		for _, sb := range pr.Rows {
 			if _, ok := expBits[sb]; !ok {
 				t.Fatalf("%v not expected in set bits", sb)
 			} else {

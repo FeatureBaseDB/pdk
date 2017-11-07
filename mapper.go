@@ -122,9 +122,9 @@ func (m *GenericMapper) mapByteSlice(path []string, val []byte, pr *PilosaRecord
 	if err != nil {
 		return errors.Wrap(err, "getting id from translator")
 	}
-	pr.Bits = append(pr.Bits, SetBit{
+	pr.Rows = append(pr.Rows, Row{
 		Frame: frame,
-		Row:   id,
+		ID:    id,
 	})
 	return nil
 }
@@ -187,9 +187,9 @@ func (m *GenericMapper) mapString(path []string, val string, pr *PilosaRecord) e
 	if err != nil {
 		return errors.Wrap(err, "getting id from translator")
 	}
-	pr.Bits = append(pr.Bits, SetBit{
+	pr.Rows = append(pr.Rows, Row{
 		Frame: frame,
-		Row:   id,
+		ID:    id,
 	})
 	return nil
 }
@@ -206,9 +206,9 @@ func (m *GenericMapper) mapBool(path []string, val bool, pr *PilosaRecord) error
 	if err != nil {
 		return errors.Wrap(err, "getting id from translator")
 	}
-	pr.Bits = append(pr.Bits, SetBit{
+	pr.Rows = append(pr.Rows, Row{
 		Frame: frame,
-		Row:   id,
+		ID:    id,
 	})
 	return nil
 }
@@ -236,16 +236,19 @@ func (m *GenericMapper) mapFloat(path []string, val interface{}, pr *PilosaRecor
 // in Pilosa.
 type PilosaRecord struct {
 	Col  uint64
-	Bits []SetBit
+	Rows []Row
 	Vals []Val
 }
 
-// SetBit represents a bit to set in Pilosa sans column id (which is held by the
-// PilosaRecord containg the SetBit).
-type SetBit struct {
+// Row represents a bit to set in Pilosa sans column id (which is held by the
+// PilosaRecord containg the Row).
+type Row struct {
 	Frame string
-	Row   uint64
-	Time  time.Time
+	ID    uint64
+
+	// Time is the timestamp for the bit in Pilosa which is the intersection of
+	// this row and the Column in the PilosaRecord which holds this row.
+	Time time.Time
 }
 
 // Val represents a BSI value to set in a Pilosa field sans column id (which is

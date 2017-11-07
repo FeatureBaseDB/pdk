@@ -112,8 +112,8 @@
 [[projects]]
   name = "github.com/gorilla/mux"
   packages = ["."]
-  revision = "24fca303ac6da784b9e8269f724ddeb0b2eea5e7"
-  version = "v1.5.0"
+  revision = "7f08801859139f86dfafd1c296e2cba9a80d292e"
+  version = "v1.6.0"
 
 [[projects]]
   branch = "master"
@@ -185,7 +185,7 @@
   branch = "master"
   name = "github.com/miekg/dns"
   packages = [".","internal/socket"]
-  revision = "a5852667e3c36e2e0b0a69ab43869e00e95aacdf"
+  revision = "4bcc48899c7e79d34b147628f5049a7d67718ac6"
 
 [[projects]]
   branch = "master"
@@ -215,13 +215,13 @@
   branch = "master"
   name = "github.com/pilosa/go-pilosa"
   packages = [".","gopilosa_pbuf"]
-  revision = "7354889ee493d5cca2ce025b405a3b42a340a02c"
+  revision = "7dce91893ad5c3fa9616b41c449a6f23f0c044b5"
 
 [[projects]]
   branch = "master"
   name = "github.com/pilosa/pilosa"
-  packages = [".","ctl","gossip","internal","pql","roaring","server","statik","statsd"]
-  revision = "aaee9b202a5c6818aff1a502428e206494694aaf"
+  packages = [".","ctl","diagnostics","gossip","internal","pql","roaring","server","statik","statsd"]
+  revision = "bbc82d166dad8c3d033f8b46d37553ec02dea44a"
 
 [[projects]]
   name = "github.com/pkg/errors"
@@ -246,6 +246,12 @@
   name = "github.com/sean-/seed"
   packages = ["."]
   revision = "e2103e2c35297fb7e17febb81e49b312087a2372"
+
+[[projects]]
+  name = "github.com/sony/gobreaker"
+  packages = ["."]
+  revision = "e9556a45379ef1da12e54847edb2fb3d7d566f36"
+  version = "0.3.0"
 
 [[projects]]
   branch = "master"
@@ -287,13 +293,13 @@
   branch = "master"
   name = "github.com/syndtr/goleveldb"
   packages = ["leveldb","leveldb/cache","leveldb/comparer","leveldb/errors","leveldb/filter","leveldb/iterator","leveldb/journal","leveldb/memdb","leveldb/opt","leveldb/storage","leveldb/table","leveldb/util"]
-  revision = "b89cc31ef7977104127d34c1bd31ebd1a9db2199"
+  revision = "549b6d6b1c0419617182954dd77770f2e2685ed5"
 
 [[projects]]
   branch = "master"
   name = "golang.org/x/net"
   packages = ["context"]
-  revision = "ea0da6f35caf3ff91581c800469e22eef75076f4"
+  revision = "01c190206fbdffa42f334f4b2bf2220f50e64920"
 
 [[projects]]
   branch = "master"
@@ -305,13 +311,13 @@
   branch = "master"
   name = "golang.org/x/sys"
   packages = ["unix"]
-  revision = "95c6576299259db960f6c5b9b69ea52422860fce"
+  revision = "75813c647272dd855bda156405bf844a5414f5bf"
 
 [[projects]]
   branch = "master"
   name = "golang.org/x/text"
   packages = ["internal/gen","internal/triegen","internal/ucd","transform","unicode/cldr","unicode/norm"]
-  revision = "7d4e23b25beca3bc3b804ab134f0b12b4ca909d1"
+  revision = "88f656faf3f37f690df1a32515b479415e1a6769"
 
 [[projects]]
   branch = "v2"
