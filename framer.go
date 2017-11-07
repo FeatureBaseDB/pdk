@@ -47,5 +47,5 @@ func dashFrame(path []string) (string, error) {
 }
 
 // DashFrame creates a frame name from the path by joining the path elements with
-// the "." character.
+// the "-" character.
 var DashFrame = FramerFunc(dashFrame)
