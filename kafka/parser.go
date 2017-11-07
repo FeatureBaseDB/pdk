@@ -52,7 +52,7 @@ type Schema struct {
 	Id      int    `json:"id"`      // Registry's unique id
 }
 
-func (p *AvroParser) GetCodec(id int32) (avro.Schema, error) {
+func (p *AvroParser) GetCodec(id int32) (s avro.Schema, rerr error) {
 	p.lock.RLock()
 	if codec, ok := p.cache[id]; ok {
 		p.lock.RUnlock()
@@ -65,6 +65,10 @@ func (p *AvroParser) GetCodec(id int32) (avro.Schema, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "getting schema from registry")
 	}
+	defer func() {
+		// hahahahahaha
+		rerr = r.Body.Close()
+	}()
 	if r.StatusCode >= 300 {
 		bod, err := ioutil.ReadAll(r.Body)
 		if err != nil {
@@ -83,7 +87,7 @@ func (p *AvroParser) GetCodec(id int32) (avro.Schema, error) {
 		return nil, errors.Wrap(err, "parsing schema")
 	}
 	p.cache[id] = codec
-	return codec, nil
+	return codec, rerr
 }
 
 func AvroDecode(codec avro.Schema, data []byte) (map[string]interface{}, error) {
