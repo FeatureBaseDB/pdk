@@ -29,8 +29,8 @@ func NewIngestCommand(stdin io.Reader, stdout, stderr io.Writer) *cobra.Command 
 		},
 	}
 	flags := ingestCommand.Flags()
-	flags.StringSliceVarP(&IngestMain.KafkaHosts, "kafka-hosts", "k", IngestMain.KafkaHosts, "Directory containing ingest data files.")
-	flags.StringSliceVarP(&IngestMain.KafkaTopics, "kafka-topics", "t", IngestMain.KafkaTopics, "Directory containing ingest data files.")
+	flags.StringSliceVarP(&IngestMain.KafkaHosts, "kafka-hosts", "k", IngestMain.KafkaHosts, "Comma separated list of  kafka cluster host:port.")
+	flags.StringSliceVarP(&IngestMain.KafkaTopics, "kafka-topics", "t", IngestMain.KafkaTopics, "Comma separated list of kafka topics.")
 	flags.StringVarP(&IngestMain.KafkaGroup, "group", "g", IngestMain.KafkaGroup, "Group id to use when consuming from Kafka.")
 	flags.StringVarP(&IngestMain.RegistryURL, "registry-url", "r", IngestMain.RegistryURL, "Schema registry URL.")
 	flags.StringSliceVarP(&IngestMain.PilosaHosts, "pilosa-hosts", "p", IngestMain.PilosaHosts, "Pilosa cluster.")
