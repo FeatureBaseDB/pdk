@@ -36,6 +36,13 @@ func TestMapTranslator(t *testing.T) {
 	id, err = mt.GetID("frame2", "thing3")
 	MustBe(t, id, uint64(0), "fourth")
 	MustBe(t, err, nil)
+
+	val := mt.Get("frame1", 0)
+	MustBe(t, "thing", val, "Get1-0")
+	val = mt.Get("frame1", 1)
+	MustBe(t, "thing1", val, "Get1-0")
+	val = mt.Get("frame2", 0)
+	MustBe(t, "thing3", val, "Get1-0")
 }
 
 func TestConcMapTranslator(t *testing.T) {

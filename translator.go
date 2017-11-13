@@ -43,7 +43,10 @@ func (m *MapTranslator) getFrameTranslator(frame string) *MapFrameTranslator {
 }
 
 func (m *MapTranslator) Get(frame string, id uint64) interface{} {
-	_, val := m.getFrameTranslator(frame).Get(id)
+	val, err := m.getFrameTranslator(frame).Get(id)
+	if err != nil {
+		panic(err) // TODO change to returning an error after fixing Translator interface
+	}
 	return val
 }
 
@@ -71,7 +74,7 @@ func (m *MapFrameTranslator) Get(id uint64) (interface{}, error) {
 	m.l.RLock()
 	defer m.l.RUnlock()
 	if uint64(len(m.s)) < id {
-		panic("requested unknown id in MapTranslator") // TODO change to returning an error after fixing Translator interface
+		return nil, fmt.Errorf("requested unknown id in MapTranslator")
 	}
 	return m.s[id], nil
 }
