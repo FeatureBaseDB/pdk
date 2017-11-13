@@ -24,6 +24,10 @@ func TestLevelTranslator(t *testing.T) {
 	if err != nil {
 		t.Fatalf("couldn't get id for hello in f2: %v", err)
 	}
+	id3, err := bt.GetID("fnew", []byte("hello"))
+	if err != nil {
+		t.Fatalf("couldn't get id for hello in fnew: %v", err)
+	}
 
 	val := bt.Get("f1", id1)
 	if !bytes.Equal(val.([]byte), []byte("hello")) {
@@ -33,6 +37,11 @@ func TestLevelTranslator(t *testing.T) {
 	val = bt.Get("f2", id2)
 	if !bytes.Equal(val.([]byte), []byte("hello")) {
 		t.Fatalf("unexpected value for hello id in f2: %s", val)
+	}
+
+	val = bt.Get("fnew", id3)
+	if !bytes.Equal(val.([]byte), []byte("hello")) {
+		t.Fatalf("unexpected value for hello id in fnew: %s", val)
 	}
 
 	err = bt.Close()
@@ -54,6 +63,11 @@ func TestLevelTranslator(t *testing.T) {
 		t.Fatalf("after reopen, unexpected value for hello id in f2: %s", val)
 	}
 
+	val = bt.Get("fnew", id3)
+	if !bytes.Equal(val.([]byte), []byte("hello")) {
+		t.Fatalf("after reopen, unexpected value for hello id in fnew: %s", val)
+	}
+
 	id1again, err := bt.GetID("f1", []byte("hello"))
 	if err != nil {
 		t.Fatalf("couldn't get id again for hello f1: %v", err)
@@ -63,8 +77,13 @@ func TestLevelTranslator(t *testing.T) {
 		t.Fatalf("couldn't get id again for hello in f2: %v", err)
 	}
 
-	if id1again != id1 || id2again != id2 {
-		t.Fatalf("didn't get same ids for same values id1: %v, 1again: %v, 2: %v, 2again: %v", id1, id1again, id2, id2again)
+	id3again, err := bt.GetID("fnew", []byte("hello"))
+	if err != nil {
+		t.Fatalf("couldn't get id again for hello in fnew: %v", err)
+	}
+
+	if id1again != id1 || id2again != id2 || id3 != id3again {
+		t.Fatalf("didn't get same ids for same values id1: %v, 1again: %v, 2: %v, 2again: %v, 3: %v 3again: %v", id1, id1again, id2, id2again, id3, id3again)
 	}
 }
 

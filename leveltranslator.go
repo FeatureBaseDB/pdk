@@ -17,11 +17,12 @@ import (
 // LevelTranslator is a Translator which stores the two way val/id mapping in
 // leveldb.
 type LevelTranslator struct {
-	fmu    sync.RWMutex
-	frames map[string]mapDBs
+	lock    sync.RWMutex
+	dirname string
+	frames  map[string]*LevelFrameTranslator
 }
 
-type mapDBs struct {
+type LevelFrameTranslator struct {
 	lock   ValueLocker
 	idMap  *leveldb.DB
 	valMap *leveldb.DB
@@ -38,16 +39,13 @@ func (errs Errors) Error() string {
 	return strings.Join(errstrings, "; ")
 }
 
+// Close closes all of the underlying leveldb instances.
 func (lt *LevelTranslator) Close() error {
 	errs := make(Errors, 0)
-	for f, dbs := range lt.frames {
-		err := dbs.idMap.Close()
+	for f, lft := range lt.frames {
+		err := lft.Close()
 		if err != nil {
-			errs = append(errs, errors.Wrapf(err, "closing idMap for frame: %v", f))
-		}
-		err = dbs.valMap.Close()
-		if err != nil {
-			errs = append(errs, errors.Wrapf(err, "closing valMap for frame: %v", f))
+			errs = append(errs, errors.Wrapf(err, "frame : %v", f))
 		}
 	}
 	if len(errs) > 0 {
@@ -56,54 +54,113 @@ func (lt *LevelTranslator) Close() error {
 	return nil
 }
 
-func NewLevelTranslator(dirname string, frames ...string) (lt *LevelTranslator, err error) {
-	lt = &LevelTranslator{
-		frames: make(map[string]mapDBs),
+// Close closes the two leveldbs used by the LevelFrameTranslator.
+func (lft *LevelFrameTranslator) Close() error {
+	errs := make(Errors, 0)
+	err := lft.idMap.Close()
+	if err != nil {
+		errs = append(errs, errors.Wrap(err, "closing idMap"))
 	}
-	err = os.MkdirAll(dirname, 0700)
+	err = lft.valMap.Close()
+	if err != nil {
+		errs = append(errs, errors.Wrap(err, "closing valMap"))
+	}
+	if len(errs) > 0 {
+		return errs
+	}
+	return nil
+}
+
+// getFrameTranslator retrieves or creates a LevelFrameTranslator for the given frame.
+func (lt *LevelTranslator) getFrameTranslator(frame string) (*LevelFrameTranslator, error) {
+	lt.lock.RLock()
+	if tr, ok := lt.frames[frame]; ok {
+		lt.lock.RUnlock()
+		return tr, nil
+	}
+	lt.lock.RUnlock()
+	lt.lock.Lock()
+	defer lt.lock.Unlock()
+	if tr, ok := lt.frames[frame]; ok {
+		return tr, nil
+	}
+	lft, err := NewLevelFrameTranslator(lt.dirname, frame)
+	if err != nil {
+		return nil, errors.Wrap(err, "creating new LevelFrameTranslator")
+	}
+	lt.frames[frame] = lft
+	return lft, nil
+}
+
+// NewLevelFrameTranslator creates a new FrameTranslator which uses LevelDB as
+// backing storage.
+func NewLevelFrameTranslator(dirname string, frame string) (*LevelFrameTranslator, error) {
+	err := os.MkdirAll(dirname, 0700)
 	if err != nil {
 		return nil, errors.Wrap(err, "making directory")
 	}
+	var initialID uint64 = 0
+	mdbs := &LevelFrameTranslator{
+		curID: &initialID,
+		lock:  NewBucketVLock(),
+	}
+	mdbs.idMap, err = leveldb.OpenFile(dirname+"/"+frame+"-id", &opt.Options{})
+	if err != nil {
+		return nil, errors.Wrapf(err, "opening leveldb at %v", dirname+"/"+frame+"-id")
+	}
+	mdbs.valMap, err = leveldb.OpenFile(dirname+"/"+frame+"-val", &opt.Options{})
+	if err != nil {
+		return nil, errors.Wrapf(err, "opening leveldb at %v", dirname+"/"+frame+"-val")
+	}
+	return mdbs, nil
+}
+
+func NewLevelTranslator(dirname string, frames ...string) (lt *LevelTranslator, err error) {
+	lt = &LevelTranslator{
+		dirname: dirname,
+		frames:  make(map[string]*LevelFrameTranslator),
+	}
 	for _, frame := range frames {
-		var initialID uint64 = 0
-		mdbs := mapDBs{
-			curID: &initialID,
-			lock:  NewBucketVLock(),
-		}
-		mdbs.idMap, err = leveldb.OpenFile(dirname+"/"+frame+"-id", &opt.Options{})
+		lft, err := NewLevelFrameTranslator(dirname, frame)
 		if err != nil {
-			return nil, errors.Wrapf(err, "opening leveldb at %v", dirname+"/"+frame+"-id")
+			return nil, errors.Wrap(err, "making LevelFrameTranslator")
 		}
-		mdbs.valMap, err = leveldb.OpenFile(dirname+"/"+frame+"-val", &opt.Options{})
-		if err != nil {
-			return nil, errors.Wrapf(err, "opening leveldb at %v", dirname+"/"+frame+"-val")
-		}
-		lt.frames[frame] = mdbs
+		lt.frames[frame] = lft
 	}
 	return lt, err
 }
 
 func (lt *LevelTranslator) Get(frame string, id uint64) (val interface{}) {
-	var dbs mapDBs
-	var ok bool
-	if dbs, ok = lt.frames[frame]; !ok {
-		panic(errors.Errorf("frame %v not found in level translator", frame))
+	lft, err := lt.getFrameTranslator(frame)
+	if err != nil {
+		panic(errors.Wrap(err, "getting frame translator")) // TODO fix after changing Translator interface to return error on Get.
 	}
+	val, err = lft.Get(id)
+	if err != nil {
+		panic(err) // TODO fix after changing Translator interface to return error on Get.
+	}
+	return val
+}
+
+func (lft *LevelFrameTranslator) Get(id uint64) (val interface{}, err error) {
 	idBytes := make([]byte, 8)
 	binary.BigEndian.PutUint64(idBytes, id)
-	data, err := dbs.idMap.Get(idBytes, nil)
+	data, err := lft.idMap.Get(idBytes, nil)
 	if err != nil {
-		panic(err)
+		return nil, errors.Wrap(err, "fetching from idMap")
 	}
-	return data
+	return data, nil
 }
 
 func (lt *LevelTranslator) GetID(frame string, val interface{}) (id uint64, err error) {
-	var dbs mapDBs
-	var ok bool
-	if dbs, ok = lt.frames[frame]; !ok {
-		return 0, errors.Errorf("frame %v not found in level translator", frame)
+	lft, err := lt.getFrameTranslator(frame)
+	if err != nil {
+		return 0, errors.Wrap(err, "getting frame translator")
 	}
+	return lft.GetID(val)
+}
+
+func (lft *LevelFrameTranslator) GetID(val interface{}) (id uint64, err error) {
 	var valBytes []byte
 	switch valt := val.(type) {
 	case []byte:
@@ -116,7 +173,7 @@ func (lt *LevelTranslator) GetID(frame string, val interface{}) (id uint64, err 
 	var data []byte
 
 	// if you're expecting most of the mapping to already be done, this would be faster
-	data, err = dbs.valMap.Get(valBytes, &opt.ReadOptions{})
+	data, err = lft.valMap.Get(valBytes, &opt.ReadOptions{})
 	if err != nil && err != leveldb.ErrNotFound {
 		return 0, errors.Wrap(err, "trying to read value map")
 	} else if err == nil {
@@ -124,10 +181,10 @@ func (lt *LevelTranslator) GetID(frame string, val interface{}) (id uint64, err 
 	}
 
 	// else, val not found
-	dbs.lock.Lock(valBytes)
-	defer dbs.lock.Unlock(valBytes)
+	lft.lock.Lock(valBytes)
+	defer lft.lock.Unlock(valBytes)
 	// re-read after locking
-	data, err = dbs.valMap.Get(valBytes, &opt.ReadOptions{})
+	data, err = lft.valMap.Get(valBytes, &opt.ReadOptions{})
 	if err != nil && err != leveldb.ErrNotFound {
 		return 0, errors.Wrap(err, "trying to read value map")
 	} else if err == nil {
@@ -135,13 +192,13 @@ func (lt *LevelTranslator) GetID(frame string, val interface{}) (id uint64, err 
 	}
 
 	idBytes := make([]byte, 8)
-	new := atomic.AddUint64(dbs.curID, 1)
+	new := atomic.AddUint64(lft.curID, 1)
 	binary.BigEndian.PutUint64(idBytes, new-1)
-	err = dbs.idMap.Put(idBytes, valBytes, &opt.WriteOptions{})
+	err = lft.idMap.Put(idBytes, valBytes, &opt.WriteOptions{})
 	if err != nil {
 		return 0, errors.Wrap(err, "putting new id into idmap")
 	}
-	err = dbs.valMap.Put(valBytes, idBytes, &opt.WriteOptions{})
+	err = lft.valMap.Put(valBytes, idBytes, &opt.WriteOptions{})
 	if err != nil {
 		return 0, errors.Wrap(err, "putting new id into valmap")
 	}
