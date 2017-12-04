@@ -10,10 +10,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var KafkaSource *kafka.Source
+var KafkaSource *kafka.KafkaSource
 
 func NewKafkaCommand(stdin io.Reader, stdout, stderr io.Writer) *cobra.Command {
-	KafkaSource = kafka.NewSource()
+	KafkaSource = &kafka.KafkaSource{}
 	kafkaCommand := &cobra.Command{
 		Use:   "kafka",
 		Short: "kafka - read from kafka using the PDK kafka.Source.",
@@ -40,13 +40,8 @@ stdout.
 				if err != nil {
 					return err
 				}
-				val, err := kafka.Decode(rec)
-				if err != nil {
-					return err
-				}
-				fmt.Fprintf(stdout, "Key: '%s', Val: '%s', Timestamp: '%s'\n", val.Key, val.Value, val.Timestamp)
+				fmt.Fprintf(stdout, "record: %v\n", rec)
 			}
-			return nil
 		},
 	}
 	flags := kafkaCommand.Flags()

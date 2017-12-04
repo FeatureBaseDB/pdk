@@ -1,5 +1,3 @@
-// +build integration
-
 package kafka_test
 
 import (
@@ -12,10 +10,7 @@ import (
 	"net/http"
 	"strconv"
 	"testing"
-	"time"
 
-	pcli "github.com/pilosa/go-pilosa"
-	"github.com/pilosa/pdk"
 	"github.com/pilosa/pdk/kafka"
 	"github.com/pilosa/pilosa/server"
 )
@@ -23,79 +18,120 @@ import (
 var kafkaTopic = "testtopic"
 var kafkaGroup = "testgroup"
 
-// TestEverything relies on having a running instance of kafka, schema-registry,
-// and rest proxy running. Currently using confluent-3.3.0 which you can get
-// here: https://www.confluent.io/download Decompress, enter directory, then run
-// "./bin/confluent start kafka-rest"
-func TestEverything(t *testing.T) {
-	for i := 0; i < 1000; i++ {
+func TestSource(t *testing.T) {
+	for i := 0; i < 10; i++ {
 		postData(t)
 	}
 
-	src := kafka.NewSource()
+	src := kafka.NewConfluentSource()
 	src.KafkaHosts = []string{"localhost:9092"}
 	src.Group = kafkaGroup
 	src.Topics = []string{kafkaTopic}
+	src.RegistryURL = "localhost:8081"
+	src.Type = "raw"
 	err := src.Open()
 	if err != nil {
 		t.Fatalf("opening kafka source: %v", err)
 	}
 
-	parser := kafka.NewAvroParserRegistry("localhost:8081")
-	mapper := pdk.NewDefaultGenericMapper()
-	s := MustNewRunningServer(t)
-	idxer, err := pdk.SetupPilosa([]string{s.Server.Addr().String()}, "kafkaavro", []pdk.FrameSpec{}, 10)
+	rec, err := src.Record()
 	if err != nil {
-		t.Fatalf("setting up pilosa: %v", err)
+		t.Fatalf("getting record: %v", err)
 	}
-	done := make(chan struct{})
-	go func() {
-		time.Sleep(time.Second * 2)
-		err = src.Close()
-		if err != nil {
-			t.Fatalf("closing kafka source: %v", err)
+	recmap, ok := rec.(map[string]interface{})
+	if !ok {
+		t.Fatalf("unexpected record %v of type %[1]T", rec)
+	}
+
+	keys := []string{"customer_id", "geoip", "aba", "db", "user_id", "timestamp"}
+	for _, k := range keys {
+		if _, ok := recmap[k]; !ok {
+			t.Fatalf("key %v not found in record", k)
 		}
-		close(done)
-	}()
-
-	ingester := pdk.NewIngester(src, parser, mapper, idxer)
-	err = ingester.Run()
-	if err != nil {
-		t.Fatalf("running ingester: %v", err)
 	}
-	<-done
-
-	cli, err := pcli.NewClientFromAddresses([]string{s.Server.Addr().String()}, nil)
-	if err != nil {
-		t.Fatalf("getting pilosa client: %v", err)
-	}
-
-	schema, err := cli.Schema()
-	if err != nil {
-		t.Fatalf("getting schema: %v", err)
-	}
-
-	idx, err := schema.Index("kafkaavro", nil)
-	if err != nil {
-		t.Fatalf("getting index: %v", err)
-	}
-
-	for name, fram := range idx.Frames() {
-		for fname, field := range fram.Fields() {
-			resp, err := cli.Query(field.Sum(field.GTE(0)), nil)
-			if err != nil {
-				t.Fatalf("query for a field (%v): %v", fname, err)
-			}
-			fmt.Printf("%v: %v, Sum: %v\n", name, fname, resp.Result().Sum)
+	geokeys := []string{"time_zone", "longitude", "latitude", "country_name", "dma_code", "city", "region", "metro_code", "postal_code", "area_code", "region_name", "country_code3", "country_code"}
+	for _, k := range geokeys {
+		if _, ok := recmap["geoip"].(map[string]interface{})[k]; !ok {
+			t.Fatalf("key %v not found in record", k)
 		}
-		resp, err := cli.Query(fram.TopN(10), nil)
-		if err != nil {
-			t.Fatalf("fram topn query (%v): %v", name, err)
-		}
-		fmt.Printf("%v: TopN: %v\n", name, resp.Result().CountItems)
 	}
 
 }
+
+// // TestEverything relies on having a running instance of kafka, schema-registry,
+// // and rest proxy running. Currently using confluent-3.3.0 which you can get
+// // here: https://www.confluent.io/download Decompress, enter directory, then run
+// // "./bin/confluent start kafka-rest"
+// func TestEverything(t *testing.T) {
+// 	for i := 0; i < 1000; i++ {
+// 		postData(t)
+// 	}
+
+// 	src := kafka.NewConfluentSource()
+// 	src.KafkaHosts = []string{"localhost:9092"}
+// 	src.Group = kafkaGroup
+// 	src.Topics = []string{kafkaTopic}
+// 	src.RegistryURL = "localhost:8081"
+// 	err := src.Open()
+// 	if err != nil {
+// 		t.Fatalf("opening kafka source: %v", err)
+// 	}
+
+// 	parser := kafka.NewAvroParserRegistry("localhost:8081")
+// 	mapper := pdk.NewDefaultGenericMapper()
+// 	s := MustNewRunningServer(t)
+// 	idxer, err := pdk.SetupPilosa([]string{s.Server.Addr().String()}, "kafkaavro", []pdk.FrameSpec{}, 10)
+// 	if err != nil {
+// 		t.Fatalf("setting up pilosa: %v", err)
+// 	}
+// 	done := make(chan struct{})
+// 	go func() {
+// 		time.Sleep(time.Second * 2)
+// 		err = src.Close()
+// 		if err != nil {
+// 			t.Fatalf("closing kafka source: %v", err)
+// 		}
+// 		close(done)
+// 	}()
+
+// 	ingester := pdk.NewIngester(src, parser, mapper, idxer)
+// 	err = ingester.Run()
+// 	if err != nil {
+// 		t.Fatalf("running ingester: %v", err)
+// 	}
+// 	<-done
+
+// 	cli, err := pcli.NewClientFromAddresses([]string{s.Server.Addr().String()}, nil)
+// 	if err != nil {
+// 		t.Fatalf("getting pilosa client: %v", err)
+// 	}
+
+// 	schema, err := cli.Schema()
+// 	if err != nil {
+// 		t.Fatalf("getting schema: %v", err)
+// 	}
+
+// 	idx, err := schema.Index("kafkaavro", nil)
+// 	if err != nil {
+// 		t.Fatalf("getting index: %v", err)
+// 	}
+
+// 	for name, fram := range idx.Frames() {
+// 		for fname, field := range fram.Fields() {
+// 			resp, err := cli.Query(field.Sum(field.GTE(0)), nil)
+// 			if err != nil {
+// 				t.Fatalf("query for a field (%v): %v", fname, err)
+// 			}
+// 			fmt.Printf("%v: %v, Sum: %v\n", name, fname, resp.Result().Sum)
+// 		}
+// 		resp, err := cli.Query(fram.TopN(10), nil)
+// 		if err != nil {
+// 			t.Fatalf("fram topn query (%v): %v", name, err)
+// 		}
+// 		fmt.Printf("%v: TopN: %v\n", name, resp.Result().CountItems)
+// 	}
+
+// }
 
 func postData(t *testing.T) (response map[string]interface{}) {
 	krpURL := "localhost:8082"

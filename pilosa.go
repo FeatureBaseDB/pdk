@@ -10,12 +10,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-type Indexer interface {
-	AddBit(frame string, col uint64, row uint64)
-	AddValue(frame, field string, col uint64, val int64)
-	Close() error
-}
-
 type Index struct {
 	client    *pcli.Client
 	batchSize uint

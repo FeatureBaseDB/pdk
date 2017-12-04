@@ -29,21 +29,22 @@ func NewMain() *Main {
 }
 
 func (m *Main) Run() error {
-	src := kafka.NewSource()
+	src := &kafka.KafkaSource{}
 	src.KafkaHosts = m.KafkaHosts
 	src.Topics = m.KafkaTopics
 	src.Group = m.KafkaGroup
+	if m.RegistryURL != "" {
+		src.Type = "json"
+	} else {
+		src.Type = "raw"
+	}
 	err := src.Open()
 	if err != nil {
 		return errors.Wrap(err, "opening kafka source")
 	}
 
 	var parser pdk.Parrrser
-	if m.RegistryURL != "" {
-		parser = kafka.NewAvroParserRegistry(m.RegistryURL)
-	} else {
-		parser = &kafka.JSONParser{}
-	}
+	parser = pdk.NewDefaultGenericParser()
 
 	var mapper pdk.Mapppper
 	mapper = pdk.NewDefaultGenericMapper()

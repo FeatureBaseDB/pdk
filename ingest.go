@@ -6,6 +6,11 @@ import (
 	"sync"
 )
 
+// Ingester combines a Source, Parser, Mapper, and Indexer, and uses them to
+// ingest data into Pilosa. This could be a streaming situation where the Source
+// never ends, and calling it just waits for more data to be available, or a
+// batch situation where the Source eventually returns io.EOF (or some other
+// error), and the Ingester completes (after the other components are done).
 type Ingester struct {
 	ParseConcurrency int
 

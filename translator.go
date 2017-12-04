@@ -15,6 +15,11 @@ type Translator interface {
 	GetID(frame string, val interface{}) (uint64, error)
 }
 
+type FrameTranslator interface {
+	Get(id uint64) (interface{}, error)
+	GetID(val interface{}) (uint64, error)
+}
+
 type MapTranslator struct {
 	lock   sync.RWMutex
 	frames map[string]*MapFrameTranslator
@@ -38,7 +43,7 @@ func (m *MapTranslator) getFrameTranslator(frame string) *MapFrameTranslator {
 	if mt, ok := m.frames[frame]; ok {
 		return mt
 	}
-	m.frames[frame] = newMapTranslator()
+	m.frames[frame] = NewMapFrameTranslator()
 	return m.frames[frame]
 }
 
@@ -63,7 +68,7 @@ type MapFrameTranslator struct {
 	s []interface{}
 }
 
-func newMapTranslator() *MapFrameTranslator {
+func NewMapFrameTranslator() *MapFrameTranslator {
 	return &MapFrameTranslator{
 		n: NewNexter(),
 		s: make([]interface{}, 0),
