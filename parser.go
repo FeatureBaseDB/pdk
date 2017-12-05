@@ -61,31 +61,6 @@ func deref(val reflect.Value) reflect.Value {
 	return val
 }
 
-func isLiteral(val reflect.Type) (bool, error) {
-	switch val.Kind() {
-	case reflect.Bool, reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Float32, reflect.Float64, reflect.Complex64, reflect.Complex128, reflect.Array, reflect.String:
-		return true, nil
-	case reflect.Invalid, reflect.Uintptr, reflect.Chan, reflect.Func, reflect.UnsafePointer:
-		return false, errors.Errorf("'%v' is not of a supported kind (%v)", val, val.Kind())
-	case reflect.Interface, reflect.Ptr:
-		return false, errors.Errorf("'%v' should have been dereferenced before calling isLiteral (%v)", val, val.Kind())
-	case reflect.Slice:
-		switch val.Elem().Kind() {
-		case reflect.Bool, reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Float32, reflect.Float64, reflect.Complex64, reflect.Complex128, reflect.Array, reflect.String:
-			return true, nil
-		default:
-			return false, nil
-		}
-	case reflect.Map, reflect.Struct:
-		return false, nil
-	default:
-		panic("all reflect.Kinds should have been covered in isLiteral")
-	}
-}
-
-var objectType = reflect.TypeOf((*Object)(nil)).Elem()
-var literalType = reflect.TypeOf((*Literal)(nil)).Elem()
-
 func (m *GenericParser) parseMap(val reflect.Value) (*Entity, error) {
 	ent := NewEntity()
 	subj, err := m.Subjecter.Subject(val.Interface())
@@ -112,6 +87,33 @@ func (m *GenericParser) parseMap(val reflect.Value) (*Entity, error) {
 	}
 	return ent, nil
 }
+
+func (m *GenericParser) parseStruct(val reflect.Value) (*Entity, error) {
+	ent := NewEntity()
+	subj, err := m.Subjecter.Subject(val.Interface())
+	if err != nil {
+		return nil, errors.Wrapf(err, "getting subject from '%v", val.Interface())
+	}
+	ent.Subject = IRI(subj)
+
+	for i := 0; i < val.NumField(); i++ {
+		field := val.Type().Field(i)
+		if field.PkgPath != "" && !m.IncludeUnexportedFields {
+			continue // this field is unexported, so we ignore it.
+		}
+		fieldv := val.Field(i)
+		obj, err := m.parseValue(fieldv)
+		if err != nil {
+			return nil, errors.Wrapf(err, "parsing field:%v value:%v", field, fieldv)
+		}
+		if _, ok := ent.Objects[Predicate(field.Name)]; ok {
+			return nil, errors.Errorf("unexpected name collision with struct field '%v", field.Name)
+		}
+		ent.Objects[Predicate(field.Name)] = obj
+	}
+	return ent, nil
+}
+
 func (m *GenericParser) parseValue(val reflect.Value) (Object, error) {
 	switch val.Kind() {
 	case reflect.Bool, reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Float32, reflect.Float64, reflect.Complex64, reflect.Complex128, reflect.String:
@@ -119,7 +121,7 @@ func (m *GenericParser) parseValue(val reflect.Value) (Object, error) {
 		if err != nil {
 			return nil, errors.Wrap(err, "parsing literal")
 		}
-		return lit.(Object), nil // every literal must be an object
+		return lit, nil
 	case reflect.Map, reflect.Struct:
 		return m.parseObj(val)
 	case reflect.Array, reflect.Slice:
@@ -150,7 +152,7 @@ func (m *GenericParser) parseContainer(val reflect.Value) (Object, error) {
 	return ret, nil
 }
 
-func (m *GenericParser) parseLit(val reflect.Value) (Literal, error) {
+func (m *GenericParser) parseLit(val reflect.Value) (Object, error) {
 	switch val.Kind() {
 	case reflect.Bool:
 		return B(val.Bool()), nil
@@ -254,30 +256,4 @@ func (m *GenericParser) getProperty(mapKey reflect.Value) (Predicate, error) {
 	default:
 		return "", errors.Errorf("unexpected kind: %v mapKey: %v", mapKey.Kind(), mapKey)
 	}
-}
-
-func (m *GenericParser) parseStruct(val reflect.Value) (*Entity, error) {
-	ent := NewEntity()
-	subj, err := m.Subjecter.Subject(val.Interface())
-	if err != nil {
-		return nil, errors.Wrapf(err, "getting subject from '%v", val.Interface())
-	}
-	ent.Subject = IRI(subj)
-
-	for i := 0; i < val.NumField(); i++ {
-		field := val.Type().Field(i)
-		if field.PkgPath != "" && !m.IncludeUnexportedFields {
-			continue // this field is unexported, so we ignore it.
-		}
-		fieldv := val.Field(i)
-		obj, err := m.parseValue(fieldv)
-		if err != nil {
-			return nil, errors.Wrapf(err, "parsing field:%v value:%v", field, fieldv)
-		}
-		if _, ok := ent.Objects[Predicate(field.Name)]; ok {
-			return nil, errors.Errorf("unexpected name collision with struct field '%v", field.Name)
-		}
-		ent.Objects[Predicate(field.Name)] = obj
-	}
-	return ent, nil
 }

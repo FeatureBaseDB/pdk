@@ -61,26 +61,9 @@ func equal(o, o2 Object) error {
 				return errors.Wrapf(eqErr, "index %d", i)
 			}
 		}
-	case Literals:
-		ls, ls2 := o.(Literals), o2.(Literals)
-		if len(ls) != len(ls2) {
-			return errors.Errorf("literal slices have different lengths: %d and %d", len(ls2), len(ls2))
-		}
-		for i := 0; i < len(ls); i++ {
-			l1, l2 := ls[i], ls2[i]
-			err := equal(l1.(Object), l2.(Object)) // all literals are objects
-			if err != nil {
-				return errors.Wrapf(err, "index %d", i)
-			}
-		}
 	default:
-		ol, ook := o.(Literal)
-		ol2, ook2 := o2.(Literal)
-		if !ook && ook2 {
-			return errors.Errorf("expected objects to both be literals, but they are: %#v, %#v", o, o2)
-		}
-		if ol != ol2 {
-			return errors.Errorf("literals '%v' and '%v' not equal", ol, ol2)
+		if o != o2 {
+			return errors.Errorf("'%v' and '%v' not equal", o, o2)
 		}
 	}
 	return nil
@@ -136,23 +119,6 @@ func (e *Entity) MarshalJSON() ([]byte, error) {
 	return json.Marshal(ret)
 }
 
-// Literal is an interface satisfied by types which Pilosa knows how to index
-// natively.
-type Literal interface {
-	isLit()
-}
-
-// Below is pending.
-// // It is a slight extension of the concept of an RDF literal and
-// // allows for more complex types which are indexed as a single unit. E.G. a
-// // Location consists of two RDF literals (latitude and longitude of type
-// // xsd:double). These "compound" literals MUST still serialize to valid JSON-LD.
-
-type Literals []Literal
-
-func (l Literals) isLit() {}
-func (l Literals) isObj() {}
-
 type B bool
 
 func (B B) MarshalJSON() ([]byte, error) {
@@ -165,6 +131,7 @@ func (B B) MarshalJSON() ([]byte, error) {
 
 type S string
 
+// TODO define and specifically support these things
 // type Location struct {
 // 	Latitude  float64 `json:"latitude"`
 // 	Longitude float64 `json:"longitude"`
@@ -318,31 +285,17 @@ func (U U64) MarshalJSON() ([]byte, error) {
 	return json.Marshal(ret)
 }
 
-func (b B) isLit()   {}
 func (b B) isObj()   {}
-func (s S) isLit()   {}
 func (s S) isObj()   {}
-func (f F32) isLit() {}
 func (f F32) isObj() {}
-func (f F64) isLit() {}
 func (f F64) isObj() {}
-func (i I) isLit()   {}
 func (i I) isObj()   {}
-func (i I8) isLit()  {}
 func (i I8) isObj()  {}
-func (i I16) isLit() {}
 func (i I16) isObj() {}
-func (i I32) isLit() {}
 func (i I32) isObj() {}
-func (i I64) isLit() {}
 func (i I64) isObj() {}
-func (u U) isLit()   {}
 func (u U) isObj()   {}
-func (u U8) isLit()  {}
 func (u U8) isObj()  {}
-func (u U16) isLit() {}
 func (u U16) isObj() {}
-func (u U32) isLit() {}
 func (u U32) isObj() {}
-func (u U64) isLit() {}
 func (u U64) isObj() {}

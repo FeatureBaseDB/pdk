@@ -157,22 +157,3 @@ func RegistryHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 }
-
-// func TestJSONParser(t *testing.T) {
-// 	js := []byte("{\"hello\": \"my name is joe\", \"nested\": {\"anint\": 32}}")
-// 	rec := Record{Value: js}
-// 	recBytes, err := Encode(rec)
-
-// 	jp := &JSONParser{}
-// 	vali, err := jp.Parse(recBytes)
-// 	if err != nil {
-// 		t.Fatal(err)
-// 	}
-// 	val := vali.(map[string]interface{})
-// 	if val["hello"] != "my name is joe" {
-// 		t.Fatalf("%v is not 'my name is joe'", val["hello"])
-// 	}
-// 	if val["nested"].(map[string]interface{})["anint"].(float64) != 32.0 {
-// 		t.Fatalf("nested int is not 32, map: %v", val)
-// 	}
-// }
