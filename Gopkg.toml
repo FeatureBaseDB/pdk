@@ -27,11 +27,12 @@
 
 [[constraint]]
   name = "github.com/pilosa/go-pilosa"
-  branch = "master"
+  branch = "use-schema-endpoint-instead-of-status"
+  source = "github.com/yuce/go-pilosa"
 
 [[constraint]]
   name = "github.com/pilosa/pilosa"
-  branch = "master"
+  branch = "cluster-resize"
 
 [[constraint]]
   name = "github.com/pkg/errors"

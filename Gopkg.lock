@@ -70,8 +70,8 @@
 [[projects]]
   name = "github.com/gogo/protobuf"
   packages = ["proto"]
-  revision = "342cbe0a04158f6dcb03ca0079991a51a4248c02"
-  version = "v0.5"
+  revision = "100ba4e885062801d56799d78530b73b178a78f3"
+  version = "v0.4"
 
 [[projects]]
   branch = "master"
@@ -200,16 +200,17 @@
   version = "v0.1.1"
 
 [[projects]]
-  branch = "master"
+  branch = "use-schema-endpoint-instead-of-status"
   name = "github.com/pilosa/go-pilosa"
   packages = [".","gopilosa_pbuf"]
-  revision = "7354889ee493d5cca2ce025b405a3b42a340a02c"
+  revision = "b82d61f11f72be208796fabeb7c6e75dfabe01eb"
+  source = "github.com/yuce/go-pilosa"
 
 [[projects]]
-  branch = "master"
+  branch = "cluster-resize"
   name = "github.com/pilosa/pilosa"
-  packages = [".","ctl","gossip","internal","pql","roaring","server","statik","statsd"]
-  revision = "aaee9b202a5c6818aff1a502428e206494694aaf"
+  packages = [".","ctl","diagnostics","gossip","internal","pql","roaring","server","statik","statsd"]
+  revision = "3631cfc314ad03dab9eef9fc1873817aea562583"
 
 [[projects]]
   name = "github.com/pkg/errors"
@@ -230,10 +231,22 @@
   revision = "1f30fe9094a513ce4c700b9a54458bbb0c96996c"
 
 [[projects]]
+  name = "github.com/satori/go.uuid"
+  packages = ["."]
+  revision = "879c5887cd475cd7864858769793b2ceb0d44feb"
+  version = "v1.1.0"
+
+[[projects]]
   branch = "master"
   name = "github.com/sean-/seed"
   packages = ["."]
   revision = "e2103e2c35297fb7e17febb81e49b312087a2372"
+
+[[projects]]
+  name = "github.com/sony/gobreaker"
+  packages = ["."]
+  revision = "e9556a45379ef1da12e54847edb2fb3d7d566f36"
+  version = "0.3.0"
 
 [[projects]]
   branch = "master"
@@ -310,6 +323,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "50cdffb38cae33bc58d12ca96217ab676141609d2ebd3f85777e1c37e766c044"
+  inputs-digest = "8f4511cd0a0aa462231e24b9d98bc29b383678e620fa2600ef8ef8ec71686dc4"
   solver-name = "gps-cdcl"
   solver-version = 1
