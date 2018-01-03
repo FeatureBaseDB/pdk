@@ -13,7 +13,7 @@ Documentation is here: https://www.pilosa.com/docs/pdk/
 
 ## Installing
 
-We assume you are on a UNIX-like operating system. Otherwise adapt the following instructions for your platform.
+We assume you are on a UNIX-like operating system. Otherwise adapt the following instructions for your platform. We further assume that you have a [Go development environment](https://golang.org/doc/install) set up. You should have $GOPATH/bin on your $PATH for access to installed binaries.
 
 * `go get github.com/pilosa/pdk`
 * `cd $GOPATH/src/github.com/pilosa/pdk`
