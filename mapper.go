@@ -1,7 +1,6 @@
 package pdk
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/pkg/errors"
@@ -20,6 +19,7 @@ func NewCollapsingMapper() *CollapsingMapper {
 	return &CollapsingMapper{
 		Translator:    NewMapTranslator(),
 		ColTranslator: NewMapFrameTranslator(),
+		Framer:        DashFrame,
 	}
 }
 
@@ -35,7 +35,6 @@ func (m *CollapsingMapper) Map(e *Entity) (PilosaRecord, error) {
 		if err != nil {
 			return pr, errors.Wrapf(err, "mapping %v", val)
 		}
-		fmt.Println(prop, val)
 	}
 	return pr, nil
 }
@@ -149,17 +148,17 @@ type PilosaRecord struct {
 
 // AddVal adds a new value to be range encoded into the given field to the
 // PilosaRecord.
-func (pr PilosaRecord) AddVal(frame, field string, value int64) {
+func (pr *PilosaRecord) AddVal(frame, field string, value int64) {
 	pr.Vals = append(pr.Vals, Val{Frame: frame, Field: field, Value: value})
 }
 
 // AddRow adds a new bit to be set to the PilosaRecord.
-func (pr PilosaRecord) AddRow(frame string, id uint64) {
+func (pr *PilosaRecord) AddRow(frame string, id uint64) {
 	pr.Rows = append(pr.Rows, Row{Frame: frame, ID: id})
 }
 
 // AddRowTime adds a new bit to be set with a timestamp to the PilosaRecord.
-func (pr PilosaRecord) AddRowTime(frame string, id uint64, ts time.Time) {
+func (pr *PilosaRecord) AddRowTime(frame string, id uint64, ts time.Time) {
 	pr.Rows = append(pr.Rows, Row{Frame: frame, ID: id, Time: ts})
 }
 

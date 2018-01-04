@@ -43,7 +43,7 @@ func (f FramerFunc) Field(path []string) (string, string, error) {
 }
 
 func dashFrame(path []string) (string, error) {
-	return strings.Join(path, "-"), nil
+	return strings.ToLower(strings.Join(path, "-")), nil
 }
 
 // DashFrame creates a frame name from the path by joining the path elements with

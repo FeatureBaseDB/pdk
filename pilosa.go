@@ -147,7 +147,7 @@ func (i *Index) setupFrame(frame FrameSpec) error {
 		}
 		fram, err = i.index.Frame(frame.Name, frameOptions)
 		if err != nil {
-			return errors.Wrap(err, "making frame: %v")
+			return errors.Wrapf(err, "making frame: %v", frame.Name)
 		}
 		err = i.client.EnsureFrame(fram)
 		if err != nil {
