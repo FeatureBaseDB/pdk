@@ -81,35 +81,35 @@ func TestGenericParserWithMap(t *testing.T) {
 	}
 
 	expected := &Entity{
-		Objects: map[Predicate]Object{
-			Predicate("stringKey"): S("value"),
-			Predicate("intkey"):    I(32),
-			Predicate("boolkey"):   B(true),
-			Predicate("mapkey"): &Entity{Subject: "", Objects: map[Predicate]Object{
-				Predicate("innerstring"): S("innerval"),
-				Predicate("interkey"):    I8(8),
+		Objects: map[Property]Object{
+			Property("stringKey"): S("value"),
+			Property("intkey"):    I(32),
+			Property("boolkey"):   B(true),
+			Property("mapkey"): &Entity{Subject: "", Objects: map[Property]Object{
+				Property("innerstring"): S("innerval"),
+				Property("interkey"):    I8(8),
 			}},
-			Predicate("slicekey"): Objects{
+			Property("slicekey"): Objects{
 				&Entity{
 					Subject: "",
-					Objects: map[Predicate]Object{
-						Predicate("skey"): S("value0"),
+					Objects: map[Property]Object{
+						Property("skey"): S("value0"),
 					},
 				},
 				&Entity{
 					Subject: "",
-					Objects: map[Predicate]Object{
-						Predicate("skey"): S("value1"),
+					Objects: map[Property]Object{
+						Property("skey"): S("value1"),
 					},
 				},
 				&Entity{
 					Subject: "",
-					Objects: map[Predicate]Object{
-						Predicate("s2key"): U64(127),
+					Objects: map[Property]Object{
+						Property("s2key"): U64(127),
 					},
 				},
 			},
-			Predicate("bs"): S("hello"),
+			Property("bs"): S("hello"),
 		},
 	}
 	if err := expected.Equal(actual); err != nil {
@@ -143,29 +143,29 @@ func TestGenericParserWithStruct(t *testing.T) {
 	}
 
 	exp := &Entity{
-		Objects: map[Predicate]Object{
+		Objects: map[Property]Object{
 			"A": I8(42),
 			"C": S("sloth"),
 			"D": &Entity{
-				Objects: map[Predicate]Object{
+				Objects: map[Property]Object{
 					"Q": Objects{I(99), I(645373)},
 				},
 			},
 			"E": Objects{
 				&Entity{
-					Objects: map[Predicate]Object{
+					Objects: map[Property]Object{
 						"Q": Objects{I(1), I(2)},
 					},
 				},
 				&Entity{
-					Objects: map[Predicate]Object{
+					Objects: map[Property]Object{
 						"Q": Objects{I(9), I(9), I(9)},
 					},
 				},
 			},
 			"F": Objects{
 				&Entity{
-					Objects: map[Predicate]Object{
+					Objects: map[Property]Object{
 						"42": S("answer"),
 						"99": S("question"),
 					},

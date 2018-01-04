@@ -21,6 +21,12 @@
 
 [[projects]]
   branch = "master"
+  name = "github.com/StackExchange/wmi"
+  packages = ["."]
+  revision = "ea383cf3ba6ec950874b8486cd72356d007c768f"
+
+[[projects]]
+  branch = "master"
   name = "github.com/armon/go-metrics"
   packages = ["."]
   revision = "9a4b6e10bed6220a1665955aa2b75afc91eb10b3"
@@ -72,6 +78,12 @@
   packages = ["."]
   revision = "629574ca2a5df945712d3079857300b5e4da0236"
   version = "v1.4.2"
+
+[[projects]]
+  name = "github.com/go-ole/go-ole"
+  packages = [".","oleutil"]
+  revision = "0e87ea779d9deb219633b828a023b32e1244dd57"
+  version = "v1.2.0"
 
 [[projects]]
   name = "github.com/gogo/protobuf"
@@ -220,8 +232,8 @@
 [[projects]]
   branch = "master"
   name = "github.com/pilosa/pilosa"
-  packages = [".","ctl","diagnostics","gossip","internal","pql","roaring","server","statik","statsd"]
-  revision = "bbc82d166dad8c3d033f8b46d37553ec02dea44a"
+  packages = [".","ctl","diagnostics","gossip","internal","pql","roaring","server","statik","statsd","test"]
+  revision = "311f9699b76f6ea04d5e5948c7690b41171d9393"
 
 [[projects]]
   name = "github.com/pkg/errors"
@@ -242,10 +254,28 @@
   revision = "1f30fe9094a513ce4c700b9a54458bbb0c96996c"
 
 [[projects]]
+  name = "github.com/satori/go.uuid"
+  packages = ["."]
+  revision = "879c5887cd475cd7864858769793b2ceb0d44feb"
+  version = "v1.1.0"
+
+[[projects]]
   branch = "master"
   name = "github.com/sean-/seed"
   packages = ["."]
   revision = "e2103e2c35297fb7e17febb81e49b312087a2372"
+
+[[projects]]
+  name = "github.com/shirou/gopsutil"
+  packages = ["cpu","host","internal/common","mem","net","process"]
+  revision = "7ec06ec280df1dd1f08befc535049d49d63ae18a"
+  version = "v2.17.12"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/shirou/w32"
+  packages = ["."]
+  revision = "bb4de0191aa41b5507caa14b0650cdbddcd9280b"
 
 [[projects]]
   name = "github.com/sony/gobreaker"
@@ -310,7 +340,7 @@
 [[projects]]
   branch = "master"
   name = "golang.org/x/sys"
-  packages = ["unix"]
+  packages = ["unix","windows"]
   revision = "75813c647272dd855bda156405bf844a5414f5bf"
 
 [[projects]]
@@ -328,6 +358,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "601d2ca94ef78f92cc8c6223ef05ac4e9a3f0a4fd7e6b956ddeef5a3c3e53da3"
+  inputs-digest = "2ea34c75f3b18f341fb08c25485fb9eb9e77900eb0c51e43d25f6c9fed547227"
   solver-name = "gps-cdcl"
   solver-version = 1

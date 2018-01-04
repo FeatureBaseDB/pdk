@@ -7,8 +7,13 @@ import (
 	"github.com/pkg/errors"
 )
 
+// IRI is either a full IRI, or will map to one when the record in which it is
+// contained is processed in relation to a context:
+// (https://json-ld.org/spec/latest/json-ld/#the-context)
 type IRI string
-type Predicate string
+
+// Property represents a Predicate, and can be turned into a Predicate IRI by a context
+type Property string
 type Context map[string]interface{}
 
 // Entity is the "root" node of a graph branching out from a certain resource
@@ -19,7 +24,7 @@ type Context map[string]interface{}
 // the other which contains only Literals.
 type Entity struct {
 	Subject IRI `json:"@id"`
-	Objects map[Predicate]Object
+	Objects map[Property]Object
 }
 
 func (e *Entity) Equal(e2 *Entity) error {
@@ -62,6 +67,11 @@ func equal(o, o2 Object) error {
 			}
 		}
 	default:
+		_, ok := o.(Literal)
+		_, ok2 := o2.(Literal)
+		if !(ok && ok2) {
+			return errors.Errorf("expected two literals, but got '%v' and '%v' of %T and %T", o, o2, o, o2)
+		}
 		if o != o2 {
 			return errors.Errorf("'%v' and '%v' not equal", o, o2)
 		}
@@ -71,7 +81,7 @@ func equal(o, o2 Object) error {
 
 func NewEntity() *Entity {
 	return &Entity{
-		Objects: make(map[Predicate]Object),
+		Objects: make(map[Property]Object),
 	}
 }
 
@@ -100,7 +110,7 @@ func (e *Entity) isObj() {}
 // variants of RDF linked data.
 func (e *Entity) MarshalJSON() ([]byte, error) {
 	// TODO - this implementation does a lot of in-memory copying for simplicity, can probably be optimized.
-	ret := make(map[Predicate]interface{})
+	ret := make(map[Property]interface{})
 	if e.Subject != "" {
 		ret["@id"] = e.Subject
 	}
@@ -119,7 +129,14 @@ func (e *Entity) MarshalJSON() ([]byte, error) {
 	return json.Marshal(ret)
 }
 
+// Literal interface is implemented by types which correspond to RDF Literals.
+type Literal interface {
+	literal()
+}
+
 type B bool
+
+func (_ B) literal() {}
 
 func (B B) MarshalJSON() ([]byte, error) {
 	ret := map[string]interface{}{
@@ -130,6 +147,8 @@ func (B B) MarshalJSON() ([]byte, error) {
 }
 
 type S string
+
+func (_ S) literal() {}
 
 // TODO define and specifically support these things
 // type Location struct {
@@ -167,6 +186,8 @@ type S string
 
 type F32 float32
 
+func (_ F32) literal() {}
+
 func (F F32) MarshalJSON() ([]byte, error) {
 	ret := map[string]interface{}{
 		"@type":  "xsd:float",
@@ -176,6 +197,8 @@ func (F F32) MarshalJSON() ([]byte, error) {
 }
 
 type F64 float64
+
+func (_ F64) literal() {}
 
 func (F F64) MarshalJSON() ([]byte, error) {
 	ret := map[string]interface{}{
@@ -187,6 +210,8 @@ func (F F64) MarshalJSON() ([]byte, error) {
 
 type I int
 
+func (_ I) literal() {}
+
 func (I I) MarshalJSON() ([]byte, error) {
 	ret := map[string]interface{}{
 		"@type":  "xsd:long",
@@ -196,6 +221,8 @@ func (I I) MarshalJSON() ([]byte, error) {
 }
 
 type I8 int8
+
+func (_ I8) literal() {}
 
 func (I I8) MarshalJSON() ([]byte, error) {
 	ret := map[string]interface{}{
@@ -207,6 +234,8 @@ func (I I8) MarshalJSON() ([]byte, error) {
 
 type I16 int16
 
+func (_ I16) literal() {}
+
 func (I I16) MarshalJSON() ([]byte, error) {
 	ret := map[string]interface{}{
 		"@type":  "xsd:short",
@@ -216,6 +245,8 @@ func (I I16) MarshalJSON() ([]byte, error) {
 }
 
 type I32 int32
+
+func (_ I32) literal() {}
 
 func (I I32) MarshalJSON() ([]byte, error) {
 	ret := map[string]interface{}{
@@ -227,6 +258,8 @@ func (I I32) MarshalJSON() ([]byte, error) {
 
 type I64 int64
 
+func (_ I64) literal() {}
+
 func (I I64) MarshalJSON() ([]byte, error) {
 	ret := map[string]interface{}{
 		"@type":  "xsd:long",
@@ -236,6 +269,8 @@ func (I I64) MarshalJSON() ([]byte, error) {
 }
 
 type U uint
+
+func (_ U) literal() {}
 
 func (U U) MarshalJSON() ([]byte, error) {
 	ret := map[string]interface{}{
@@ -247,6 +282,8 @@ func (U U) MarshalJSON() ([]byte, error) {
 
 type U8 uint8
 
+func (_ U8) literal() {}
+
 func (U U8) MarshalJSON() ([]byte, error) {
 	ret := map[string]interface{}{
 		"@type":  "unsignedByte",
@@ -256,6 +293,8 @@ func (U U8) MarshalJSON() ([]byte, error) {
 }
 
 type U16 uint16
+
+func (_ U16) literal() {}
 
 func (U U16) MarshalJSON() ([]byte, error) {
 	ret := map[string]interface{}{
@@ -267,6 +306,8 @@ func (U U16) MarshalJSON() ([]byte, error) {
 
 type U32 uint32
 
+func (_ U32) literal() {}
+
 func (U U32) MarshalJSON() ([]byte, error) {
 	ret := map[string]interface{}{
 		"@type":  "unsignedInt",
@@ -276,6 +317,8 @@ func (U U32) MarshalJSON() ([]byte, error) {
 }
 
 type U64 uint64
+
+func (_ U64) literal() {}
 
 func (U U64) MarshalJSON() ([]byte, error) {
 	ret := map[string]interface{}{

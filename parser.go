@@ -7,9 +7,9 @@ import (
 	"github.com/pkg/errors"
 )
 
-// GenericParser tries to make no assumptions about the value passed to its Parse
-// method. Look at the type switch in the `parseInterface` method to see what
-// types it supports.
+// GenericParser tries to make no assumptions about the value passed to its
+// Parse method. At the top level it accepts a map or struct (or pointer or
+// interface holding one of these).
 type GenericParser struct {
 	Subjecter Subjecter
 	Framer    Framer
@@ -27,8 +27,8 @@ type BlankSubjecter struct{}
 
 func (b BlankSubjecter) Subject(d interface{}) (string, error) { return "", nil }
 
-// NewDefaultGenericParser returns a GenericParser with a LocalNexter, in-memory
-// MapTranslator, and the simple DotFrame Framer.
+// NewDefaultGenericParser returns a GenericParser with basic implementations of
+// its components.
 func NewDefaultGenericParser() *GenericParser {
 	return &GenericParser{
 		Subjecter: BlankSubjecter{},
@@ -106,10 +106,10 @@ func (m *GenericParser) parseStruct(val reflect.Value) (*Entity, error) {
 		if err != nil {
 			return nil, errors.Wrapf(err, "parsing field:%v value:%v", field, fieldv)
 		}
-		if _, ok := ent.Objects[Predicate(field.Name)]; ok {
+		if _, ok := ent.Objects[Property(field.Name)]; ok {
 			return nil, errors.Errorf("unexpected name collision with struct field '%v", field.Name)
 		}
-		ent.Objects[Predicate(field.Name)] = obj
+		ent.Objects[Property(field.Name)] = obj
 	}
 	return ent, nil
 }
@@ -136,6 +136,7 @@ func (m *GenericParser) parseValue(val reflect.Value) (Object, error) {
 
 }
 
+// parseContainer parses arrays and slices.
 func (m *GenericParser) parseContainer(val reflect.Value) (Object, error) {
 	if val.Type().Elem().Kind() == reflect.Uint8 {
 		return S(val.Bytes()), nil
@@ -152,6 +153,7 @@ func (m *GenericParser) parseContainer(val reflect.Value) (Object, error) {
 	return ret, nil
 }
 
+// parseLit parses literal values (the leaves of the tree).
 func (m *GenericParser) parseLit(val reflect.Value) (Object, error) {
 	switch val.Kind() {
 	case reflect.Bool:
@@ -208,7 +210,7 @@ func (m *GenericParser) parseObj(val reflect.Value) (Object, error) {
 // to explicitly define how they should be interpreted as a string for use as a
 // property when they are used as a map key.
 type Properteer interface {
-	Property() Predicate
+	Property() Property
 }
 
 // anyImplements determines whether an interface is implemented by a value, or a
@@ -227,7 +229,7 @@ func anyImplements(thing reflect.Value, iface reflect.Type) (reflect.Value, bool
 // getProperty turns anything that can be a map key into a string. Exceptions
 // are channels, interface values whose dynamic types are channels, structs
 // which contain channels, and pointers to any of these things.
-func (m *GenericParser) getProperty(mapKey reflect.Value) (Predicate, error) {
+func (m *GenericParser) getProperty(mapKey reflect.Value) (Property, error) {
 	properteerType := reflect.TypeOf(new(Properteer)).Elem()
 	stringerType := reflect.TypeOf(new(fmt.Stringer)).Elem()
 
@@ -237,14 +239,14 @@ func (m *GenericParser) getProperty(mapKey reflect.Value) (Predicate, error) {
 	}
 	// if mapKey implements fmt.Stringer, use that.
 	if k2, ok := anyImplements(mapKey, stringerType); ok {
-		return Predicate(k2.Interface().(fmt.Stringer).String()), nil
+		return Property(k2.Interface().(fmt.Stringer).String()), nil
 	}
 
 	// Otherwise, handle all comparable types (see https://golang.org/ref/spec#Comparison_operators):
 	mapKey = deref(mapKey)
 	switch mapKey.Kind() {
 	case reflect.Bool, reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Float32, reflect.Float64, reflect.String:
-		return Predicate(fmt.Sprintf("%v", mapKey)), nil
+		return Property(fmt.Sprintf("%v", mapKey)), nil
 	case reflect.Chan:
 		return "", errors.New("channel cannot be converted to property")
 	case reflect.Array:

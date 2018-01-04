@@ -93,9 +93,11 @@ type ConfluentSource struct {
 }
 
 func NewConfluentSource() *ConfluentSource {
-	return &ConfluentSource{
+	src := &ConfluentSource{
 		cache: make(map[int32]avro.Schema),
 	}
+	src.Type = "raw"
+	return src
 }
 
 func (s *ConfluentSource) Record() (interface{}, error) {

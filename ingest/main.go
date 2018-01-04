@@ -47,7 +47,7 @@ func (m *Main) Run() error {
 	parser = pdk.NewDefaultGenericParser()
 
 	var mapper pdk.Mapppper
-	mapper = pdk.NewDefaultGenericMapper()
+	mapper = pdk.NewCollapsingMapper()
 
 	indexer, err := pdk.SetupPilosa(m.PilosaHosts, m.Index, []pdk.FrameSpec{}, m.BatchSize)
 	if err != nil {
