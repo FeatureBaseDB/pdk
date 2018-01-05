@@ -125,6 +125,7 @@ type T struct {
 	D O
 	E []O
 	F []map[int]string
+	G [6]byte
 }
 
 type O struct {
@@ -140,6 +141,7 @@ func TestGenericParserWithStruct(t *testing.T) {
 		D: O{Q: []int{99, 645373}},
 		E: []O{{Q: []int{1, 2}}, O{Q: []int{9, 9, 9}}},
 		F: []map[int]string{map[int]string{42: "answer", 99: "question"}},
+		G: [6]byte{83, 76, 79, 84, 72, 83},
 	}
 
 	exp := &Entity{
@@ -171,6 +173,7 @@ func TestGenericParserWithStruct(t *testing.T) {
 					},
 				},
 			},
+			"G": S("SLOTHS"),
 		},
 	}
 	actual, err := gp.Parse(rec)

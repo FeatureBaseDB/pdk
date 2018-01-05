@@ -138,9 +138,20 @@ func (m *GenericParser) parseValue(val reflect.Value) (Object, error) {
 
 // parseContainer parses arrays and slices.
 func (m *GenericParser) parseContainer(val reflect.Value) (Object, error) {
-	if val.Type().Elem().Kind() == reflect.Uint8 {
-		return S(val.Bytes()), nil
+	if dtype := val.Type(); dtype.Elem().Kind() == reflect.Uint8 {
+		if dtype.Kind() == reflect.Slice {
+			return S(val.Bytes()), nil
+		} else if dtype.Kind() == reflect.Array {
+			ret := make([]byte, dtype.Len())
+			for i := 0; i < dtype.Len(); i++ {
+				ret[i] = val.Index(i).Interface().(byte)
+			}
+			return S(ret), nil
+		} else {
+			panic("should only be slice or array")
+		}
 	}
+
 	ret := make(Objects, val.Len())
 	for i := 0; i < val.Len(); i++ {
 		ival := val.Index(i)
