@@ -15,10 +15,14 @@ type CollapsingMapper struct {
 	Framer        Framer
 }
 
+// NewCollapsingMapper returns a CollapsingMapper with basic implementations of
+// its components. In order to track mapping of Pilosa columns to records, you
+// must replace the ColTranslator with something other than a
+// NexterFrameTranslator which just allocates ids and does not store a mapping.
 func NewCollapsingMapper() *CollapsingMapper {
 	return &CollapsingMapper{
 		Translator:    NewMapTranslator(),
-		ColTranslator: NewMapFrameTranslator(),
+		ColTranslator: NewNexterFrameTranslator(),
 		Framer:        DashFrame,
 	}
 }

@@ -119,3 +119,30 @@ func (m *MapFrameTranslator) GetID(val interface{}) (id uint64, err error) {
 	m.l.Unlock()
 	return nextid, nil
 }
+
+// NexterFrameTranslator satisfies the FrameTranslator interface, but simply
+// allocates a new contiguous id every time GetID(val) is called. It does not
+// store any mapping and Get(id) always returns an error. Pilosa requires column
+// ids regardless of whether we actually require tracking what each individual
+// column represents, and the NexterFrameTranslator is useful in the case that
+// we don't.
+type NexterFrameTranslator struct {
+	n *Nexter
+}
+
+func NewNexterFrameTranslator() *NexterFrameTranslator {
+	return &NexterFrameTranslator{
+		n: NewNexter(),
+	}
+}
+
+// GetID for the NexterFrameTranslator increments the internal id counter
+// atomically and returns the next id - it ignores the val argument entirely.
+func (n *NexterFrameTranslator) GetID(val interface{}) (id uint64, err error) {
+	return n.n.Next(), nil
+}
+
+// Get always returns nil, and a non-nil error for the NexterFrameTranslator.
+func (n *NexterFrameTranslator) Get(id uint64) (interface{}, error) {
+	return nil, errors.New("NexterFrameTranslator \"Get\" method should not be used. cannot map ids back to values.")
+}

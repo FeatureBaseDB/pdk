@@ -28,7 +28,8 @@ type BlankSubjecter struct{}
 func (b BlankSubjecter) Subject(d interface{}) (string, error) { return "", nil }
 
 // NewDefaultGenericParser returns a GenericParser with basic implementations of
-// its components.
+// its components. In order to track the mapping of Pilosa columns to records,
+// you must replace the Subjecter with something other than a BlankSubjecter.
 func NewDefaultGenericParser() *GenericParser {
 	return &GenericParser{
 		Subjecter: BlankSubjecter{},
