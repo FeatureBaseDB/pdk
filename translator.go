@@ -11,7 +11,7 @@ import (
 // given Pilosa frame to row ids and back. Implementations should be threadsafe
 // and generate ids monotonically.
 type Translator interface {
-	Get(frame string, id uint64) interface{}
+	Get(frame string, id uint64) (interface{}, error)
 	GetID(frame string, val interface{}) (uint64, error)
 }
 
@@ -47,12 +47,12 @@ func (m *MapTranslator) getFrameTranslator(frame string) *MapFrameTranslator {
 	return m.frames[frame]
 }
 
-func (m *MapTranslator) Get(frame string, id uint64) interface{} {
+func (m *MapTranslator) Get(frame string, id uint64) (interface{}, error) {
 	val, err := m.getFrameTranslator(frame).Get(id)
 	if err != nil {
-		panic(err) // TODO change to returning an error after fixing Translator interface
+		return nil, errors.Wrapf(err, "frame '%v', id %v", frame, id)
 	}
-	return val
+	return val, nil
 }
 
 func (m *MapTranslator) GetID(frame string, val interface{}) (id uint64, err error) {

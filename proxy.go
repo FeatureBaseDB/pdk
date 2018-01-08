@@ -12,6 +12,7 @@ import (
 
 	"github.com/pilosa/pilosa"
 	"github.com/pilosa/pilosa/pql"
+	"github.com/pkg/errors"
 )
 
 // KeyMapper describes the functionality for mapping the keys contained
@@ -195,7 +196,11 @@ func (p *PilosaKeyMapper) MapResult(frame string, res interface{}) (mappedRes in
 				if !(isKeyFloat && isCountFloat) {
 					return nil, fmt.Errorf("expected pilosa.Pair, but have wrong value types: got %v", pair)
 				}
-				keyVal := p.t.Get(frame, uint64(keyFloat))
+				keyVal, err := p.t.Get(frame, uint64(keyFloat))
+				if err != nil {
+					return nil, errors.Wrap(err, "translator.Get")
+				}
+
 				switch kv := keyVal.(type) {
 				case []byte:
 					mr[i].Key = string(kv)

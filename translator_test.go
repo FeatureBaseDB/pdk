@@ -20,6 +20,12 @@ func MustBe(t *testing.T, thing1, thing2 interface{}, context ...string) {
 	}
 }
 
+func errNil(t *testing.T, err error, ctx string) {
+	if err != nil {
+		t.Fatalf("%v: %v", ctx, err)
+	}
+}
+
 func TestMapTranslator(t *testing.T) {
 	mt := NewMapTranslator()
 	id, err := mt.GetID("frame1", "thing")
@@ -37,12 +43,15 @@ func TestMapTranslator(t *testing.T) {
 	MustBe(t, id, uint64(0), "fourth")
 	MustBe(t, err, nil)
 
-	val := mt.Get("frame1", 0)
+	val, err := mt.Get("frame1", 0)
+	errNil(t, err, "Get1-0")
 	MustBe(t, "thing", val, "Get1-0")
-	val = mt.Get("frame1", 1)
-	MustBe(t, "thing1", val, "Get1-0")
-	val = mt.Get("frame2", 0)
-	MustBe(t, "thing3", val, "Get1-0")
+	val, err = mt.Get("frame1", 1)
+	errNil(t, err, "get Get1-1")
+	MustBe(t, "thing1", val, "Get1-1")
+	val, err = mt.Get("frame2", 0)
+	errNil(t, err, "get Get2-0")
+	MustBe(t, "thing3", val, "Get2-0")
 }
 
 func TestConcMapTranslator(t *testing.T) {

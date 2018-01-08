@@ -14,6 +14,8 @@ import (
 	"github.com/syndtr/goleveldb/leveldb/opt"
 )
 
+var _ Translator = &LevelTranslator{}
+
 // LevelTranslator is a Translator which stores the two way val/id mapping in
 // leveldb.
 type LevelTranslator struct {
@@ -130,16 +132,13 @@ func NewLevelTranslator(dirname string, frames ...string) (lt *LevelTranslator, 
 	return lt, err
 }
 
-func (lt *LevelTranslator) Get(frame string, id uint64) (val interface{}) {
+func (lt *LevelTranslator) Get(frame string, id uint64) (val interface{}, err error) {
 	lft, err := lt.getFrameTranslator(frame)
 	if err != nil {
-		panic(errors.Wrap(err, "getting frame translator")) // TODO fix after changing Translator interface to return error on Get.
+		return nil, errors.Wrap(err, "getting frame translator")
 	}
 	val, err = lft.Get(id)
-	if err != nil {
-		panic(err) // TODO fix after changing Translator interface to return error on Get.
-	}
-	return val
+	return val, err
 }
 
 func (lft *LevelFrameTranslator) Get(id uint64) (val interface{}, err error) {
