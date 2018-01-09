@@ -2,10 +2,11 @@ package weather
 
 import (
 	"fmt"
-	pcli "github.com/pilosa/go-pilosa"
-	"github.com/pilosa/pdk"
 	"net/http"
 	"time"
+
+	pcli "github.com/pilosa/go-pilosa"
+	"github.com/pilosa/pdk"
 )
 
 func (m *Main) testCache() {
@@ -129,7 +130,7 @@ func (m *Main) Run() error {
 	}
 	setupClient := pcli.NewClientWithURI(pilosaURI)
 	m.client = setupClient
-	index, err := pcli.NewIndex(m.Index, &pcli.IndexOptions{})
+	index, err := pcli.NewIndex(m.Index)
 	m.index = index
 	if err != nil {
 		return fmt.Errorf("making index: %v", err)
@@ -139,7 +140,7 @@ func (m *Main) Run() error {
 		return fmt.Errorf("ensuring index existence: %v", err)
 	}
 	for _, frame := range readFrames {
-		fram, err := index.Frame(frame, &pcli.FrameOptions{})
+		fram, err := index.Frame(frame)
 		m.frames[frame] = fram
 		if err != nil {
 			return fmt.Errorf("making frame: %v", err)
@@ -150,7 +151,7 @@ func (m *Main) Run() error {
 		}
 	}
 	for _, frame := range writeFrames {
-		fram, err := index.Frame(frame, &pcli.FrameOptions{})
+		fram, err := index.Frame(frame)
 		if err != nil {
 			return fmt.Errorf("making frame: %v", err)
 		}

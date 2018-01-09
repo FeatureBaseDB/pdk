@@ -18,7 +18,6 @@ import (
 
 	pcli "github.com/pilosa/go-pilosa"
 	"github.com/pilosa/pdk"
-	"github.com/pilosa/pilosa"
 )
 
 /***************
@@ -147,7 +146,7 @@ func (m *Main) Run() error {
 		return fmt.Errorf("interpreting pilosaHost '%v': %v", m.PilosaHost, err)
 	}
 	setupClient := pcli.NewClientWithURI(pilosaURI)
-	index, err := pcli.NewIndex(m.Index, &pcli.IndexOptions{})
+	index, err := pcli.NewIndex(m.Index)
 	if err != nil {
 		return fmt.Errorf("making index: %v", err)
 	}
@@ -156,7 +155,7 @@ func (m *Main) Run() error {
 		return fmt.Errorf("ensuring index existence: %v", err)
 	}
 	for _, frame := range frames {
-		fram, err := index.Frame(frame, &pcli.FrameOptions{CacheType: pilosa.CacheTypeRanked})
+		fram, err := index.Frame(frame, pcli.CacheTypeRanked)
 		if err != nil {
 			return fmt.Errorf("making frame: %v", err)
 		}

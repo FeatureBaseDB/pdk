@@ -16,14 +16,20 @@
 [[projects]]
   name = "github.com/Shopify/sarama"
   packages = ["."]
-  revision = "bbdbe644099b7fdc8327d5cc69c030945188b2e9"
-  version = "v1.13.0"
+  revision = "3b1b38866a79f06deddf0487d5c27ba0697ccd65"
+  version = "v1.15.0"
 
 [[projects]]
   branch = "master"
   name = "github.com/armon/go-metrics"
   packages = ["."]
-  revision = "9a4b6e10bed6220a1665955aa2b75afc91eb10b3"
+  revision = "7aa49fde808223f8dadfdbfd3a20ff6c19e5f9ec"
+
+[[projects]]
+  name = "github.com/blang/semver"
+  packages = ["."]
+  revision = "2ee87856327ba09384cabd113bc6b5d174e9ec0f"
+  version = "v3.5.1"
 
 [[projects]]
   name = "github.com/boltdb/bolt"
@@ -34,8 +40,8 @@
 [[projects]]
   name = "github.com/bsm/sarama-cluster"
   packages = ["."]
-  revision = "ccdc0803695fbce22f1706d04ded46cd518fd832"
-  version = "v2.1.8"
+  revision = "24016d206c730276dfb58f802999066f2f4bfeaa"
+  version = "v2.1.11"
 
 [[projects]]
   name = "github.com/davecgh/go-spew"
@@ -58,8 +64,8 @@
 [[projects]]
   name = "github.com/eapache/queue"
   packages = ["."]
-  revision = "ded5959c0d4e360646dc9e9908cff48666781367"
-  version = "v1.0.2"
+  revision = "44cc805cf13205b55f69e14bcb69867d1ae92f98"
+  version = "v1.1.0"
 
 [[projects]]
   name = "github.com/fsnotify/fsnotify"
@@ -70,8 +76,8 @@
 [[projects]]
   name = "github.com/gogo/protobuf"
   packages = ["proto"]
-  revision = "100ba4e885062801d56799d78530b73b178a78f3"
-  version = "v0.4"
+  revision = "342cbe0a04158f6dcb03ca0079991a51a4248c02"
+  version = "v0.5"
 
 [[projects]]
   branch = "master"
@@ -83,7 +89,7 @@
   branch = "master"
   name = "github.com/golang/protobuf"
   packages = ["proto"]
-  revision = "1643683e1b54a9e88ad26d98f81400c8c9d9f4f9"
+  revision = "1e59b77b52bf8e4b449a57e6f79f21226d571845"
 
 [[projects]]
   branch = "master"
@@ -106,8 +112,8 @@
 [[projects]]
   name = "github.com/gorilla/mux"
   packages = ["."]
-  revision = "24fca303ac6da784b9e8269f724ddeb0b2eea5e7"
-  version = "v1.5.0"
+  revision = "7f08801859139f86dfafd1c296e2cba9a80d292e"
+  version = "v1.6.0"
 
 [[projects]]
   branch = "master"
@@ -131,7 +137,7 @@
   branch = "master"
   name = "github.com/hashicorp/go-multierror"
   packages = ["."]
-  revision = "83588e72410abfbe4df460eeb6f30841ae47d4c4"
+  revision = "b7773ae218740a7be65057fc60b366a49b538a44"
 
 [[projects]]
   branch = "master"
@@ -166,14 +172,14 @@
 [[projects]]
   name = "github.com/magiconair/properties"
   packages = ["."]
-  revision = "be5ece7dd465ab0765a9682137865547526d1dfb"
-  version = "v1.7.3"
+  revision = "d419a98cdbed11a922bf76f257b7c4be79b50e73"
+  version = "v1.7.4"
 
 [[projects]]
-  branch = "master"
   name = "github.com/miekg/dns"
-  packages = [".","internal/socket"]
-  revision = "a5852667e3c36e2e0b0a69ab43869e00e95aacdf"
+  packages = ["."]
+  revision = "552716c114b8ea7d27dad6c511e441937577fa62"
+  version = "v1.0.2"
 
 [[projects]]
   branch = "master"
@@ -190,8 +196,8 @@
 [[projects]]
   name = "github.com/pierrec/lz4"
   packages = ["."]
-  revision = "08c27939df1bd95e881e2c2367a749964ad1fceb"
-  version = "v1.0.1"
+  revision = "2fcda4cb7018ce05a25959d2fe08c83e3329f169"
+  version = "v1.1"
 
 [[projects]]
   name = "github.com/pierrec/xxHash"
@@ -203,14 +209,14 @@
   branch = "use-schema-endpoint-instead-of-status"
   name = "github.com/pilosa/go-pilosa"
   packages = [".","gopilosa_pbuf"]
-  revision = "b82d61f11f72be208796fabeb7c6e75dfabe01eb"
+  revision = "6c9c25c07b280414b0289370a195adc9b0b1d82e"
   source = "github.com/yuce/go-pilosa"
 
 [[projects]]
   branch = "cluster-resize"
   name = "github.com/pilosa/pilosa"
   packages = [".","ctl","diagnostics","gossip","internal","pql","roaring","server","statik","statsd"]
-  revision = "3631cfc314ad03dab9eef9fc1873817aea562583"
+  revision = "8bce8171afb5f99b1ae5c0372f55978a2ec85902"
 
 [[projects]]
   name = "github.com/pkg/errors"
@@ -228,7 +234,7 @@
   branch = "master"
   name = "github.com/rcrowley/go-metrics"
   packages = ["."]
-  revision = "1f30fe9094a513ce4c700b9a54458bbb0c96996c"
+  revision = "e181e095bae94582363434144c61a9653aff6e50"
 
 [[projects]]
   name = "github.com/satori/go.uuid"
@@ -249,10 +255,10 @@
   version = "0.3.0"
 
 [[projects]]
-  branch = "master"
   name = "github.com/spf13/afero"
   packages = [".","mem"]
-  revision = "5660eeed305fe5f69c8fc6cf899132a459a97064"
+  revision = "ec3a3111d1e1bdff38a61e09d5a5f5e974905611"
+  version = "v1.0.1"
 
 [[projects]]
   name = "github.com/spf13/cast"
@@ -264,13 +270,13 @@
   branch = "master"
   name = "github.com/spf13/cobra"
   packages = ["."]
-  revision = "b3426bbac13d7110c4d8fce456ea0012f79f3b8b"
+  revision = "b95ab734e27d33e0d8fbabf71ca990568d4e2020"
 
 [[projects]]
   branch = "master"
   name = "github.com/spf13/jwalterweatherman"
   packages = ["."]
-  revision = "12bd96e66386c1960ab0f74ced1362f66f552f7b"
+  revision = "7c0cea34c8ece3fbeb2b27ab9b59511d360fb394"
 
 [[projects]]
   name = "github.com/spf13/pflag"
@@ -288,13 +294,19 @@
   branch = "master"
   name = "github.com/syndtr/goleveldb"
   packages = ["leveldb","leveldb/cache","leveldb/comparer","leveldb/errors","leveldb/filter","leveldb/iterator","leveldb/journal","leveldb/memdb","leveldb/opt","leveldb/storage","leveldb/table","leveldb/util"]
-  revision = "b89cc31ef7977104127d34c1bd31ebd1a9db2199"
+  revision = "34011bf325bce385408353a30b101fe5e923eb6e"
+
+[[projects]]
+  branch = "master"
+  name = "golang.org/x/crypto"
+  packages = ["ed25519","ed25519/internal/edwards25519"]
+  revision = "0fcca4842a8d74bfddc2c96a073bd2a4d2a7a2e8"
 
 [[projects]]
   branch = "master"
   name = "golang.org/x/net"
-  packages = ["context"]
-  revision = "ea0da6f35caf3ff91581c800469e22eef75076f4"
+  packages = ["bpf","context","internal/iana","internal/socket","ipv4","ipv6"]
+  revision = "434ec0c7fe3742c984919a691b2018a6e9694425"
 
 [[projects]]
   branch = "master"
@@ -306,19 +318,19 @@
   branch = "master"
   name = "golang.org/x/sys"
   packages = ["unix"]
-  revision = "95c6576299259db960f6c5b9b69ea52422860fce"
+  revision = "b9cf5f96b68d9eaa53d5db5fef235718767f416a"
 
 [[projects]]
   branch = "master"
   name = "golang.org/x/text"
   packages = ["internal/gen","internal/triegen","internal/ucd","transform","unicode/cldr","unicode/norm"]
-  revision = "7d4e23b25beca3bc3b804ab134f0b12b4ca909d1"
+  revision = "e19ae1496984b1c655b8044a65c0300a3c878dd3"
 
 [[projects]]
   branch = "v2"
   name = "gopkg.in/yaml.v2"
   packages = ["."]
-  revision = "eb3733d160e74a9c7e442f435eb3bea458e1d19f"
+  revision = "d670f9405373e636a5a2765eea47fac0c9bc91a4"
 
 [solve-meta]
   analyzer-name = "dep"

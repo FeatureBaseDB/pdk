@@ -18,7 +18,6 @@ import (
 	"github.com/google/gopacket/pcap"
 	pcli "github.com/pilosa/go-pilosa"
 	"github.com/pilosa/pdk"
-	"github.com/pilosa/pilosa"
 )
 
 type Main struct {
@@ -126,7 +125,7 @@ func (m *Main) Setup() error {
 		return fmt.Errorf("interpreting pilosaHost '%v': %v", m.PilosaHost, err)
 	}
 	setupClient := pcli.NewClientWithURI(pilosaURI)
-	index, err := pcli.NewIndex(m.Index, &pcli.IndexOptions{})
+	index, err := pcli.NewIndex(m.Index)
 	if err != nil {
 		return fmt.Errorf("making index: %v", err)
 	}
@@ -135,7 +134,7 @@ func (m *Main) Setup() error {
 		return fmt.Errorf("ensuring index existence: %v", err)
 	}
 	for _, frame := range Frames {
-		fram, err := index.Frame(frame, &pcli.FrameOptions{CacheType: pilosa.CacheTypeRanked})
+		fram, err := index.Frame(frame, pcli.CacheTypeRanked)
 		if err != nil {
 			return fmt.Errorf("making frame: %v", err)
 		}
