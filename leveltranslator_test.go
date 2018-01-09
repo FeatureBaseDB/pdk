@@ -31,19 +31,19 @@ func TestLevelTranslator(t *testing.T) {
 
 	val, err := bt.Get("f1", id1)
 	errNil(t, err, "Get(f1, id1)")
-	if !bytes.Equal(val.([]byte), []byte("hello")) {
+	if !bytes.Equal([]byte(val.(S)), []byte("hello")) {
 		t.Fatalf("unexpected value for hello id in f1: %s", val)
 	}
 
 	val, err = bt.Get("f2", id2)
 	errNil(t, err, `Get("f2", id2)`)
-	if !bytes.Equal(val.([]byte), []byte("hello")) {
+	if !bytes.Equal([]byte(val.(S)), []byte("hello")) {
 		t.Fatalf("unexpected value for hello id in f2: %s", val)
 	}
 
 	val, err = bt.Get("fnew", id3)
 	errNil(t, err, `Get("fnew", id3)`)
-	if !bytes.Equal(val.([]byte), []byte("hello")) {
+	if !bytes.Equal([]byte(val.(S)), []byte("hello")) {
 		t.Fatalf("unexpected value for hello id in fnew: %s", val)
 	}
 
@@ -58,19 +58,19 @@ func TestLevelTranslator(t *testing.T) {
 	}
 	val, err = bt.Get("f1", id1)
 	errNil(t, err, `Get("f1", id1)`)
-	if !bytes.Equal(val.([]byte), []byte("hello")) {
+	if !bytes.Equal([]byte(val.(S)), []byte("hello")) {
 		t.Fatalf("after reopen, unexpected value for hello id in f1: %s", val)
 	}
 
 	val, err = bt.Get("f2", id2)
 	errNil(t, err, `Get("f2", id2)`)
-	if !bytes.Equal(val.([]byte), []byte("hello")) {
+	if !bytes.Equal([]byte(val.(S)), []byte("hello")) {
 		t.Fatalf("after reopen, unexpected value for hello id in f2: %s", val)
 	}
 
 	val, err = bt.Get("fnew", id3)
 	errNil(t, err, `Get("fnew", id3)`)
-	if !bytes.Equal(val.([]byte), []byte("hello")) {
+	if !bytes.Equal([]byte(val.(S)), []byte("hello")) {
 		t.Fatalf("after reopen, unexpected value for hello id in fnew: %s", val)
 	}
 

@@ -1,7 +1,9 @@
 package pdk
 
 import (
+	"encoding/binary"
 	"encoding/json"
+	"math"
 	"reflect"
 
 	"github.com/pkg/errors"
@@ -342,3 +344,133 @@ func (u U8) isObj()  {}
 func (u U16) isObj() {}
 func (u U32) isObj() {}
 func (u U64) isObj() {}
+
+// Note: if we start adding lots more literals, reserve numbers 128 and greater.
+// Right now, ToBytes and FromBytes use a single byte at the start of the value
+// to denote the type - if we grow to 128, we can use first bit as a marker to
+// signify that the type is now two bytes.
+const (
+	bID = iota + 1 // reserve 0 for some future use.
+	sID
+	f32ID
+	f64ID
+	iID
+	i8ID
+	i16ID
+	i32ID
+	i64ID
+	uID
+	u8ID
+	u16ID
+	u32ID
+	u64ID
+)
+
+// ToBytes converts a literal into a typed byte slice representation.
+func ToBytes(l Literal) []byte {
+	switch l := l.(type) {
+	case B:
+		if l {
+			return []byte{bID, 1}
+		}
+		return []byte{bID, 0}
+	case S:
+		return append([]byte{sID}, l[:]...)
+	case F32:
+		ret := make([]byte, 5)
+		ret[0] = f32ID
+		binary.BigEndian.PutUint32(ret[1:], math.Float32bits(float32(l)))
+		return ret
+	case F64:
+		ret := make([]byte, 9)
+		ret[0] = f64ID
+		binary.BigEndian.PutUint64(ret[1:], math.Float64bits(float64(l)))
+		return ret
+	case I:
+		ret := make([]byte, 9)
+		ret[0] = iID
+		binary.BigEndian.PutUint64(ret[1:], uint64(l))
+		return ret
+	case I8:
+		return []byte{i8ID, byte(l)}
+	case I16:
+		ret := make([]byte, 3)
+		ret[0] = i16ID
+		binary.BigEndian.PutUint16(ret[1:], uint16(l))
+		return ret
+	case I32:
+		ret := make([]byte, 5)
+		ret[0] = i32ID
+		binary.BigEndian.PutUint32(ret[1:], uint32(l))
+		return ret
+	case I64:
+		ret := make([]byte, 9)
+		ret[0] = i64ID
+		binary.BigEndian.PutUint64(ret[1:], uint64(l))
+		return ret
+	case U:
+		ret := make([]byte, 9)
+		ret[0] = uID
+		binary.BigEndian.PutUint64(ret[1:], uint64(l))
+		return ret
+	case U8:
+		return []byte{u8ID, byte(l)}
+	case U16:
+		ret := make([]byte, 3)
+		ret[0] = u16ID
+		binary.BigEndian.PutUint16(ret[1:], uint16(l))
+		return ret
+	case U32:
+		ret := make([]byte, 5)
+		ret[0] = u32ID
+		binary.BigEndian.PutUint32(ret[1:], uint32(l))
+		return ret
+	case U64:
+		ret := make([]byte, 9)
+		ret[0] = u64ID
+		binary.BigEndian.PutUint64(ret[1:], uint64(l))
+		return ret
+	default:
+		panic("should have covered all literal types in ToBytes switch")
+	}
+}
+
+// FromBytes converts an encoded byte slice (from ToBytes) back to a Literal.
+// DEV: May add an error and bounds checking.
+func FromBytes(bs []byte) Literal {
+	// if len(bs) < 2 {
+	// 	return nil, errors.Errorf("byte slice too short: %x", bs)
+	// }
+	switch bs[0] {
+	case bID:
+		return B(bs[1] > 0)
+	case sID:
+		return S(string(bs[1:]))
+	case f32ID:
+		return F32(math.Float32frombits(binary.BigEndian.Uint32(bs[1:])))
+	case f64ID:
+		return F64(math.Float64frombits(binary.BigEndian.Uint64(bs[1:])))
+	case iID:
+		return I(binary.BigEndian.Uint64(bs[1:]))
+	case i8ID:
+		return I8(bs[1])
+	case i16ID:
+		return I16(binary.BigEndian.Uint16(bs[1:]))
+	case i32ID:
+		return I32(binary.BigEndian.Uint32(bs[1:]))
+	case i64ID:
+		return I64(binary.BigEndian.Uint64(bs[1:]))
+	case uID:
+		return U(binary.BigEndian.Uint64(bs[1:]))
+	case u8ID:
+		return U8(bs[1])
+	case u16ID:
+		return U16(binary.BigEndian.Uint16(bs[1:]))
+	case u32ID:
+		return U32(binary.BigEndian.Uint32(bs[1:]))
+	case u64ID:
+		return U64(binary.BigEndian.Uint64(bs[1:]))
+	default:
+		panic("should have covered all literal types in FromBytes switch")
+	}
+}

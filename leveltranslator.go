@@ -148,7 +148,7 @@ func (lft *LevelFrameTranslator) Get(id uint64) (val interface{}, err error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "fetching from idMap")
 	}
-	return data, nil
+	return FromBytes(data), nil
 }
 
 func (lt *LevelTranslator) GetID(frame string, val interface{}) (id uint64, err error) {
@@ -160,15 +160,20 @@ func (lt *LevelTranslator) GetID(frame string, val interface{}) (id uint64, err 
 }
 
 func (lft *LevelFrameTranslator) GetID(val interface{}) (id uint64, err error) {
-	var valBytes []byte
+	var vall Literal
 	switch valt := val.(type) {
 	case []byte:
-		valBytes = valt
+		vall = S(valt)
 	case string:
-		valBytes = []byte(valt)
+		vall = S(valt)
 	default:
-		return 0, errors.Errorf("val needs to be of type []byte, but is type: %T, val: '%v'", val, val)
+		var ok bool
+		if vall, ok = val.(Literal); !ok {
+			return 0, errors.Errorf("val needs to be string, byte slice, or Literal, but is type: %T, val: '%v'", val, val)
+		}
 	}
+	valBytes := ToBytes(vall)
+
 	var data []byte
 
 	// if you're expecting most of the mapping to already be done, this would be faster
