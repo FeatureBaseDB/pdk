@@ -110,12 +110,6 @@
   revision = "553a641470496b2327abcac10b36396bd98e45c9"
 
 [[projects]]
-  name = "github.com/google/gopacket"
-  packages = [".","layers","pcap"]
-  revision = "11c65f1ca9081dfea43b4f9643f5c155583b73ba"
-  version = "v1.1.14"
-
-[[projects]]
   name = "github.com/gorilla/context"
   packages = ["."]
   revision = "1ea25387ff6f684839d82767c1733ff4d4d15d0a"
@@ -180,6 +174,12 @@
   packages = ["."]
   revision = "76626ae9c91c4f2a10f34cad8ce83ea42c93bb75"
   version = "v1.0"
+
+[[projects]]
+  name = "github.com/jaffee/commandeer"
+  packages = [".","cobrafy"]
+  revision = "d0012ff26169b05dca5c14910d9415ae389efb8e"
+  version = "v0.1.0"
 
 [[projects]]
   name = "github.com/linkedin/goavro"
@@ -358,6 +358,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "2ea34c75f3b18f341fb08c25485fb9eb9e77900eb0c51e43d25f6c9fed547227"
+  inputs-digest = "812f45714fc21fc25c1f30a52365c90f90dab4b3d3d6565baa86c01572800457"
   solver-name = "gps-cdcl"
   solver-version = 1

@@ -21,9 +21,7 @@ type Context map[string]interface{}
 // Entity is the "root" node of a graph branching out from a certain resource
 // denoted by the Subject. This is a convenience vs just handling a list of
 // Triples as we expect to structure indexing around a particular class of thing
-// which we ingest many instances of as records. The properties of an Entity are
-// split into two groups one of which may contain other Entities (nested), and
-// the other which contains only Literals.
+// which we ingest many instances of as records.
 type Entity struct {
 	Subject IRI `json:"@id"`
 	Objects map[Property]Object
@@ -433,6 +431,16 @@ func ToBytes(l Literal) []byte {
 	default:
 		panic("should have covered all literal types in ToBytes switch")
 	}
+}
+
+// ToString converts a Literal into a string with a type byte prepended.
+func ToString(l Literal) string {
+	return string(ToBytes(l))
+}
+
+// FromString converts a Literal encoded with ToString back to a Literal.
+func FromString(s string) Literal {
+	return FromBytes([]byte(s))
 }
 
 // FromBytes converts an encoded byte slice (from ToBytes) back to a Literal.
