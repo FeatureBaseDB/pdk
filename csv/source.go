@@ -2,6 +2,7 @@ package csv
 
 import (
 	"bufio"
+	"fmt"
 	"io"
 	"net/http"
 	"os"
@@ -56,7 +57,10 @@ type url struct {
 }
 
 func (c *CSVSource) Record() (interface{}, error) {
-	rec := <-c.records
+	rec, ok := <-c.records
+	if !ok {
+		return nil, io.EOF
+	}
 	return rec.rec, rec.err
 }
 
@@ -99,6 +103,11 @@ func (c *CSVSource) getRows(content io.ReadCloser, url *url) {
 		row := strings.Split(scan.Text(), ",")
 		url.line++
 		recordMap, err := parseRecord(header, row)
+		if err == nil {
+			// add file and line number under the comma header since that can't
+			// be a header from the csv file.
+			recordMap[","] = fmt.Sprintf("%s:line%d", url.name, url.line)
+		}
 		c.records <- record{
 			rec: recordMap,
 			err: errors.Wrapf(err, "parsing line %d from %s", url.line, url.name),

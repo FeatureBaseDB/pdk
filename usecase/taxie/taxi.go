@@ -3,12 +3,17 @@ package taxie
 import (
 	"bufio"
 	"io"
+	"log"
 	"os"
 
 	"github.com/pilosa/pdk"
 	"github.com/pilosa/pdk/csv"
 	"github.com/pilosa/pdk/enterprise"
 	"github.com/pkg/errors"
+
+	"net/http"
+	_ "net/http/pprof"
+	"runtime"
 )
 
 type Main struct {
@@ -26,6 +31,12 @@ func NewMain() *Main {
 }
 
 func (m *Main) Run() error {
+	runtime.SetBlockProfileRate(1000)
+	runtime.SetMutexProfileFraction(1000)
+	go func() {
+		log.Println(http.ListenAndServe("localhost:6060", nil))
+	}()
+
 	f, err := os.Open(m.URLFile)
 	if err != nil {
 		return errors.Wrap(err, "opening url file")
@@ -42,6 +53,18 @@ func (m *Main) Run() error {
 
 	src := csv.NewCSVSource(urls)
 	parser := pdk.NewDefaultGenericParser()
+	parser.Subjecter = pdk.SubjectFunc(func(d interface{}) (string, error) {
+		dm, ok := d.(map[string]interface{})
+		if !ok {
+			return "", errors.Errorf("expected map, but got : %#v", d)
+		}
+		subj, ok := dm[","].(string)
+		if !ok {
+			return "", errors.Errorf("expected ',' key, but: %#v", dm)
+		}
+		delete(dm, ",")
+		return subj, nil
+	})
 	indexer, err := enterprise.SetupIndex(m.Pilosa, m.Index, nil, 1000)
 	if err != nil {
 		return errors.Wrap(err, "setting up index")

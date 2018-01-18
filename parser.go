@@ -23,6 +23,10 @@ type Subjecter interface {
 	Subject(d interface{}) (string, error)
 }
 
+type SubjectFunc func(d interface{}) (string, error)
+
+func (s SubjectFunc) Subject(d interface{}) (string, error) { return s(d) }
+
 type BlankSubjecter struct{}
 
 func (b BlankSubjecter) Subject(d interface{}) (string, error) { return "", nil }

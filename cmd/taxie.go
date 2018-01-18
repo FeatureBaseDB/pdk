@@ -8,7 +8,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func NewTaxiCommand(stdin io.Reader, stdout, stderr io.Writer) *cobra.Command {
+func NewTaxieCommand(stdin io.Reader, stdout, stderr io.Writer) *cobra.Command {
 	com, err := cobrafy.Command(taxie.NewMain())
 	if err != nil {
 		panic(err)
@@ -17,5 +17,5 @@ func NewTaxiCommand(stdin io.Reader, stdout, stderr io.Writer) *cobra.Command {
 }
 
 func init() {
-	subcommandFns["taxie"] = NewTaxiCommand
+	subcommandFns["taxie"] = NewTaxieCommand
 }

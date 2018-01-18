@@ -58,7 +58,12 @@ func (n *Ingester) Run() error {
 						return
 					}
 					iter, err := n.getFrame(frames, name)
-					iter <- Bit{Column: string(ent.Subject), Row: pdk.ToString(l)}
+					if err != nil {
+						log.Fatalf("couldn't get frame: %v, err: %v", name, err)
+						return
+					}
+
+					iter <- Bit{Column: string(ent.Subject), Row: string(l.(pdk.S))}
 				})
 			}
 			if err != io.EOF && err != nil {

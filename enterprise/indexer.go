@@ -33,6 +33,7 @@ func (idx *Index) Frame(name string) (ChanBitIterator, error) {
 	if iterator, ok := idx.bitChans[name]; ok {
 		return iterator, nil
 	}
+	log.Printf("creating frame %s", name)
 	err := idx.setupFrame(FrameSpec{Name: name, CacheType: gopilosa.CacheTypeRanked, CacheSize: 100000})
 	if err != nil {
 		return nil, err
@@ -144,12 +145,6 @@ func (i *Index) ImportValueFrameK(fram *gopilosa.Frame, field string, iter ChanV
 // threadsafe - callers must hold i.lock.Lock() or guarantee that they have
 // exclusive access to Index before calling.
 func (i *Index) setupFrame(frame FrameSpec) error {
-	// for _, field := range frame.Fields {
-	// 	err := frameOptions.AddIntField(field.Name, field.Min, field.Max)
-	// 	if err != nil {
-	// 		return errors.Wrapf(err, "adding int field %v", field)
-	// 	}
-	// }
 	var fram *gopilosa.Frame
 	var err error
 	if _, ok := i.bitChans[frame.Name]; !ok {
@@ -168,7 +163,7 @@ func (i *Index) setupFrame(frame FrameSpec) error {
 		i.bitChans[frame.Name] = NewChanBitIterator()
 		go func(fram *gopilosa.Frame, frame FrameSpec) {
 			// TODO change to i.client.ImportFrameK when gopilosa supports enterprise imports
-			go i.ImportFrameK(fram, i.bitChans[frame.Name], i.batchSize)
+			i.ImportFrameK(fram, i.bitChans[frame.Name], i.batchSize)
 			// if err != nil {
 			// 	log.Println(errors.Wrapf(err, "starting frame import for %v", frame.Name))
 			// }
@@ -176,7 +171,7 @@ func (i *Index) setupFrame(frame FrameSpec) error {
 	} else {
 		fram, err = i.index.Frame(frame.Name, nil)
 		if err != nil {
-			return errors.Wrap(err, "making frame: %v")
+			return errors.Wrap(err, "getting frame: %v")
 		}
 	}
 	if _, ok := i.fieldChans[frame.Name]; !ok {
@@ -194,7 +189,7 @@ func (i *Index) setupFrame(frame FrameSpec) error {
 		}
 		go func(fram *gopilosa.Frame, frame FrameSpec, field FieldSpec) {
 			// TODO change to i.client.ImportValueFrameK when gopilosa supports enterprise imports
-			go i.ImportValueFrameK(fram, field.Name, i.fieldChans[frame.Name][field.Name], i.batchSize)
+			i.ImportValueFrameK(fram, field.Name, i.fieldChans[frame.Name][field.Name], i.batchSize)
 			// if err != nil {
 			// 	log.Println(errors.Wrapf(err, "starting field import for %v", field))
 			// }
