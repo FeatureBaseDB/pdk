@@ -4,17 +4,34 @@ import (
 	"sync/atomic"
 )
 
+type INexter interface {
+	Next() uint64
+	Last() uint64
+}
+
 // Nexter is a threadsafe monotonic unique id generator
 type Nexter struct {
 	id *uint64
 }
 
+type NexterOption func(n *Nexter)
+
+func NexterStartFrom(s uint64) func(n *Nexter) {
+	return func(n *Nexter) {
+		*(n.id) = s
+	}
+}
+
 // NewNexter creates a new id generator starting at 0
-func NewNexter() Nexter {
+func NewNexter(opts ...NexterOption) *Nexter {
 	var id uint64
-	return Nexter{
+	n := &Nexter{
 		id: &id,
 	}
+	for _, opt := range opts {
+		opt(n)
+	}
+	return n
 }
 
 // Next generates a new id and returns it
