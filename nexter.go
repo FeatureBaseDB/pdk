@@ -14,15 +14,19 @@ type Nexter struct {
 	id *uint64
 }
 
+// NexterOption can be passed to NewNexter to modify the Nexter's behavior.
 type NexterOption func(n *Nexter)
 
+// NexterStartFrom returns an option which makes a Nexter start from integer
+// "s".
 func NexterStartFrom(s uint64) func(n *Nexter) {
 	return func(n *Nexter) {
 		*(n.id) = s
 	}
 }
 
-// NewNexter creates a new id generator starting at 0
+// NewNexter creates a new id generator starting at 0 - can be modified by
+// options.
 func NewNexter(opts ...NexterOption) *Nexter {
 	var id uint64
 	n := &Nexter{
