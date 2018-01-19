@@ -26,7 +26,7 @@ type Main struct {
 
 	trans  pdk.Translator
 	index  pdk.Indexer
-	nexter pdk.Nexter
+	nexter *pdk.Nexter
 }
 
 func NewMain() (*Main, error) {

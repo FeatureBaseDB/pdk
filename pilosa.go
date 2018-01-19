@@ -29,6 +29,10 @@ func NewIndex() *Index {
 	}
 }
 
+func (i *Index) Client() *pcli.Client {
+	return i.client
+}
+
 func (i *Index) AddBit(frame string, col uint64, row uint64) {
 	var c ChanBitIterator
 	var ok bool
