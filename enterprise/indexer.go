@@ -117,30 +117,6 @@ func NewFieldFrameSpec(name string, min int, max int) FrameSpec {
 	return fs
 }
 
-func (i *Index) ImportFrameK(fram *gopilosa.Frame, iter ChanBitIterator, batchSize uint) {
-	for bit := range iter {
-		var q gopilosa.PQLQuery
-		if bit.Timestamp == 0 {
-			q = fram.SetBitK(bit.RowKey, bit.ColumnKey)
-		} else {
-			q = fram.SetBitTimestampK(bit.RowKey, bit.ColumnKey, time.Unix(bit.Timestamp, 0))
-		}
-		_, err := i.client.Query(q, nil)
-		if err != nil {
-			log.Printf("setbit query failed frame: %v: %v", fram.Name(), err)
-		}
-	}
-}
-
-func (i *Index) ImportValueFrameK(fram *gopilosa.Frame, field string, iter ChanValIterator, batchSize uint) {
-	for val := range iter {
-		_, err := i.client.Query(fram.Field(field).SetIntValueK(val.ColumnKey, int(val.Value)))
-		if err != nil {
-			log.Printf("setval query failed frame: %v, field: %v, col: %v, val: %v, err: %v", fram.Name(), field, val.ColumnKey, val.Value, err)
-		}
-	}
-}
-
 // setupFrame ensures the existence of a frame with the given configuration in
 // Pilosa, and starts importers for the frame and any fields. It is not
 // threadsafe - callers must hold i.lock.Lock() or guarantee that they have
@@ -190,10 +166,11 @@ func (i *Index) setupFrame(frame FrameSpec) error {
 		}
 		go func(fram *gopilosa.Frame, frame FrameSpec, field FieldSpec) {
 			// TODO change to i.client.ImportValueFrameK when gopilosa supports enterprise imports
-			i.ImportValueFrameK(fram, field.Name, i.fieldChans[frame.Name][field.Name], i.batchSize)
-			// if err != nil {
-			// 	log.Println(errors.Wrapf(err, "starting field import for %v", field))
-			// }
+			i.client.ImportValueKFrame(fram, field.Name, i.fieldChans[frame.Name][field.Name], i.batchSize)
+			// i.ImportValueFrameK(fram, field.Name, i.fieldChans[frame.Name][field.Name], i.batchSize)
+			if err != nil {
+				log.Println(errors.Wrapf(err, "starting field import for %v", field))
+			}
 		}(fram, frame, field)
 	}
 	return nil
@@ -255,17 +232,12 @@ func (c ChanBitIterator) NextBitK() (gopilosa.BitK, error) {
 }
 
 func NewChanValIterator() ChanValIterator {
-	return make(chan FieldValue, 200000)
+	return make(chan gopilosa.FieldValueK, 200000)
 }
 
-type FieldValue struct {
-	ColumnKey string
-	Value     int64
-}
+type ChanValIterator chan gopilosa.FieldValueK
 
-type ChanValIterator chan FieldValue
-
-func (c ChanValIterator) NextValue() (FieldValue, error) {
+func (c ChanValIterator) NextValueK() (gopilosa.FieldValueK, error) {
 	b, ok := <-c
 	if !ok {
 		return b, io.EOF

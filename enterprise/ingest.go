@@ -82,7 +82,7 @@ func (n *Ingester) Run() error {
 							log.Fatalf("couldn't get field: %v, err: %v", name, err)
 							return
 						}
-						iter <- FieldValue{ColumnKey: string(ent.Subject), Value: int64(li)}
+						iter <- gopilosa.FieldValueK{ColumnKey: string(ent.Subject), Value: int64(li)}
 					} else {
 						log.Printf("unhandled type %T, val %v frame %v", l, l, path)
 					}
