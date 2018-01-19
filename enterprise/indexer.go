@@ -26,6 +26,10 @@ type Indexer interface {
 	Close() error
 }
 
+func (i *Index) Client() *gopilosa.Client {
+	return i.client
+}
+
 func (idx *Index) Frame(name string) (ChanBitIterator, error) {
 	idx.lock.Lock()
 	defer idx.lock.Unlock()
