@@ -3,9 +3,12 @@ package enterprise
 import (
 	"io"
 	"log"
+	"strings"
 	"sync"
 
+	gopilosa "github.com/pilosa/go-pilosa"
 	"github.com/pilosa/pdk"
+	"github.com/pkg/errors"
 )
 
 // Ingester combines a Source, Parser, Mapper, and Indexer, and uses them to
@@ -39,6 +42,7 @@ func (n *Ingester) Run() error {
 		go func() {
 			defer pwg.Done()
 			frames := make(map[string]ChanBitIterator)
+			fields := make(map[string]map[string]ChanValIterator)
 			var err error
 			for {
 				rec, err := n.src.Record()
@@ -52,18 +56,36 @@ func (n *Ingester) Run() error {
 				}
 				// this logic is non-general - treats everything as a string and doesn't use fields at all.
 				pdk.Walk(ent, func(path []string, l pdk.Literal) {
-					name, err := n.framer.Frame(path)
-					if err != nil {
-						log.Printf("couldn't frame %v: %v", path, err)
-						return
+					if ls, ok := l.(pdk.S); ok {
+						name, err := n.framer.Frame(path)
+						if err != nil {
+							log.Printf("couldn't frame %v: %v", path, err)
+							return
+						}
+						iter, err := n.getFrame(frames, name)
+						if err != nil {
+							log.Fatalf("couldn't get frame: %v, err: %v", name, err)
+							return
+						}
+						iter <- gopilosa.BitK{ColumnKey: string(ent.Subject), RowKey: string(ls)}
+					} else if li, ok := l.(pdk.I); ok {
+						name, field, err := n.framer.Field(path)
+						if Contains(name, "date", "dist", "tude", "amount", "tax", "extra", "sur") {
+							return
+						}
+						if err != nil {
+							log.Printf("couldn't Field %v: %v", path, err)
+							return
+						}
+						iter, err := n.getField(fields, name, field)
+						if err != nil {
+							log.Fatalf("couldn't get field: %v, err: %v", name, err)
+							return
+						}
+						iter <- FieldValue{ColumnKey: string(ent.Subject), Value: int64(li)}
+					} else {
+						log.Printf("unhandled type %T, val %v frame %v", l, l, path)
 					}
-					iter, err := n.getFrame(frames, name)
-					if err != nil {
-						log.Fatalf("couldn't get frame: %v, err: %v", name, err)
-						return
-					}
-
-					iter <- Bit{Column: string(ent.Subject), Row: string(l.(pdk.S))}
 				})
 			}
 			if err != io.EOF && err != nil {
@@ -85,4 +107,32 @@ func (n *Ingester) getFrame(frames map[string]ChanBitIterator, frame string) (Ch
 	}
 	frames[frame] = iter
 	return iter, nil
+}
+
+func (n *Ingester) getField(fields map[string]map[string]ChanValIterator, frame, field string) (ChanValIterator, error) {
+	fmap, ok := fields[frame]
+	if !ok {
+		fmap = make(map[string]ChanValIterator)
+		fields[frame] = fmap
+	}
+	iter, ok := fmap[field]
+	var err error
+	if !ok {
+		iter, err = n.indexer.Field(frame, field)
+		if err != nil {
+			return nil, errors.Wrap(err, "getting field iter")
+		}
+		fmap[field] = iter
+	}
+	return iter, nil
+
+}
+
+func Contains(name string, any ...string) bool {
+	for _, a := range any {
+		if strings.Contains(name, a) {
+			return true
+		}
+	}
+	return false
 }

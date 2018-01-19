@@ -52,6 +52,7 @@ func (idx *Index) Field(frame, field string) (ChanValIterator, error) {
 	}
 	frameSpec := NewFieldFrameSpec(field, -2000000000, 2000000000)
 	frameSpec.Name = frame
+	log.Printf("creating in field %s in frame %s", field, frame)
 	err := idx.setupFrame(frameSpec)
 	if err != nil {
 		return nil, err
@@ -119,10 +120,10 @@ func NewFieldFrameSpec(name string, min int, max int) FrameSpec {
 func (i *Index) ImportFrameK(fram *gopilosa.Frame, iter ChanBitIterator, batchSize uint) {
 	for bit := range iter {
 		var q gopilosa.PQLQuery
-		if bit.Timestamp.IsZero() {
-			q = fram.SetBitK(bit.Row, bit.Column)
+		if bit.Timestamp == 0 {
+			q = fram.SetBitK(bit.RowKey, bit.ColumnKey)
 		} else {
-			q = fram.SetBitTimestampK(bit.Row, bit.Column, bit.Timestamp)
+			q = fram.SetBitTimestampK(bit.RowKey, bit.ColumnKey, time.Unix(bit.Timestamp, 0))
 		}
 		_, err := i.client.Query(q, nil)
 		if err != nil {
@@ -163,10 +164,10 @@ func (i *Index) setupFrame(frame FrameSpec) error {
 		i.bitChans[frame.Name] = NewChanBitIterator()
 		go func(fram *gopilosa.Frame, frame FrameSpec) {
 			// TODO change to i.client.ImportFrameK when gopilosa supports enterprise imports
-			i.ImportFrameK(fram, i.bitChans[frame.Name], i.batchSize)
-			// if err != nil {
-			// 	log.Println(errors.Wrapf(err, "starting frame import for %v", frame.Name))
-			// }
+			err := i.client.ImportKFrame(fram, i.bitChans[frame.Name], i.batchSize)
+			if err != nil {
+				log.Println(errors.Wrapf(err, "starting frame import for %v", frame.Name))
+			}
 		}(fram, frame)
 	} else {
 		fram, err = i.index.Frame(frame.Name, nil)
@@ -227,19 +228,13 @@ func SetupIndex(hosts []string, index string, frames []FrameSpec, batchsize uint
 	return indexer, nil
 }
 
-type Bit struct {
-	Column    string
-	Row       string
-	Timestamp time.Time
-}
-
 func NewChanBitIterator() ChanBitIterator {
-	return make(chan Bit, 200000)
+	return make(chan gopilosa.BitK, 200000)
 }
 
-type ChanBitIterator chan Bit
+type ChanBitIterator chan gopilosa.BitK
 
-func (c ChanBitIterator) NextBit() (Bit, error) {
+func (c ChanBitIterator) NextBitK() (gopilosa.BitK, error) {
 	b, ok := <-c
 	if !ok {
 		return b, io.EOF

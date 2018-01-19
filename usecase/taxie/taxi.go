@@ -65,7 +65,7 @@ func (m *Main) Run() error {
 		delete(dm, ",")
 		return subj, nil
 	})
-	indexer, err := enterprise.SetupIndex(m.Pilosa, m.Index, nil, 1000)
+	indexer, err := enterprise.SetupIndex(m.Pilosa, m.Index, nil, 100000)
 	if err != nil {
 		return errors.Wrap(err, "setting up index")
 	}

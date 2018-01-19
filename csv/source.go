@@ -148,14 +148,14 @@ func parseString(s string) interface{} {
 	if err == nil {
 		return intVal
 	}
-	boolVal, err := strconv.ParseBool(s)
-	if err == nil {
-		return boolVal
-	}
-	floatVal, err := strconv.ParseFloat(s, 64)
-	if err == nil {
-		return floatVal
-	}
+	// boolVal, err := strconv.ParseBool(s)
+	// if err == nil {
+	// 	return boolVal
+	// }
+	// floatVal, err := strconv.ParseFloat(s, 64)
+	// if err == nil {
+	// 	return floatVal
+	// }
 	return s
 }
 
