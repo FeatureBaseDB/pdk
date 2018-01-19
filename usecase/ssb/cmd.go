@@ -30,10 +30,6 @@ type Main struct {
 }
 
 func NewMain() (*Main, error) {
-	trans, err := NewTranslator("ssdbmapping")
-	if err != nil {
-		return nil, err
-	}
 	return &Main{
 		Index:           "ssb",
 		ReadConcurrency: 1,
@@ -41,11 +37,14 @@ func NewMain() (*Main, error) {
 		RecordBuf:       1000000,
 
 		nexter: pdk.NewNexter(),
-		trans:  trans,
 	}, nil
 }
 
 func (m *Main) Run() (err error) {
+	m.trans, err = NewTranslator("ssdbmapping")
+	if err != nil {
+		return errors.Wrap(err, "getting new translator")
+	}
 	log.Println("setting up pilosa")
 	m.index, err = pdk.SetupPilosa(m.Hosts, m.Index, frames, 1000000)
 	if err != nil {

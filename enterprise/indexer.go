@@ -184,9 +184,9 @@ func (i *Index) setupFrame(frame FrameSpec) error {
 			continue // valChan for this field exists, so importer should already be running.
 		}
 		i.fieldChans[frame.Name][field.Name] = NewChanValIterator()
-		err := i.client.CreateIntField(fram, field.Name, field.Min, field.Max)
+		err := i.ensureField(fram, field)
 		if err != nil {
-			return errors.Wrapf(err, "creating field %#v", field)
+			return err
 		}
 		go func(fram *gopilosa.Frame, frame FrameSpec, field FieldSpec) {
 			// TODO change to i.client.ImportValueFrameK when gopilosa supports enterprise imports
@@ -197,6 +197,14 @@ func (i *Index) setupFrame(frame FrameSpec) error {
 		}(fram, frame, field)
 	}
 	return nil
+}
+
+func (i *Index) ensureField(frame *gopilosa.Frame, fieldSpec FieldSpec) error {
+	if _, exists := frame.Fields()[fieldSpec.Name]; exists {
+		return nil
+	}
+	err := i.client.CreateIntField(frame, fieldSpec.Name, fieldSpec.Min, fieldSpec.Max)
+	return errors.Wrapf(err, "creating field %#v", fieldSpec)
 }
 
 func SetupIndex(hosts []string, index string, frames []FrameSpec, batchsize uint) (Indexer, error) {
@@ -210,14 +218,18 @@ func SetupIndex(hosts []string, index string, frames []FrameSpec, batchsize uint
 		return nil, errors.Wrap(err, "creating pilosa cluster client")
 	}
 	indexer.client = client
-
-	indexer.index, err = gopilosa.NewIndex(index, &gopilosa.IndexOptions{})
+	schema, err := client.Schema()
 	if err != nil {
-		return nil, errors.Wrap(err, "making index")
+		return nil, errors.Wrap(err, "getting schema")
 	}
-	err = client.EnsureIndex(indexer.index)
+
+	indexer.index, err = schema.Index(index)
 	if err != nil {
-		return nil, errors.Wrap(err, "ensuring index existence")
+		return nil, errors.Wrap(err, "getting index")
+	}
+	err = client.SyncSchema(schema)
+	if err != nil {
+		return nil, errors.Wrap(err, "ensuring index exists")
 	}
 	for _, frame := range frames {
 		err := indexer.setupFrame(frame)

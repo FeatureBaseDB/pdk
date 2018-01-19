@@ -54,7 +54,7 @@ func (n *Ingester) Run() error {
 					log.Printf("couldn't parse record %s, err: %v", rec, err)
 					continue
 				}
-				// this logic is non-general - treats everything as a string and doesn't use fields at all.
+				// this logic is non-general
 				pdk.Walk(ent, func(path []string, l pdk.Literal) {
 					if ls, ok := l.(pdk.S); ok {
 						name, err := n.framer.Frame(path)
