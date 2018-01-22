@@ -45,7 +45,8 @@ func (n *Ingester) Run() error {
 			fields := make(map[string]map[string]ChanValIterator)
 			var err error
 			for {
-				rec, err := n.src.Record()
+				var rec interface{}
+				rec, err = n.src.Record()
 				if err != nil {
 					break
 				}

@@ -38,7 +38,8 @@ func (n *Ingester) Run() error {
 			defer pwg.Done()
 			var err error
 			for {
-				rec, err := n.src.Record()
+				var rec interface{}
+				rec, err = n.src.Record()
 				if err != nil {
 					break
 				}
