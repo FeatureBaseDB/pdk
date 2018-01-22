@@ -67,7 +67,7 @@ func (n *Ingester) Run() error {
 							log.Fatalf("couldn't get frame: %v, err: %v", name, err)
 							return
 						}
-						iter <- gopilosa.BitK{ColumnKey: string(ent.Subject), RowKey: string(ls)}
+						iter <- gopilosa.Bit{ColumnKey: string(ent.Subject), RowKey: string(ls)}
 					} else if li, ok := l.(pdk.I); ok {
 						name, field, err := n.framer.Field(path)
 						if Contains(name, "date", "dist", "tude", "amount", "tax", "extra", "sur") {
@@ -82,7 +82,7 @@ func (n *Ingester) Run() error {
 							log.Fatalf("couldn't get field: %v, err: %v", name, err)
 							return
 						}
-						iter <- gopilosa.FieldValueK{ColumnKey: string(ent.Subject), Value: int64(li)}
+						iter <- gopilosa.FieldValue{ColumnKey: string(ent.Subject), Value: int64(li)}
 					} else {
 						log.Printf("unhandled type %T, val %v frame %v", l, l, path)
 					}

@@ -140,7 +140,7 @@ func (i *Index) setupFrame(frame FrameSpec) error {
 		i.bitChans[frame.Name] = NewChanBitIterator()
 		go func(fram *gopilosa.Frame, frame FrameSpec) {
 			// TODO change to i.client.ImportFrameK when gopilosa supports enterprise imports
-			err := i.client.ImportKFrame(fram, i.bitChans[frame.Name], i.batchSize)
+			err := i.client.ImportFrame(fram, i.bitChans[frame.Name], i.batchSize)
 			if err != nil {
 				log.Println(errors.Wrapf(err, "starting frame import for %v", frame.Name))
 			}
@@ -166,7 +166,7 @@ func (i *Index) setupFrame(frame FrameSpec) error {
 		}
 		go func(fram *gopilosa.Frame, frame FrameSpec, field FieldSpec) {
 			// TODO change to i.client.ImportValueFrameK when gopilosa supports enterprise imports
-			i.client.ImportValueKFrame(fram, field.Name, i.fieldChans[frame.Name][field.Name], i.batchSize)
+			i.client.ImportValueFrame(fram, field.Name, i.fieldChans[frame.Name][field.Name], i.batchSize)
 			// i.ImportValueFrameK(fram, field.Name, i.fieldChans[frame.Name][field.Name], i.batchSize)
 			if err != nil {
 				log.Println(errors.Wrapf(err, "starting field import for %v", field))
@@ -218,12 +218,12 @@ func SetupIndex(hosts []string, index string, frames []FrameSpec, batchsize uint
 }
 
 func NewChanBitIterator() ChanBitIterator {
-	return make(chan gopilosa.BitK, 200000)
+	return make(chan gopilosa.Bit, 200000)
 }
 
-type ChanBitIterator chan gopilosa.BitK
+type ChanBitIterator chan gopilosa.Bit
 
-func (c ChanBitIterator) NextBitK() (gopilosa.BitK, error) {
+func (c ChanBitIterator) NextBit() (gopilosa.Bit, error) {
 	b, ok := <-c
 	if !ok {
 		return b, io.EOF
@@ -232,12 +232,12 @@ func (c ChanBitIterator) NextBitK() (gopilosa.BitK, error) {
 }
 
 func NewChanValIterator() ChanValIterator {
-	return make(chan gopilosa.FieldValueK, 200000)
+	return make(chan gopilosa.FieldValue, 200000)
 }
 
-type ChanValIterator chan gopilosa.FieldValueK
+type ChanValIterator chan gopilosa.FieldValue
 
-func (c ChanValIterator) NextValueK() (gopilosa.FieldValueK, error) {
+func (c ChanValIterator) NextValue() (gopilosa.FieldValue, error) {
 	b, ok := <-c
 	if !ok {
 		return b, io.EOF
