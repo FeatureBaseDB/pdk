@@ -1,5 +1,9 @@
 package pdk
 
+import (
+	gopilosa "github.com/pilosa/go-pilosa"
+)
+
 // Source is the interface for getting raw data one record at a time.
 // Implementations of Source should be thread safe.
 type Source interface {
@@ -28,4 +32,5 @@ type Indexer interface {
 	// AddRowAttr(frame string, row uint64, key string, value AttrVal)
 	// AddColAttr(col uint64, key string, value AttrVal)
 	Close() error
+	Client() *gopilosa.Client
 }
