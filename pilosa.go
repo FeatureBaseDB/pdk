@@ -13,6 +13,7 @@ type Indexer interface {
 	AddBit(frame string, col uint64, row uint64)
 	AddValue(frame, field string, col uint64, val int64)
 	Close() error
+	Client() *pcli.Client
 }
 
 type Index struct {
