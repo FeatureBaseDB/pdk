@@ -13,6 +13,7 @@ type Indexer interface {
 	AddBit(frame string, col uint64, row uint64)
 	AddValue(frame, field string, col uint64, val int64)
 	Close() error
+	Client() *pcli.Client
 }
 
 type Index struct {
@@ -27,6 +28,10 @@ func NewIndex() *Index {
 		bitChans:   make(map[string]ChanBitIterator),
 		fieldChans: make(map[string]map[string]ChanValIterator),
 	}
+}
+
+func (i *Index) Client() *pcli.Client {
+	return i.client
 }
 
 func (i *Index) AddBit(frame string, col uint64, row uint64) {
