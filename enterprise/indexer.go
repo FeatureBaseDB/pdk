@@ -144,7 +144,7 @@ func (i *Index) setupFrame(frame FrameSpec) error {
 		i.bitChans[frame.Name] = NewChanBitIterator()
 		go func(fram *gopilosa.Frame, frame FrameSpec) {
 			// TODO change to i.client.ImportFrameK when gopilosa supports enterprise imports
-			err := i.client.ImportFrame(fram, i.bitChans[frame.Name], i.batchSize)
+			err := i.client.ImportFrameK(fram, i.bitChans[frame.Name], i.batchSize)
 			if err != nil {
 				log.Println(errors.Wrapf(err, "starting frame import for %v", frame.Name))
 			}
@@ -170,7 +170,7 @@ func (i *Index) setupFrame(frame FrameSpec) error {
 		}
 		go func(fram *gopilosa.Frame, frame FrameSpec, field FieldSpec) {
 			// TODO change to i.client.ImportValueFrameK when gopilosa supports enterprise imports
-			i.client.ImportValueFrame(fram, field.Name, i.fieldChans[frame.Name][field.Name], i.batchSize)
+			i.client.ImportValueFrameK(fram, field.Name, i.fieldChans[frame.Name][field.Name], i.batchSize)
 			// i.ImportValueFrameK(fram, field.Name, i.fieldChans[frame.Name][field.Name], i.batchSize)
 			if err != nil {
 				log.Println(errors.Wrapf(err, "starting field import for %v", field))
