@@ -35,14 +35,14 @@ func TestCSVSource(t *testing.T) {
 	if len(recmap) != 4 {
 		t.Fatalf("wrong length record: %v", rec)
 	}
-	if recmap["blah"] != "1" {
-		t.Fail()
+	if recmap["blah"] != 1 {
+		t.Fatalf("blah")
 	}
 	if recmap["bleh"] != "asdf" {
-		t.Fail()
+		t.Fatalf("bleh")
 	}
-	if recmap["blue"] != "3" {
-		t.Fail()
+	if recmap["blue"] != 3 {
+		t.Fatalf("blue")
 	}
 
 	rec, err = src.Record()
@@ -54,13 +54,13 @@ func TestCSVSource(t *testing.T) {
 	if len(recmap) != 4 {
 		t.Fatalf("wrong length record: %v", rec)
 	}
-	if recmap["blah"] != "2" {
-		t.Fail()
+	if recmap["blah"] != 2 {
+		t.Fatalf("blah2")
 	}
 	if recmap["bleh"] != "qwer" {
-		t.Fail()
+		t.Fatalf("blehqwer")
 	}
-	if recmap["blue"] != "4" {
-		t.Fail()
+	if recmap["blue"] != 4 {
+		t.Fatalf("blue4")
 	}
 }
