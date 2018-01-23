@@ -24,6 +24,7 @@ type Indexer interface {
 	Frame(name string) (ChanBitIterator, error)
 	Field(frame, field string) (ChanValIterator, error)
 	Close() error
+	Client() *gopilosa.Client
 }
 
 func (i *Index) Client() *gopilosa.Client {
