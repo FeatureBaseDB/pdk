@@ -16,6 +16,7 @@ type Index struct {
 
 	lock       sync.Mutex
 	index      *gopilosa.Index
+	importWG   sync.WaitGroup
 	bitChans   map[string]ChanBitIterator
 	fieldChans map[string]map[string]ChanValIterator
 }
@@ -84,6 +85,7 @@ func (i *Index) Close() error {
 			close(cvi)
 		}
 	}
+	i.importWG.Wait()
 	return nil
 }
 
@@ -143,7 +145,9 @@ func (i *Index) setupFrame(frame FrameSpec) error {
 			return errors.Wrapf(err, "creating frame '%v'", frame)
 		}
 		i.bitChans[frame.Name] = NewChanBitIterator()
+		i.importWG.Add(1)
 		go func(fram *gopilosa.Frame, frame FrameSpec) {
+			defer i.importWG.Done()
 			// TODO change to i.client.ImportFrameK when gopilosa supports enterprise imports
 			err := i.client.ImportFrameK(fram, i.bitChans[frame.Name], i.batchSize)
 			if err != nil {
@@ -169,7 +173,9 @@ func (i *Index) setupFrame(frame FrameSpec) error {
 		if err != nil {
 			return err
 		}
+		i.importWG.Add(1)
 		go func(fram *gopilosa.Frame, frame FrameSpec, field FieldSpec) {
+			defer i.importWG.Done()
 			// TODO change to i.client.ImportValueFrameK when gopilosa supports enterprise imports
 			i.client.ImportValueFrameK(fram, field.Name, i.fieldChans[frame.Name][field.Name], i.batchSize)
 			// i.ImportValueFrameK(fram, field.Name, i.fieldChans[frame.Name][field.Name], i.batchSize)

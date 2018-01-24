@@ -16,6 +16,7 @@ type Index struct {
 
 	lock       sync.RWMutex
 	index      *pcli.Index
+	importWG   sync.WaitGroup
 	bitChans   map[string]ChanBitIterator
 	fieldChans map[string]map[string]ChanValIterator
 }
@@ -93,6 +94,7 @@ func (i *Index) Close() error {
 			close(cvi)
 		}
 	}
+	i.importWG.Wait()
 	return nil
 }
 
@@ -158,7 +160,9 @@ func (i *Index) setupFrame(frame FrameSpec) error {
 			return errors.Wrapf(err, "creating frame '%v'", frame)
 		}
 		i.bitChans[frame.Name] = NewChanBitIterator()
+		i.importWG.Add(1)
 		go func(fram *pcli.Frame, frame FrameSpec) {
+			defer i.importWG.Done()
 			err := i.client.ImportFrame(fram, i.bitChans[frame.Name], i.batchSize)
 			if err != nil {
 				log.Println(errors.Wrapf(err, "starting frame import for %v", frame.Name))
@@ -183,7 +187,9 @@ func (i *Index) setupFrame(frame FrameSpec) error {
 		if err != nil {
 			return errors.Wrapf(err, "creating field %#v", field)
 		}
+		i.importWG.Add(1)
 		go func(fram *pcli.Frame, frame FrameSpec, field FieldSpec) {
+			defer i.importWG.Done()
 			err := i.client.ImportValueFrame(fram, field.Name, i.fieldChans[frame.Name][field.Name], i.batchSize)
 			if err != nil {
 				log.Println(errors.Wrapf(err, "starting field import for %v", field))
