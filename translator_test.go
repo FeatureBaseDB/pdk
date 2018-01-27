@@ -6,52 +6,36 @@ import (
 	"strconv"
 	"sync"
 	"testing"
+
+	"github.com/pilosa/pdk/test"
 )
-
-func MustBe(t *testing.T, thing1, thing2 interface{}, context ...string) {
-	var ctx string
-	if len(context) == 0 {
-		ctx = ""
-	} else {
-		ctx = context[0] + ": "
-	}
-	if !reflect.DeepEqual(thing1, thing2) {
-		t.Fatalf("%v'%#v' != '%#v'", ctx, thing1, thing2)
-	}
-}
-
-func errNil(t *testing.T, err error, ctx string) {
-	if err != nil {
-		t.Fatalf("%v: %v", ctx, err)
-	}
-}
 
 func TestMapTranslator(t *testing.T) {
 	mt := NewMapTranslator()
 	id, err := mt.GetID("frame1", "thing")
-	MustBe(t, id, uint64(0), "first")
-	MustBe(t, err, nil)
+	test.MustBe(t, id, uint64(0), "first")
+	test.MustBe(t, err, nil)
 	id, err = mt.GetID("frame1", "thing")
-	MustBe(t, id, uint64(0), "repeat")
-	MustBe(t, err, nil)
+	test.MustBe(t, id, uint64(0), "repeat")
+	test.MustBe(t, err, nil)
 
 	id, err = mt.GetID("frame1", "thing1")
-	MustBe(t, id, uint64(1), "third")
-	MustBe(t, err, nil)
+	test.MustBe(t, id, uint64(1), "third")
+	test.MustBe(t, err, nil)
 
 	id, err = mt.GetID("frame2", "thing3")
-	MustBe(t, id, uint64(0), "fourth")
-	MustBe(t, err, nil)
+	test.MustBe(t, id, uint64(0), "fourth")
+	test.MustBe(t, err, nil)
 
 	val, err := mt.Get("frame1", 0)
-	errNil(t, err, "Get1-0")
-	MustBe(t, "thing", val, "Get1-0")
+	test.ErrNil(t, err, "Get1-0")
+	test.MustBe(t, "thing", val, "Get1-0")
 	val, err = mt.Get("frame1", 1)
-	errNil(t, err, "get Get1-1")
-	MustBe(t, "thing1", val, "Get1-1")
+	test.ErrNil(t, err, "get Get1-1")
+	test.MustBe(t, "thing1", val, "Get1-1")
 	val, err = mt.Get("frame2", 0)
-	errNil(t, err, "get Get2-0")
-	MustBe(t, "thing3", val, "Get2-0")
+	test.ErrNil(t, err, "get Get2-0")
+	test.MustBe(t, "thing3", val, "Get2-0")
 }
 
 func TestConcMapTranslator(t *testing.T) {
@@ -81,7 +65,7 @@ func TestConcMapTranslator(t *testing.T) {
 				t.Fatalf("returned ids different in different threads: %v, %v", ret, rets[i-1])
 			}
 		}
-		sort.Sort(Uint64Slice(ret))
+		sort.Sort(test.Uint64Slice(ret))
 		for j := 0; j < 1000; j++ {
 			if ret[j] != uint64(j) {
 				t.Fatalf("returned ids are not monotonic, pos: %v, val: %v, arr: %v", j, ret[j], ret)

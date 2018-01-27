@@ -1,4 +1,4 @@
-package pdk
+package leveldb
 
 import (
 	"encoding/binary"
@@ -9,22 +9,23 @@ import (
 
 	"os"
 
+	"github.com/pilosa/pdk"
 	"github.com/pkg/errors"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/opt"
 )
 
-var _ Translator = &LevelTranslator{}
+var _ pdk.Translator = &Translator{}
 
-// LevelTranslator is a Translator which stores the two way val/id mapping in
+// Translator is a Translator which stores the two way val/id mapping in
 // leveldb.
-type LevelTranslator struct {
+type Translator struct {
 	lock    sync.RWMutex
 	dirname string
-	frames  map[string]*LevelFrameTranslator
+	frames  map[string]*FrameTranslator
 }
 
-type LevelFrameTranslator struct {
+type FrameTranslator struct {
 	lock   ValueLocker
 	idMap  *leveldb.DB
 	valMap *leveldb.DB
@@ -42,7 +43,7 @@ func (errs Errors) Error() string {
 }
 
 // Close closes all of the underlying leveldb instances.
-func (lt *LevelTranslator) Close() error {
+func (lt *Translator) Close() error {
 	errs := make(Errors, 0)
 	for f, lft := range lt.frames {
 		err := lft.Close()
@@ -56,8 +57,8 @@ func (lt *LevelTranslator) Close() error {
 	return nil
 }
 
-// Close closes the two leveldbs used by the LevelFrameTranslator.
-func (lft *LevelFrameTranslator) Close() error {
+// Close closes the two leveldbs used by the FrameTranslator.
+func (lft *FrameTranslator) Close() error {
 	errs := make(Errors, 0)
 	err := lft.idMap.Close()
 	if err != nil {
@@ -73,8 +74,8 @@ func (lft *LevelFrameTranslator) Close() error {
 	return nil
 }
 
-// getFrameTranslator retrieves or creates a LevelFrameTranslator for the given frame.
-func (lt *LevelTranslator) getFrameTranslator(frame string) (*LevelFrameTranslator, error) {
+// getFrameTranslator retrieves or creates a FrameTranslator for the given frame.
+func (lt *Translator) getFrameTranslator(frame string) (*FrameTranslator, error) {
 	lt.lock.RLock()
 	if tr, ok := lt.frames[frame]; ok {
 		lt.lock.RUnlock()
@@ -86,23 +87,23 @@ func (lt *LevelTranslator) getFrameTranslator(frame string) (*LevelFrameTranslat
 	if tr, ok := lt.frames[frame]; ok {
 		return tr, nil
 	}
-	lft, err := NewLevelFrameTranslator(lt.dirname, frame)
+	lft, err := NewFrameTranslator(lt.dirname, frame)
 	if err != nil {
-		return nil, errors.Wrap(err, "creating new LevelFrameTranslator")
+		return nil, errors.Wrap(err, "creating new FrameTranslator")
 	}
 	lt.frames[frame] = lft
 	return lft, nil
 }
 
-// NewLevelFrameTranslator creates a new FrameTranslator which uses LevelDB as
+// NewFrameTranslator creates a new FrameTranslator which uses LevelDB as
 // backing storage.
-func NewLevelFrameTranslator(dirname string, frame string) (*LevelFrameTranslator, error) {
+func NewFrameTranslator(dirname string, frame string) (*FrameTranslator, error) {
 	err := os.MkdirAll(dirname, 0700)
 	if err != nil {
 		return nil, errors.Wrap(err, "making directory")
 	}
 	var initialID uint64 = 0
-	mdbs := &LevelFrameTranslator{
+	mdbs := &FrameTranslator{
 		curID: &initialID,
 		lock:  NewBucketVLock(),
 	}
@@ -117,22 +118,22 @@ func NewLevelFrameTranslator(dirname string, frame string) (*LevelFrameTranslato
 	return mdbs, nil
 }
 
-func NewLevelTranslator(dirname string, frames ...string) (lt *LevelTranslator, err error) {
-	lt = &LevelTranslator{
+func NewTranslator(dirname string, frames ...string) (lt *Translator, err error) {
+	lt = &Translator{
 		dirname: dirname,
-		frames:  make(map[string]*LevelFrameTranslator),
+		frames:  make(map[string]*FrameTranslator),
 	}
 	for _, frame := range frames {
-		lft, err := NewLevelFrameTranslator(dirname, frame)
+		lft, err := NewFrameTranslator(dirname, frame)
 		if err != nil {
-			return nil, errors.Wrap(err, "making LevelFrameTranslator")
+			return nil, errors.Wrap(err, "making FrameTranslator")
 		}
 		lt.frames[frame] = lft
 	}
 	return lt, err
 }
 
-func (lt *LevelTranslator) Get(frame string, id uint64) (val interface{}, err error) {
+func (lt *Translator) Get(frame string, id uint64) (val interface{}, err error) {
 	lft, err := lt.getFrameTranslator(frame)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting frame translator")
@@ -141,17 +142,17 @@ func (lt *LevelTranslator) Get(frame string, id uint64) (val interface{}, err er
 	return val, err
 }
 
-func (lft *LevelFrameTranslator) Get(id uint64) (val interface{}, err error) {
+func (lft *FrameTranslator) Get(id uint64) (val interface{}, err error) {
 	idBytes := make([]byte, 8)
 	binary.BigEndian.PutUint64(idBytes, id)
 	data, err := lft.idMap.Get(idBytes, nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "fetching from idMap")
 	}
-	return FromBytes(data), nil
+	return pdk.FromBytes(data), nil
 }
 
-func (lt *LevelTranslator) GetID(frame string, val interface{}) (id uint64, err error) {
+func (lt *Translator) GetID(frame string, val interface{}) (id uint64, err error) {
 	lft, err := lt.getFrameTranslator(frame)
 	if err != nil {
 		return 0, errors.Wrap(err, "getting frame translator")
@@ -159,20 +160,20 @@ func (lt *LevelTranslator) GetID(frame string, val interface{}) (id uint64, err 
 	return lft.GetID(val)
 }
 
-func (lft *LevelFrameTranslator) GetID(val interface{}) (id uint64, err error) {
-	var vall Literal
+func (lft *FrameTranslator) GetID(val interface{}) (id uint64, err error) {
+	var vall pdk.Literal
 	switch valt := val.(type) {
 	case []byte:
-		vall = S(valt)
+		vall = pdk.S(valt)
 	case string:
-		vall = S(valt)
+		vall = pdk.S(valt)
 	default:
 		var ok bool
-		if vall, ok = val.(Literal); !ok {
+		if vall, ok = val.(pdk.Literal); !ok {
 			return 0, errors.Errorf("val needs to be string, byte slice, or Literal, but is type: %T, val: '%v'", val, val)
 		}
 	}
-	valBytes := ToBytes(vall)
+	valBytes := pdk.ToBytes(vall)
 
 	var data []byte
 

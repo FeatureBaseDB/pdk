@@ -1,3 +1,6 @@
+// +build integration
+
+// package kafka_test
 package kafka_test
 
 import (

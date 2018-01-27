@@ -1,4 +1,4 @@
-package pdk
+package leveldb
 
 import (
 	"bytes"
@@ -8,11 +8,14 @@ import (
 	"strconv"
 	"sync"
 	"testing"
+
+	"github.com/pilosa/pdk"
+	"github.com/pilosa/pdk/test"
 )
 
-func TestLevelTranslator(t *testing.T) {
+func TestTranslator(t *testing.T) {
 	levelDir := tempDirName(t)
-	bt, err := NewLevelTranslator(levelDir, "f1", "f2")
+	bt, err := NewTranslator(levelDir, "f1", "f2")
 	if err != nil {
 		t.Fatalf("couldn't get level translator: %v", err)
 	}
@@ -30,20 +33,20 @@ func TestLevelTranslator(t *testing.T) {
 	}
 
 	val, err := bt.Get("f1", id1)
-	errNil(t, err, "Get(f1, id1)")
-	if !bytes.Equal([]byte(val.(S)), []byte("hello")) {
+	test.ErrNil(t, err, "Get(f1, id1)")
+	if !bytes.Equal([]byte(val.(pdk.S)), []byte("hello")) {
 		t.Fatalf("unexpected value for hello id in f1: %s", val)
 	}
 
 	val, err = bt.Get("f2", id2)
-	errNil(t, err, `Get("f2", id2)`)
-	if !bytes.Equal([]byte(val.(S)), []byte("hello")) {
+	test.ErrNil(t, err, `Get("f2", id2)`)
+	if !bytes.Equal([]byte(val.(pdk.S)), []byte("hello")) {
 		t.Fatalf("unexpected value for hello id in f2: %s", val)
 	}
 
 	val, err = bt.Get("fnew", id3)
-	errNil(t, err, `Get("fnew", id3)`)
-	if !bytes.Equal([]byte(val.(S)), []byte("hello")) {
+	test.ErrNil(t, err, `Get("fnew", id3)`)
+	if !bytes.Equal([]byte(val.(pdk.S)), []byte("hello")) {
 		t.Fatalf("unexpected value for hello id in fnew: %s", val)
 	}
 
@@ -52,25 +55,25 @@ func TestLevelTranslator(t *testing.T) {
 		t.Fatalf("closing level translator: %v", err)
 	}
 
-	bt, err = NewLevelTranslator(levelDir, "f1", "f2")
+	bt, err = NewTranslator(levelDir, "f1", "f2")
 	if err != nil {
 		t.Fatalf("couldn't get level translator after closing: %v", err)
 	}
 	val, err = bt.Get("f1", id1)
-	errNil(t, err, `Get("f1", id1)`)
-	if !bytes.Equal([]byte(val.(S)), []byte("hello")) {
+	test.ErrNil(t, err, `Get("f1", id1)`)
+	if !bytes.Equal([]byte(val.(pdk.S)), []byte("hello")) {
 		t.Fatalf("after reopen, unexpected value for hello id in f1: %s", val)
 	}
 
 	val, err = bt.Get("f2", id2)
-	errNil(t, err, `Get("f2", id2)`)
-	if !bytes.Equal([]byte(val.(S)), []byte("hello")) {
+	test.ErrNil(t, err, `Get("f2", id2)`)
+	if !bytes.Equal([]byte(val.(pdk.S)), []byte("hello")) {
 		t.Fatalf("after reopen, unexpected value for hello id in f2: %s", val)
 	}
 
 	val, err = bt.Get("fnew", id3)
-	errNil(t, err, `Get("fnew", id3)`)
-	if !bytes.Equal([]byte(val.(S)), []byte("hello")) {
+	test.ErrNil(t, err, `Get("fnew", id3)`)
+	if !bytes.Equal([]byte(val.(pdk.S)), []byte("hello")) {
 		t.Fatalf("after reopen, unexpected value for hello id in fnew: %s", val)
 	}
 
@@ -93,9 +96,9 @@ func TestLevelTranslator(t *testing.T) {
 	}
 }
 
-func TestConcLevelTranslator(t *testing.T) {
+func TestConcTranslator(t *testing.T) {
 	levelDir := tempDirName(t)
-	bt, err := NewLevelTranslator(levelDir, "f1", "f2")
+	bt, err := NewTranslator(levelDir, "f1", "f2")
 	if err != nil {
 		t.Fatalf("couldn't get level translator: %v", err)
 	}
@@ -124,7 +127,7 @@ func TestConcLevelTranslator(t *testing.T) {
 				t.Fatalf("returned ids different in different threads: %v, %v", ret, rets[i-1])
 			}
 		}
-		sort.Sort(Uint64Slice(ret))
+		sort.Sort(test.Uint64Slice(ret))
 		for j := 0; j < 1000; j++ {
 			if ret[j] != uint64(j) {
 				t.Fatalf("returned ids are not monotonic, pos: %v, val: %v, arr: %v", j, ret[j], ret)
@@ -133,9 +136,9 @@ func TestConcLevelTranslator(t *testing.T) {
 	}
 }
 
-func BenchmarkLevelTranslatorGetID(b *testing.B) {
+func BenchmarkTranslatorGetID(b *testing.B) {
 	levelDir := tempDirName(b)
-	bt, err := NewLevelTranslator(levelDir, "f1", "f2")
+	bt, err := NewTranslator(levelDir, "f1", "f2")
 	if err != nil {
 		b.Fatalf("couldn't get level translator: %v", err)
 	}
@@ -144,12 +147,6 @@ func BenchmarkLevelTranslatorGetID(b *testing.B) {
 		bt.GetID("f1", []byte(strconv.Itoa(i)))
 	}
 }
-
-type Uint64Slice []uint64
-
-func (p Uint64Slice) Len() int           { return len(p) }
-func (p Uint64Slice) Less(i, j int) bool { return p[i] < p[j] }
-func (p Uint64Slice) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
 
 func tempDirName(t testing.TB) string {
 	tf, err := ioutil.TempDir("", "")

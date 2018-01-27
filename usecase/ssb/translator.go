@@ -3,16 +3,16 @@ package ssb
 import (
 	"fmt"
 
-	"github.com/pilosa/pdk"
+	"github.com/pilosa/pdk/leveldb"
 	"github.com/pkg/errors"
 )
 
 type Translator struct {
-	lt *pdk.LevelTranslator
+	lt *leveldb.Translator
 }
 
 func NewTranslator(storedir string) (*Translator, error) {
-	lt, err := pdk.NewLevelTranslator(storedir, []string{"c_city", "c_nation", "c_region", "s_city", "s_nation", "s_region", "p_mfgr", "p_category", "p_brand1"}...)
+	lt, err := leveldb.NewTranslator(storedir, []string{"c_city", "c_nation", "c_region", "s_city", "s_nation", "s_region", "p_mfgr", "p_category", "p_brand1"}...)
 	if err != nil {
 		return nil, err
 	}

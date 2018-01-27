@@ -1,4 +1,4 @@
-package pdk
+package boltdb
 
 import (
 	"sync"
@@ -15,15 +15,15 @@ var (
 	valBucket = []byte("valKey")
 )
 
-// BoltTranslator is a Translator which stores the two way val/id mapping in
+// Translator is a pdk.Translator which stores the two way val/id mapping in
 // boltdb. It only accepts string values to map.
-type BoltTranslator struct {
+type Translator struct {
 	Db     *bolt.DB
 	fmu    sync.RWMutex
 	frames map[string]struct{}
 }
 
-func (bt *BoltTranslator) Close() error {
+func (bt *Translator) Close() error {
 	err := bt.Db.Sync()
 	if err != nil {
 		return errors.Wrap(err, "syncing db")
@@ -31,8 +31,8 @@ func (bt *BoltTranslator) Close() error {
 	return bt.Db.Close()
 }
 
-func NewBoltTranslator(filename string, frames ...string) (bt *BoltTranslator, err error) {
-	bt = &BoltTranslator{
+func NewTranslator(filename string, frames ...string) (bt *Translator, err error) {
+	bt = &Translator{
 		frames: make(map[string]struct{}),
 	}
 	bt.Db, err = bolt.Open(filename, 0600, &bolt.Options{Timeout: 1 * time.Second, InitialMmapSize: 50000000, NoGrowSync: true})
@@ -63,7 +63,7 @@ func NewBoltTranslator(filename string, frames ...string) (bt *BoltTranslator, e
 	return bt, nil
 }
 
-func (bt *BoltTranslator) addFrame(ib, vb *bolt.Bucket, frame string) (fib, fvb *bolt.Bucket, err error) {
+func (bt *Translator) addFrame(ib, vb *bolt.Bucket, frame string) (fib, fvb *bolt.Bucket, err error) {
 	fib, err = ib.CreateBucketIfNotExists([]byte(frame))
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "adding "+frame+" to id bucket")
@@ -81,7 +81,7 @@ func (bt *BoltTranslator) addFrame(ib, vb *bolt.Bucket, frame string) (fib, fvb 
 
 // Get returns the previously mapped value to the monotonic id generated from
 // GetID. For BoltTranslator, val will always be a []byte.
-func (bt *BoltTranslator) Get(frame string, id uint64) (val interface{}) {
+func (bt *Translator) Get(frame string, id uint64) (val interface{}) {
 	bt.fmu.RLock()
 	if _, ok := bt.frames[frame]; !ok {
 		panic(errors.Errorf("can't Get() with unknown frame '%v'", frame))
@@ -102,7 +102,7 @@ func (bt *BoltTranslator) Get(frame string, id uint64) (val interface{}) {
 }
 
 // GetID maps val (which must be a byte slice) to a monotonic id.
-func (bt *BoltTranslator) GetID(frame string, val interface{}) (id uint64, err error) {
+func (bt *Translator) GetID(frame string, val interface{}) (id uint64, err error) {
 	// ensure frame existence
 	bt.fmu.RLock()
 	_, ok := bt.frames[frame]
@@ -161,7 +161,7 @@ func (bt *BoltTranslator) GetID(frame string, val interface{}) (id uint64, err e
 	return id, nil
 }
 
-func (bt *BoltTranslator) BulkAdd(frame string, values [][]byte) error {
+func (bt *Translator) BulkAdd(frame string, values [][]byte) error {
 	var batchSize uint64 = 10000
 	var batch uint64 = 0
 	for batch*batchSize < uint64(len(values)) {
