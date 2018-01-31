@@ -4,28 +4,48 @@ import (
 	"bufio"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
-	"strconv"
 	"strings"
 
 	"github.com/pkg/errors"
 )
 
-type CSVSource struct {
+// Source satisfies the PDK.Source interface for CSV data. Each line in a CSV
+// file will be returned by a call to record as a map[string]string where
+// the keys are taken from the first line of the CSV.
+//
+// The Source takes care of retrying failed reads/downloads and making sure not
+// to return duplicate data. TODO: this functionality needs more testing.
+type Source struct {
 	urls []*url
 	pos  int
 
 	records chan record
 }
 
-func NewCSVSource(urls []string, options ...func(*CSVSource)) *CSVSource {
-	src := &CSVSource{
-		urls:    make([]*url, len(urls)),
-		records: make(chan record),
+// Option is a functional option to pass to NewSource.
+type Option func(*Source)
+
+// WithURLs returns an Option which can configure a source to pull data from the
+// given URLs. These may be HTTP or local files.
+func WithURLs(urls []string) Option {
+	return func(s *Source) {
+		s.urls = make([]*url, len(urls))
+		for i, name := range urls {
+			s.urls[i] = &url{name: name}
+		}
 	}
-	for i, name := range urls {
-		src.urls[i] = &url{name: name}
+}
+
+// NewSource creates a pdk.Source for CSV data. The source of the raw data can
+// be set by using Options defined in this package. e.g.
+//
+// src := NewSource(WithURLs([]string{"myfile1.csv", "myfile2.csv", "http://example.com/myfile3.csv"}))
+func NewSource(options ...Option) *Source {
+	src := &Source{
+		records: make(chan record),
 	}
 
 	for _, opt := range options {
@@ -35,7 +55,7 @@ func NewCSVSource(urls []string, options ...func(*CSVSource)) *CSVSource {
 	return src
 }
 
-func (c *CSVSource) nextURL() *url {
+func (c *Source) nextURL() *url {
 	startpos := c.pos
 	for c.urls[c.pos].done {
 		c.pos = (c.pos + 1) % len(c.urls)
@@ -43,10 +63,7 @@ func (c *CSVSource) nextURL() *url {
 			return nil
 		}
 	}
-	if c.pos == 0 {
-		return c.urls[len(c.urls)-1]
-	}
-	return c.urls[c.pos-1]
+	return c.urls[c.pos]
 }
 
 type url struct {
@@ -56,7 +73,10 @@ type url struct {
 	done    bool
 }
 
-func (c *CSVSource) Record() (interface{}, error) {
+// Record returns a map[string]string representing a single data line of a
+// CSV file. Each key is taken from the header, and each value is parsed from a
+// row - empty fields are skipped.
+func (c *Source) Record() (interface{}, error) {
 	rec, ok := <-c.records
 	if !ok {
 		return nil, io.EOF
@@ -65,11 +85,11 @@ func (c *CSVSource) Record() (interface{}, error) {
 }
 
 type record struct {
-	rec map[string]interface{}
+	rec map[string]string
 	err error
 }
 
-func (c *CSVSource) getRecords() {
+func (c *Source) getRecords() {
 	for url := c.nextURL(); url != nil; url = c.nextURL() {
 		content, err := getURL(url.name)
 		if err != nil {
@@ -81,15 +101,21 @@ func (c *CSVSource) getRecords() {
 		}
 		c.getRows(content, url)
 	}
+	close(c.records)
 }
 
-func (c *CSVSource) getRows(content io.ReadCloser, url *url) {
+func (c *Source) getRows(content io.ReadCloser, url *url) {
 	defer content.Close()
 	// scan header line
 	scan := bufio.NewScanner(content)
 	var header []string
 	if scan.Scan() {
 		header = strings.Split(scan.Text(), ",")
+		if err := validateHeader(header); err != nil {
+			c.records <- record{err: errors.Wrapf(err, "validating header of %s", url.name)}
+			url.done = true
+			return
+		}
 		if url.line == 0 {
 			url.line++
 		}
@@ -100,17 +126,24 @@ func (c *CSVSource) getRows(content io.ReadCloser, url *url) {
 		line++
 	}
 	for scan.Scan() {
-		row := strings.Split(scan.Text(), ",")
+		txt := scan.Text()
+		if strings.TrimSpace(txt) == "" {
+			continue
+		}
+		row := strings.Split(txt, ",")
 		url.line++
 		recordMap, err := parseRecord(header, row)
-		if err == nil {
-			// add file and line number under the comma header since that can't
-			// be a header from the csv file.
-			recordMap[","] = fmt.Sprintf("%s:line%d", url.name, url.line)
+		if err != nil {
+			c.records <- record{
+				err: errors.Wrapf(err, "url %v: parsing line %d", url.name, url.line),
+			}
+			continue
 		}
+		// add file and line number under the comma header since that can't
+		// be a header from the csv file.
+		recordMap[","] = fmt.Sprintf("%s:line%d", url.name, url.line)
 		c.records <- record{
 			rec: recordMap,
-			err: errors.Wrapf(err, "parsing line %d from %s", url.line, url.name),
 		}
 	}
 	err := scan.Err()
@@ -128,35 +161,24 @@ func min(a, b int) int {
 	return b
 }
 
-func parseRecord(header []string, row []string) (map[string]interface{}, error) {
-	if len(header) != len(row) {
-		return nil, errors.Errorf("header/row len mismatch: %v and %v", header, row)
+func parseRecord(header []string, row []string) (map[string]string, error) {
+	if len(header) > len(row) {
+		return nil, errors.Errorf("header/row len mismatch: %dvs%d, %v and %v", len(header), len(row), header, row)
+	} else if len(row) > len(header) {
+		for i := len(header); i < len(row); i++ {
+			if strings.TrimSpace(row[i]) != "" {
+				log.Printf("data in non headered field: %v, %d", row, i)
+			}
+		}
 	}
-	ret := make(map[string]interface{}, len(header))
+	ret := make(map[string]string, len(header))
 	for i := 0; i < len(header); i++ {
 		if row[i] == "" {
 			continue
 		}
-		ret[header[i]] = parseString(row[i])
+		ret[header[i]] = row[i]
 	}
 	return ret, nil
-}
-
-// TODO add datetime, timestamp, etc.
-func parseString(s string) interface{} {
-	intVal, err := strconv.Atoi(s)
-	if err == nil {
-		return intVal
-	}
-	// boolVal, err := strconv.ParseBool(s)
-	// if err == nil {
-	// 	return boolVal
-	// }
-	// floatVal, err := strconv.ParseFloat(s, 64)
-	// if err == nil {
-	// 	return floatVal
-	// }
-	return s
 }
 
 func getURL(name string) (io.ReadCloser, error) {
@@ -175,4 +197,18 @@ func getURL(name string) (io.ReadCloser, error) {
 		content = f
 	}
 	return content, nil
+}
+
+func validateHeader(header []string) error {
+	fields := make(map[string]int)
+	for i, h := range header {
+		if h == "" {
+			return errors.Errorf("header contains empty string at %d: %v", i, header)
+		}
+		if pos, exists := fields[h]; exists {
+			return errors.Errorf("%s appeared at both %d and %d in header", h, pos, i)
+		}
+		fields[h] = i
+	}
+	return nil
 }

@@ -25,7 +25,7 @@ func TestCSVSource(t *testing.T) {
 1,asdf,3
 2,qwer,4
 `)
-	src := csv.NewCSVSource([]string{f.Name()})
+	src := csv.NewSource([]string{f.Name()})
 	rec, err := src.Record()
 	if err != nil {
 		t.Fatalf("getting first record: %v", err)

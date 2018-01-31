@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"math"
 	"reflect"
+	"time"
 
 	"github.com/pkg/errors"
 )
@@ -136,7 +137,7 @@ type Literal interface {
 
 type B bool
 
-func (_ B) literal() {}
+func (B) literal() {}
 
 func (B B) MarshalJSON() ([]byte, error) {
 	ret := map[string]interface{}{
@@ -148,7 +149,7 @@ func (B B) MarshalJSON() ([]byte, error) {
 
 type S string
 
-func (_ S) literal() {}
+func (S) literal() {}
 
 // TODO define and specifically support these things
 // type Location struct {
@@ -184,9 +185,13 @@ func (_ S) literal() {}
 // 	return json.Marshal(ret)
 // }
 
+type Time time.Time
+
+func (Time) literal() {}
+
 type F32 float32
 
-func (_ F32) literal() {}
+func (F32) literal() {}
 
 func (F F32) MarshalJSON() ([]byte, error) {
 	ret := map[string]interface{}{
@@ -198,7 +203,7 @@ func (F F32) MarshalJSON() ([]byte, error) {
 
 type F64 float64
 
-func (_ F64) literal() {}
+func (F64) literal() {}
 
 func (F F64) MarshalJSON() ([]byte, error) {
 	ret := map[string]interface{}{
@@ -210,7 +215,7 @@ func (F F64) MarshalJSON() ([]byte, error) {
 
 type I int
 
-func (_ I) literal() {}
+func (I) literal() {}
 
 func (I I) MarshalJSON() ([]byte, error) {
 	ret := map[string]interface{}{
@@ -222,7 +227,7 @@ func (I I) MarshalJSON() ([]byte, error) {
 
 type I8 int8
 
-func (_ I8) literal() {}
+func (I8) literal() {}
 
 func (I I8) MarshalJSON() ([]byte, error) {
 	ret := map[string]interface{}{
@@ -234,7 +239,7 @@ func (I I8) MarshalJSON() ([]byte, error) {
 
 type I16 int16
 
-func (_ I16) literal() {}
+func (I16) literal() {}
 
 func (I I16) MarshalJSON() ([]byte, error) {
 	ret := map[string]interface{}{
@@ -246,7 +251,7 @@ func (I I16) MarshalJSON() ([]byte, error) {
 
 type I32 int32
 
-func (_ I32) literal() {}
+func (I32) literal() {}
 
 func (I I32) MarshalJSON() ([]byte, error) {
 	ret := map[string]interface{}{
@@ -258,7 +263,7 @@ func (I I32) MarshalJSON() ([]byte, error) {
 
 type I64 int64
 
-func (_ I64) literal() {}
+func (I64) literal() {}
 
 func (I I64) MarshalJSON() ([]byte, error) {
 	ret := map[string]interface{}{
@@ -270,7 +275,7 @@ func (I I64) MarshalJSON() ([]byte, error) {
 
 type U uint
 
-func (_ U) literal() {}
+func (U) literal() {}
 
 func (U U) MarshalJSON() ([]byte, error) {
 	ret := map[string]interface{}{
@@ -282,7 +287,7 @@ func (U U) MarshalJSON() ([]byte, error) {
 
 type U8 uint8
 
-func (_ U8) literal() {}
+func (U8) literal() {}
 
 func (U U8) MarshalJSON() ([]byte, error) {
 	ret := map[string]interface{}{
@@ -294,7 +299,7 @@ func (U U8) MarshalJSON() ([]byte, error) {
 
 type U16 uint16
 
-func (_ U16) literal() {}
+func (U16) literal() {}
 
 func (U U16) MarshalJSON() ([]byte, error) {
 	ret := map[string]interface{}{
@@ -306,7 +311,7 @@ func (U U16) MarshalJSON() ([]byte, error) {
 
 type U32 uint32
 
-func (_ U32) literal() {}
+func (U32) literal() {}
 
 func (U U32) MarshalJSON() ([]byte, error) {
 	ret := map[string]interface{}{
@@ -318,7 +323,7 @@ func (U U32) MarshalJSON() ([]byte, error) {
 
 type U64 uint64
 
-func (_ U64) literal() {}
+func (U64) literal() {}
 
 func (U U64) MarshalJSON() ([]byte, error) {
 	ret := map[string]interface{}{
@@ -328,20 +333,21 @@ func (U U64) MarshalJSON() ([]byte, error) {
 	return json.Marshal(ret)
 }
 
-func (b B) isObj()   {}
-func (s S) isObj()   {}
-func (f F32) isObj() {}
-func (f F64) isObj() {}
-func (i I) isObj()   {}
-func (i I8) isObj()  {}
-func (i I16) isObj() {}
-func (i I32) isObj() {}
-func (i I64) isObj() {}
-func (u U) isObj()   {}
-func (u U8) isObj()  {}
-func (u U16) isObj() {}
-func (u U32) isObj() {}
-func (u U64) isObj() {}
+func (B) isObj()    {}
+func (S) isObj()    {}
+func (Time) isObj() {}
+func (F32) isObj()  {}
+func (F64) isObj()  {}
+func (I) isObj()    {}
+func (I8) isObj()   {}
+func (I16) isObj()  {}
+func (I32) isObj()  {}
+func (I64) isObj()  {}
+func (U) isObj()    {}
+func (U8) isObj()   {}
+func (U16) isObj()  {}
+func (U32) isObj()  {}
+func (U64) isObj()  {}
 
 // Note: if we start adding lots more literals, reserve numbers 128 and greater.
 // Right now, ToBytes and FromBytes use a single byte at the start of the value

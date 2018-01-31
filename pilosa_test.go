@@ -1,7 +1,6 @@
 package pdk_test
 
 import (
-	"fmt"
 	"testing"
 
 	pcli "github.com/pilosa/go-pilosa"
@@ -57,8 +56,16 @@ func TestSetupPilosa(t *testing.T) {
 		t.Fatalf("getting schema: %v", err)
 	}
 
-	for key, idx := range schema.Indexes() {
-		fmt.Printf("%v, %#v\n", key, idx)
+	idxs := schema.Indexes()
+	if len(idxs) != 1 {
+		t.Fatalf("too many indexes: %v", idxs)
+	}
+	if idx, ok := idxs["newindex"]; !ok {
+		t.Fatalf("index with wrong name: %v", idx)
+	}
+
+	if len(idxs["newindex"].Frames()) != 3 {
+		t.Fatalf("wrong number of frames: %v", idxs["newindex"].Frames())
 	}
 
 }

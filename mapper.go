@@ -1,6 +1,7 @@
 package pdk
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/pkg/errors"
@@ -71,7 +72,7 @@ func (m *CollapsingMapper) mapObj(val Object, pr *PilosaRecord, path []string) e
 		err := m.mapLit(lit, pr, path)
 		return errors.Wrapf(err, "mapping literal '%v'", lit)
 	}
-	panic("every object should be an \"Objects\", a *Entity, or a Literal... getting here should be impossible")
+	panic(fmt.Sprintf("in mapper: %#v of type %T should be an \"Objects\", a *Entity, or a Literal.", val, val))
 }
 
 func (m *CollapsingMapper) mapLit(val Literal, pr *PilosaRecord, path []string) error {

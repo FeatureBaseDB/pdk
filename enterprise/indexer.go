@@ -58,7 +58,7 @@ func (idx *Index) Field(frame, field string) (ChanValIterator, error) {
 	}
 	frameSpec := NewFieldFrameSpec(field, -2000000000, 2000000000)
 	frameSpec.Name = frame
-	log.Printf("creating in field %s in frame %s", field, frame)
+	log.Printf("creating field %s in frame %s", field, frame)
 	err := idx.setupFrame(frameSpec)
 	if err != nil {
 		return nil, err
@@ -148,7 +148,6 @@ func (i *Index) setupFrame(frame FrameSpec) error {
 		i.importWG.Add(1)
 		go func(fram *gopilosa.Frame, frame FrameSpec) {
 			defer i.importWG.Done()
-			// TODO change to i.client.ImportFrameK when gopilosa supports enterprise imports
 			err := i.client.ImportFrameK(fram, i.bitChans[frame.Name], i.batchSize)
 			if err != nil {
 				log.Println(errors.Wrapf(err, "starting frame import for %v", frame.Name))

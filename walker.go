@@ -1,5 +1,7 @@
 package pdk
 
+import "fmt"
+
 // Walk recursively visits every Object in the Entity and calls "call" with
 // every Literal and it's path.
 func Walk(e *Entity, call func(path []string, l Literal)) {
@@ -30,5 +32,5 @@ func walkObj(val Object, path []string, call func(path []string, l Literal)) {
 		call(path, lit)
 		return
 	}
-	panic("every object should be an \"Objects\", a *Entity, or a Literal... getting here should be impossible")
+	panic(fmt.Sprintf("%#v of type %T at %v should be an \"Objects\", a *Entity, or a Literal... getting here should be impossible", val, val, path))
 }

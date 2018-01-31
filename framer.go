@@ -43,6 +43,9 @@ func (f FramerFunc) Field(path []string) (string, string, error) {
 }
 
 func dashFrame(path []string) (string, error) {
+	for i, p := range path {
+		path[i] = strings.TrimSpace(p)
+	}
 	return strings.ToLower(strings.Join(path, "-")), nil
 }
 
