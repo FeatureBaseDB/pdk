@@ -117,7 +117,7 @@ func NewTaxiParser() *TaxiParser {
 			"fare_amt":              "fare_amount",
 			"mta_tax":               "mta_tax",
 			"tip_amount":            "tip_amount",
-			"tip_amnt":              "tip_amount",
+			"tip_amt":               "tip_amount",
 			"ratecodeid":            "rate_code",
 			"rate_code":             "rate_code",
 			"payment_type":          "payment_type",
