@@ -22,13 +22,13 @@ type Importer struct {
 
 type ImporterOption func(*Importer)
 
-func WithFramer(framer pdk.Framer) {
+func WithFramer(framer pdk.Framer) ImporterOption {
 	return func(imp *Importer) {
 		imp.framer = framer
 	}
 }
 
-func WithIndexer(indexer pdk.Indexer) {
+func WithIndexer(indexer Indexer) ImporterOption {
 	return func(imp *Importer) {
 		imp.indexer = indexer
 	}
