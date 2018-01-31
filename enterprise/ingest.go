@@ -54,7 +54,7 @@ func (n *Ingester) Run() error {
 				}
 				err = importer.Import(ent)
 				if err != nil {
-					return errors.Wrap(err, "importing entity")
+					log.Println(errors.Wrap(err, "importing entity"))
 				}
 			}
 			if err != io.EOF && err != nil {
