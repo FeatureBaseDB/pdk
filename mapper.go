@@ -82,7 +82,7 @@ func (m *CollapsingMapper) mapLit(val Literal, pr *PilosaRecord, path []string) 
 		if err != nil {
 			return errors.Wrapf(err, "getting frame/field from %v", path)
 		}
-		pr.AddVal(frame, field, int64ize(tval))
+		pr.AddVal(frame, field, Int64ize(tval))
 	case S:
 		frame, err := m.Framer.Frame(path)
 		if err != nil {
@@ -111,7 +111,7 @@ func (m *CollapsingMapper) mapLit(val Literal, pr *PilosaRecord, path []string) 
 	return nil
 }
 
-func int64ize(val Literal) int64 {
+func Int64ize(val Literal) int64 {
 	switch tval := val.(type) {
 	case F32:
 		return int64(tval)
@@ -138,7 +138,7 @@ func int64ize(val Literal) int64 {
 	case U64:
 		return int64(tval)
 	default:
-		panic("don't call int64ize on non-numeric Literals")
+		panic("don't call Int64ize on non-numeric Literals")
 	}
 
 }

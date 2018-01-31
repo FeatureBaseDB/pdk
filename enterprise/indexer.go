@@ -22,8 +22,8 @@ type Index struct {
 }
 
 type Indexer interface {
-	Frame(name string) (ChanBitIterator, error)
-	Field(frame, field string) (ChanValIterator, error)
+	Frame(name string, options ...FrameOpt) (ChanBitIterator, error)
+	Field(frame, field string, options ...FieldOpt) (ChanValIterator, error)
 	Close() error
 	Client() *gopilosa.Client
 }
@@ -32,7 +32,25 @@ func (i *Index) Client() *gopilosa.Client {
 	return i.client
 }
 
-func (idx *Index) Frame(name string) (ChanBitIterator, error) {
+type FrameOpt func(fs *FrameSpec)
+
+func OptRanked(cacheSize uint) FrameOpt {
+	return func(fs *FrameSpec) {
+		fs.CacheType = gopilosa.CacheTypeRanked
+		fs.CacheSize = cacheSize
+	}
+}
+
+type FieldOpt func(fs *FieldSpec)
+
+func OptRange(low, high int) FieldOpt {
+	return func(fs *FieldSpec) {
+		fs.Max = high
+		fs.Min = low
+	}
+}
+
+func (idx *Index) Frame(name string, options ...FrameOpt) (ChanBitIterator, error) {
 	idx.lock.Lock()
 	defer idx.lock.Unlock()
 
@@ -40,14 +58,18 @@ func (idx *Index) Frame(name string) (ChanBitIterator, error) {
 		return iterator, nil
 	}
 	log.Printf("creating frame %s", name)
-	err := idx.setupFrame(FrameSpec{Name: name, CacheType: gopilosa.CacheTypeRanked, CacheSize: 100000})
+	spec := &FrameSpec{Name: name, CacheType: gopilosa.CacheTypeRanked, CacheSize: 100000}
+	for _, opt := range options {
+		opt(spec)
+	}
+	err := idx.setupFrame(*spec)
 	if err != nil {
 		return nil, err
 	}
 	return idx.bitChans[name], nil
 }
 
-func (idx *Index) Field(frame, field string) (ChanValIterator, error) {
+func (idx *Index) Field(frame, field string, options ...FieldOpt) (ChanValIterator, error) {
 	idx.lock.Lock()
 	defer idx.lock.Unlock()
 
@@ -58,6 +80,9 @@ func (idx *Index) Field(frame, field string) (ChanValIterator, error) {
 	}
 	frameSpec := NewFieldFrameSpec(field, -2000000000, 2000000000)
 	frameSpec.Name = frame
+	for _, opt := range options {
+		opt(&(frameSpec.Fields[0]))
+	}
 	log.Printf("creating field %s in frame %s", field, frame)
 	err := idx.setupFrame(frameSpec)
 	if err != nil {
