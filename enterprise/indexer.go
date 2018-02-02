@@ -142,7 +142,7 @@ func NewRankedFrameSpec(name string, size int) FrameSpec {
 func NewFieldFrameSpec(name string, min int, max int) FrameSpec {
 	fs := FrameSpec{
 		Name:      name,
-		CacheType: gopilosa.CacheType(""),
+		CacheType: gopilosa.CacheTypeDefault,
 		CacheSize: 0,
 		Fields:    []FieldSpec{{Name: name, Min: min, Max: max}},
 	}
