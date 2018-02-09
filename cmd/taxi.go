@@ -32,7 +32,7 @@ func NewTaxiCommand(stdin io.Reader, stdout, stderr io.Writer) *cobra.Command {
 	flags.IntVarP(&TaxiMain.FetchConcurrency, "fetch-concurrency", "e", 8, "Number of goroutines fetching and parsing")
 	flags.IntVarP(&TaxiMain.BufferSize, "buffer-size", "b", 1000000, "Size of buffer for importers - heavily affects memory usage")
 	flags.StringVarP(&TaxiMain.PilosaHost, "pilosa", "p", "localhost:10101", "Pilosa host")
-	flags.StringVarP(&TaxiMain.Index, "index", "i", "taxi", "Pilosa db to write to")
+	flags.StringVarP(&TaxiMain.Index, "index", "i", TaxiMain.Index, "Pilosa db to write to")
 	flags.StringVarP(&TaxiMain.URLFile, "url-file", "f", "usecase/taxi/urls-short.txt", "File to get raw data urls from. Urls may be http or local files.")
 
 	return taxiCommand

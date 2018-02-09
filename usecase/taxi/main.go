@@ -21,52 +21,6 @@ import (
 	"github.com/pilosa/pilosa"
 )
 
-/***************
-use case setup
-***************/
-var greenFields = map[string]int{
-	"vendor_id":          0,
-	"pickup_datetime":    1,
-	"dropoff_datetime":   2,
-	"passenger_count":    9,
-	"trip_distance":      10,
-	"pickup_longitude":   5,
-	"pickup_latitude":    6,
-	"ratecode_id":        4,
-	"store_and_fwd_flag": 3,
-	"dropoff_longitude":  7,
-	"dropoff_latitude":   8,
-	"payment_type":       18,
-	"fare_amount":        11,
-	"extra":              12,
-	"mta_tax":            13,
-	"tip_amount":         14,
-	"tolls_amount":       15,
-	"total_amount":       17,
-}
-
-var yellowFields = map[string]int{
-	"vendor_id":             0,
-	"pickup_datetime":       1,
-	"dropoff_datetime":      2,
-	"passenger_count":       3,
-	"trip_distance":         4,
-	"pickup_longitude":      5,
-	"pickup_latitude":       6,
-	"ratecode_id":           7,
-	"store_and_fwd_flag":    8,
-	"dropoff_longitude":     9,
-	"dropoff_latitude":      10,
-	"payment_type":          11,
-	"fare_amount":           12,
-	"extra":                 13,
-	"mta_tax":               14,
-	"tip_amount":            15,
-	"tolls_amount":          16,
-	"total_amount":          18,
-	"improvement_surcharge": 17,
-}
-
 /***********************
 use case implementation
 ***********************/
@@ -111,6 +65,7 @@ func NewMain() *Main {
 	m := &Main{
 		Concurrency:      1,
 		FetchConcurrency: 1,
+		Index:            "taxi",
 		nexter:           &Nexter{},
 		urls:             make([]string, 0),
 
@@ -147,9 +102,9 @@ func (m *Main) Run() error {
 		return fmt.Errorf("interpreting pilosaHost '%v': %v", m.PilosaHost, err)
 	}
 	setupClient := pcli.NewClientWithURI(pilosaURI)
-	index, err := pcli.NewIndex(m.Index, &pcli.IndexOptions{})
+	index, err := pcli.NewIndex(m.Index)
 	if err != nil {
-		return fmt.Errorf("making index: %v", err)
+		return fmt.Errorf("making index '%s': %v", m.Index, err)
 	}
 	err = setupClient.EnsureIndex(index)
 	if err != nil {
@@ -701,4 +656,50 @@ func (n *Nexter) Last() (lastID uint64) {
 	lastID = n.id - 1
 	n.lock.Unlock()
 	return
+}
+
+/***************
+use case setup
+***************/
+var greenFields = map[string]int{
+	"vendor_id":          0,
+	"pickup_datetime":    1,
+	"dropoff_datetime":   2,
+	"passenger_count":    9,
+	"trip_distance":      10,
+	"pickup_longitude":   5,
+	"pickup_latitude":    6,
+	"ratecode_id":        4,
+	"store_and_fwd_flag": 3,
+	"dropoff_longitude":  7,
+	"dropoff_latitude":   8,
+	"payment_type":       18,
+	"fare_amount":        11,
+	"extra":              12,
+	"mta_tax":            13,
+	"tip_amount":         14,
+	"tolls_amount":       15,
+	"total_amount":       17,
+}
+
+var yellowFields = map[string]int{
+	"vendor_id":             0,
+	"pickup_datetime":       1,
+	"dropoff_datetime":      2,
+	"passenger_count":       3,
+	"trip_distance":         4,
+	"pickup_longitude":      5,
+	"pickup_latitude":       6,
+	"ratecode_id":           7,
+	"store_and_fwd_flag":    8,
+	"dropoff_longitude":     9,
+	"dropoff_latitude":      10,
+	"payment_type":          11,
+	"fare_amount":           12,
+	"extra":                 13,
+	"mta_tax":               14,
+	"tip_amount":            15,
+	"tolls_amount":          16,
+	"total_amount":          18,
+	"improvement_surcharge": 17,
 }

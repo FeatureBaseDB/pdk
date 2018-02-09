@@ -23,8 +23,9 @@
 
 [[constraint]]
   name = "github.com/pilosa/go-pilosa"
-  branch = "master"
+  branch = "cluster-resize-support"
+  source = "github.com/yuce/go-pilosa"
 
 [[constraint]]
   name = "github.com/pilosa/pilosa"
-  branch = "master"
+  branch = "cluster-resize"

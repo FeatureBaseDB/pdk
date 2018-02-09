@@ -211,7 +211,7 @@ func SetupPilosa(hosts []string, index string, frames []FrameSpec, batchsize uin
 	}
 	indexer.client = client
 
-	indexer.index, err = pcli.NewIndex(index, &pcli.IndexOptions{})
+	indexer.index, err = pcli.NewIndex(index)
 	if err != nil {
 		return nil, errors.Wrap(err, "making index")
 	}
