@@ -37,6 +37,7 @@ type Main struct {
 	Concurrency      int
 	Index            string
 	BufferSize       int
+	UseReadAll       bool
 
 	importer  pdk.PilosaImporter
 	urls      []string
@@ -248,26 +249,31 @@ func (m *Main) fetch(urls <-chan string, records chan<- Record) {
 			}
 			content = f
 		}
-		// we're using ReadAll here to ensure that we can read the entire
-		// file/url before we start putting it into Pilosa. Not great for memory
-		// usage or smooth performance, but we want to ensure repeatable results
-		// in the simplest way possible.
-		contentBytes, err := ioutil.ReadAll(content)
-		if err != nil {
-			failedURLs[url]++
-			if failedURLs[url] > 10 {
-				log.Fatalf("Unrecoverable failure while fetching url: %v, err: %v. Could not read fully after 10 tries.", url, err)
+		var scan *bufio.Scanner
+		if m.UseReadAll {
+			// we're using ReadAll here to ensure that we can read the entire
+			// file/url before we start putting it into Pilosa. Not great for memory
+			// usage or smooth performance, but we want to ensure repeatable results
+			// in the simplest way possible.
+			contentBytes, err := ioutil.ReadAll(content)
+			if err != nil {
+				failedURLs[url]++
+				if failedURLs[url] > 10 {
+					log.Fatalf("Unrecoverable failure while fetching url: %v, err: %v. Could not read fully after 10 tries.", url, err)
+				}
+				continue
 			}
-			continue
-		}
-		err = content.Close()
-		if err != nil {
-			log.Printf("closing %s, err: %v", url, err)
+			err = content.Close()
+			if err != nil {
+				log.Printf("closing %s, err: %v", url, err)
+			}
+
+			buf := bytes.NewBuffer(contentBytes)
+			scan = bufio.NewScanner(buf)
+		} else {
+			scan = bufio.NewScanner(content)
 		}
 
-		buf := bytes.NewBuffer(contentBytes)
-
-		scan := bufio.NewScanner(buf)
 		// discard header line
 		correctLine := false
 		if scan.Scan() {
@@ -291,7 +297,7 @@ func (m *Main) fetch(urls <-chan string, records chan<- Record) {
 			}
 			records <- Record{Val: record, Type: typ}
 		}
-		err = scan.Err()
+		err := scan.Err()
 		if err != nil {
 			log.Printf("scan error on %s, err: %v", url, err)
 		}
