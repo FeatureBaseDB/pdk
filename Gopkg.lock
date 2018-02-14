@@ -10,8 +10,8 @@
 [[projects]]
   name = "github.com/DataDog/datadog-go"
   packages = ["statsd"]
-  revision = "0ddda6bee21174ef6c4873647cb0d6ec9cba996f"
-  version = "1.1.0"
+  revision = "9487d3a9d3be5bf3cf60b86ae810b97926964515"
+  version = "2.0.0"
 
 [[projects]]
   name = "github.com/Shopify/sarama"
@@ -93,7 +93,11 @@
 
 [[projects]]
   name = "github.com/google/gopacket"
-  packages = [".","layers","pcap"]
+  packages = [
+    ".",
+    "layers",
+    "pcap"
+  ]
   revision = "11c65f1ca9081dfea43b4f9643f5c155583b73ba"
   version = "v1.1.14"
 
@@ -148,7 +152,17 @@
 [[projects]]
   branch = "master"
   name = "github.com/hashicorp/hcl"
-  packages = [".","hcl/ast","hcl/parser","hcl/scanner","hcl/strconv","hcl/token","json/parser","json/scanner","json/token"]
+  packages = [
+    ".",
+    "hcl/ast",
+    "hcl/parser",
+    "hcl/scanner",
+    "hcl/strconv",
+    "hcl/token",
+    "json/parser",
+    "json/scanner",
+    "json/token"
+  ]
   revision = "23c074d0eceb2b8a5bfdbb271ab780cde70f05a8"
 
 [[projects]]
@@ -172,7 +186,10 @@
 [[projects]]
   branch = "master"
   name = "github.com/miekg/dns"
-  packages = [".","internal/socket"]
+  packages = [
+    ".",
+    "internal/socket"
+  ]
   revision = "a5852667e3c36e2e0b0a69ab43869e00e95aacdf"
 
 [[projects]]
@@ -200,16 +217,30 @@
   version = "v0.1.1"
 
 [[projects]]
-  branch = "master"
   name = "github.com/pilosa/go-pilosa"
-  packages = [".","gopilosa_pbuf"]
-  revision = "7354889ee493d5cca2ce025b405a3b42a340a02c"
+  packages = [
+    ".",
+    "gopilosa_pbuf"
+  ]
+  revision = "a3c52bacf79162cfff106d0445d5357c049f667f"
+  version = "v0.8.0"
 
 [[projects]]
-  branch = "master"
   name = "github.com/pilosa/pilosa"
-  packages = [".","ctl","gossip","internal","pql","roaring","server","statik","statsd"]
-  revision = "aaee9b202a5c6818aff1a502428e206494694aaf"
+  packages = [
+    ".",
+    "ctl",
+    "diagnostics",
+    "gossip",
+    "internal",
+    "pql",
+    "roaring",
+    "server",
+    "statik",
+    "statsd"
+  ]
+  revision = "75a80768c35c34992a4d3d5953ffadc203614520"
+  version = "v0.8.7"
 
 [[projects]]
   name = "github.com/pkg/errors"
@@ -236,9 +267,18 @@
   revision = "e2103e2c35297fb7e17febb81e49b312087a2372"
 
 [[projects]]
+  name = "github.com/sony/gobreaker"
+  packages = ["."]
+  revision = "e9556a45379ef1da12e54847edb2fb3d7d566f36"
+  version = "0.3.0"
+
+[[projects]]
   branch = "master"
   name = "github.com/spf13/afero"
-  packages = [".","mem"]
+  packages = [
+    ".",
+    "mem"
+  ]
   revision = "5660eeed305fe5f69c8fc6cf899132a459a97064"
 
 [[projects]]
@@ -274,7 +314,20 @@
 [[projects]]
   branch = "master"
   name = "github.com/syndtr/goleveldb"
-  packages = ["leveldb","leveldb/cache","leveldb/comparer","leveldb/errors","leveldb/filter","leveldb/iterator","leveldb/journal","leveldb/memdb","leveldb/opt","leveldb/storage","leveldb/table","leveldb/util"]
+  packages = [
+    "leveldb",
+    "leveldb/cache",
+    "leveldb/comparer",
+    "leveldb/errors",
+    "leveldb/filter",
+    "leveldb/iterator",
+    "leveldb/journal",
+    "leveldb/memdb",
+    "leveldb/opt",
+    "leveldb/storage",
+    "leveldb/table",
+    "leveldb/util"
+  ]
   revision = "b89cc31ef7977104127d34c1bd31ebd1a9db2199"
 
 [[projects]]
@@ -298,7 +351,14 @@
 [[projects]]
   branch = "master"
   name = "golang.org/x/text"
-  packages = ["internal/gen","internal/triegen","internal/ucd","transform","unicode/cldr","unicode/norm"]
+  packages = [
+    "internal/gen",
+    "internal/triegen",
+    "internal/ucd",
+    "transform",
+    "unicode/cldr",
+    "unicode/norm"
+  ]
   revision = "7d4e23b25beca3bc3b804ab134f0b12b4ca909d1"
 
 [[projects]]
@@ -310,6 +370,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "50cdffb38cae33bc58d12ca96217ab676141609d2ebd3f85777e1c37e766c044"
+  inputs-digest = "7401d9d21887456d58f6a275cf11bc626e20e5ccc6fa611669243d7793790a9c"
   solver-name = "gps-cdcl"
   solver-version = 1
