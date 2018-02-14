@@ -25,23 +25,23 @@ func TestCSVSource(t *testing.T) {
 1,asdf,3
 2,qwer,4
 `)
-	src := csv.NewSource([]string{f.Name()})
+	src := csv.NewSource(csv.WithURLs([]string{f.Name()}))
 	rec, err := src.Record()
 	if err != nil {
 		t.Fatalf("getting first record: %v", err)
 	}
 
-	recmap := rec.(map[string]interface{})
+	recmap := rec.(map[string]string)
 	if len(recmap) != 4 {
 		t.Fatalf("wrong length record: %v", rec)
 	}
-	if recmap["blah"] != 1 {
+	if recmap["blah"] != "1" {
 		t.Fatalf("blah")
 	}
 	if recmap["bleh"] != "asdf" {
 		t.Fatalf("bleh")
 	}
-	if recmap["blue"] != 3 {
+	if recmap["blue"] != "3" {
 		t.Fatalf("blue")
 	}
 
@@ -50,17 +50,17 @@ func TestCSVSource(t *testing.T) {
 		t.Fatalf("getting first record: %v", err)
 	}
 
-	recmap = rec.(map[string]interface{})
+	recmap = rec.(map[string]string)
 	if len(recmap) != 4 {
 		t.Fatalf("wrong length record: %v", rec)
 	}
-	if recmap["blah"] != 2 {
+	if recmap["blah"] != "2" {
 		t.Fatalf("blah2")
 	}
 	if recmap["bleh"] != "qwer" {
 		t.Fatalf("blehqwer")
 	}
-	if recmap["blue"] != 4 {
+	if recmap["blue"] != "4" {
 		t.Fatalf("blue4")
 	}
 }

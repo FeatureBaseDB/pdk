@@ -2,10 +2,11 @@ package weather
 
 import (
 	"fmt"
-	pcli "github.com/pilosa/go-pilosa"
-	"github.com/pilosa/pdk"
 	"net/http"
 	"time"
+
+	pcli "github.com/pilosa/go-pilosa"
+	"github.com/pilosa/pdk"
 )
 
 func (m *Main) testCache() {
@@ -73,7 +74,7 @@ func (m *Main) appendWeatherData() {
 			m.frames["pickup_time"].Bitmap(uint64(timeBucket[0])),
 		)
 		response, _ := m.client.Query(q, nil)
-		numBits := len(response.Result().Bitmap.Bits)
+		numBits := len(response.Result().Bitmap().Bits)
 		if numBits == 0 {
 			continue
 		}
@@ -93,7 +94,7 @@ func (m *Main) appendWeatherData() {
 		humid, err4 := humidityMapper.ID(float64(weather.Humidity))
 		humidID := uint64(humid[0])
 
-		for _, ID := range response.Result().Bitmap.Bits {
+		for _, ID := range response.Result().Bitmap().Bits {
 			// SetBit(weather.precip_code, ID, "precipitation_type")  // not implemented in weatherCache
 			m.importer.SetBit(condID, ID, "weather_condition")
 
@@ -129,7 +130,7 @@ func (m *Main) Run() error {
 	}
 	setupClient := pcli.NewClientWithURI(pilosaURI)
 	m.client = setupClient
-	index, err := pcli.NewIndex(m.Index, &pcli.IndexOptions{})
+	index, err := pcli.NewIndex(m.Index)
 	m.index = index
 	if err != nil {
 		return fmt.Errorf("making index: %v", err)

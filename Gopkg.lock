@@ -256,7 +256,7 @@
   source = "github.com/yuce/go-pilosa"
 
 [[projects]]
-  branch = "cluster-coordinator-fix"
+  branch = "cluster-resize"
   name = "github.com/pilosa/pilosa"
   packages = [
     ".",
@@ -271,8 +271,7 @@
     "statsd",
     "test"
   ]
-  revision = "1085be6582a4f24a2e9c144ae1ed193e97c493f7"
-  source = "github.com/travisturner/pilosa"
+  revision = "8db3a9b64d9752a1714c23583025619bc1cf05e9"
 
 [[projects]]
   name = "github.com/pkg/errors"
@@ -307,13 +306,21 @@
 [[projects]]
   name = "github.com/shirou/gopsutil"
   packages = [
+    "cpu",
     "host",
     "internal/common",
     "mem",
+    "net",
     "process"
   ]
   revision = "c432be29ccce470088d07eea25b3ea7e68a8afbb"
   version = "v2.18.01"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/shirou/w32"
+  packages = ["."]
+  revision = "bb4de0191aa41b5507caa14b0650cdbddcd9280b"
 
 [[projects]]
   name = "github.com/sony/gobreaker"
@@ -438,6 +445,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "32d2b8cb060acaf3096eeeacca4f7ce8294dba45a3b121ac3a191df0419e1231"
+  inputs-digest = "edcd3d71c4648886b97a0ca69e2317770325cbc991a21416ec7b647b67d6b6e2"
   solver-name = "gps-cdcl"
   solver-version = 1

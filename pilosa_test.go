@@ -9,8 +9,11 @@ import (
 )
 
 func TestSetupPilosa(t *testing.T) {
-	s := ptest.MustNewRunningServer(t)
-	host := "http://" + s.Server.Addr().String()
+	s := ptest.MustRunMainWithCluster(t, 2)
+	hosts := []string{}
+	for _, com := range s {
+		hosts = append(hosts, "http://"+com.Server.Addr().String())
+	}
 
 	frames := []pdk.FrameSpec{
 		{
@@ -42,12 +45,12 @@ func TestSetupPilosa(t *testing.T) {
 		},
 	}
 
-	_, err := pdk.SetupPilosa([]string{host}, "newindex", frames, 2)
+	_, err := pdk.SetupPilosa(hosts, "newindex", frames, 2)
 	if err != nil {
 		t.Fatalf("SetupPilosa: %v", err)
 	}
 
-	client, err := pcli.NewClientFromAddresses([]string{host}, nil)
+	client, err := pcli.NewClientFromAddresses(hosts, nil)
 	if err != nil {
 		t.Fatalf("getting client: %v", err)
 	}
