@@ -8,35 +8,25 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"sync"
 
 	"github.com/pkg/errors"
 )
 
 // Source satisfies the PDK.Source interface for CSV data. Each line in a CSV
-// file will be returned by a call to record as a map[string]string where
-// the keys are taken from the first line of the CSV.
+// file will be returned by a call to record as a map[string]string where the
+// keys are taken from the first line of the CSV. Source is safe for concurrent
+// use.
 //
 // The Source takes care of retrying failed reads/downloads and making sure not
 // to return duplicate data. TODO: this functionality needs more testing.
 type Source struct {
-	urls []*url
-	pos  int
+	files       []*file
+	pos         int
+	maxRetries  int
+	concurrency int
 
 	records chan record
-}
-
-// Option is a functional option to pass to NewSource.
-type Option func(*Source)
-
-// WithURLs returns an Option which can configure a source to pull data from the
-// given URLs. These may be HTTP or local files.
-func WithURLs(urls []string) Option {
-	return func(s *Source) {
-		s.urls = make([]*url, len(urls))
-		for i, name := range urls {
-			s.urls[i] = &url{name: name}
-		}
-	}
 }
 
 // NewSource creates a pdk.Source for CSV data. The source of the raw data can
@@ -45,7 +35,9 @@ func WithURLs(urls []string) Option {
 // src := NewSource(WithURLs([]string{"myfile1.csv", "myfile2.csv", "http://example.com/myfile3.csv"}))
 func NewSource(options ...Option) *Source {
 	src := &Source{
-		records: make(chan record),
+		records:     make(chan record),
+		maxRetries:  3,
+		concurrency: 1,
 	}
 
 	for _, opt := range options {
@@ -55,23 +47,111 @@ func NewSource(options ...Option) *Source {
 	return src
 }
 
-func (c *Source) nextURL() *url {
-	startpos := c.pos
-	for c.urls[c.pos].done {
-		c.pos = (c.pos + 1) % len(c.urls)
-		if c.pos == startpos {
-			return nil
+// Option is a functional option to pass to NewSource.
+type Option func(*Source)
+
+// WithURLs returns an Option which adds the slice of URLs to the set of data
+// sources a Source will read from. The URLs may be HTTP or local files.
+func WithURLs(urls []string) Option {
+	return func(s *Source) {
+		if s.files == nil {
+			s.files = make([]*file, 0)
+		}
+		for _, url := range urls {
+			s.files = append(s.files, &file{OpenStringer: urlOpener(url)})
 		}
 	}
-	return c.urls[c.pos]
 }
 
-type url struct {
-	name    string
-	line    int
-	numErrs int
-	done    bool
+// WithOpenStringers returns an Option which adds the slice of OpenStringers to
+// the set of data sources a Source will read from.
+func WithOpenStringers(os []OpenStringer) Option {
+	return func(s *Source) {
+		if s.files == nil {
+			s.files = make([]*file, 0)
+		}
+		for _, os := range os {
+			s.files = append(s.files, &file{OpenStringer: os})
+		}
+	}
 }
+
+// MaxRetries returns an Option which sets the max number of retries per file on
+// a Source.
+func WithMaxRetries(maxRetries int) Option {
+	return func(s *Source) {
+		s.maxRetries = maxRetries
+	}
+}
+
+// Concurrency returns an Option which sets the number of goroutines fetching
+// files simultaneously.
+func WithConcurrency(c int) Option {
+	return func(s *Source) {
+		if c > 0 {
+			s.concurrency = c
+		}
+	}
+}
+
+// file tracks the use of an OpenStringer.
+type file struct {
+	OpenStringer
+	line int // tracks how many lines of this file we've read.
+}
+
+// Opener is an interface to a resource which can be repeatedly Opened (and the
+// returned ReadCloser can be subsequently read). Each call to Open should
+// return a ReadCloser which reads from the beginning of the resource. In the
+// case of an error while reading, Open will be called again to retry reading
+// the entire resource.
+type Opener interface {
+	Open() (io.ReadCloser, error)
+}
+
+// OpenStringer is an Opener which also has a String method which should return
+// the name of the resource being opened (e.g. a file or URL).
+type OpenStringer interface {
+	fmt.Stringer
+	Opener
+}
+
+// urlOpener turns a URL or file (string) into an OpenStringer.
+type urlOpener string
+
+func (u urlOpener) Open() (io.ReadCloser, error) {
+	url := string(u)
+	var content io.ReadCloser
+	if strings.HasPrefix(url, "http") {
+		resp, err := http.Get(url)
+		if err != nil {
+			return nil, errors.Wrap(err, "getting via http")
+		}
+		content = resp.Body
+	} else {
+		f, err := os.Open(url)
+		if err != nil {
+			return nil, errors.Wrap(err, "opening file")
+		}
+		content = f
+	}
+	return content, nil
+}
+
+func (u urlOpener) String() string {
+	return string(u)
+}
+
+// func (c *Source) nextFile() *file {
+// 	startpos := c.pos
+// 	for c.files[c.pos].done {
+// 		c.pos = (c.pos + 1) % len(c.files)
+// 		if c.pos == startpos {
+// 			return nil
+// 		}
+// 	}
+// 	return c.files[c.pos]
+// }
 
 // Record returns a map[string]string representing a single data line of a
 // CSV file. Each key is taken from the header, and each value is parsed from a
@@ -90,68 +170,82 @@ type record struct {
 }
 
 func (c *Source) getRecords() {
-	for url := c.nextURL(); url != nil; url = c.nextURL() {
-		content, err := getURL(url.name)
-		if err != nil {
-			url.numErrs += 1
-			if url.numErrs >= 10 {
-				url.done = true
-				c.records <- record{err: errors.Wrapf(err, "couldn't fetch file '%s' - tried 10 times, latest", url.name)}
+	fileChan := make(chan *file, c.concurrency)
+	wg := sync.WaitGroup{}
+	for i := 0; i < c.concurrency; i++ {
+		wg.Add(1)
+		go func() {
+			for file := range fileChan {
+				c.getRows(file)
 			}
-		}
-		c.getRows(content, url)
+			wg.Done()
+		}()
 	}
+	for _, file := range c.files {
+		fileChan <- file
+	}
+	close(fileChan)
+	wg.Wait()
 	close(c.records)
 }
 
-func (c *Source) getRows(content io.ReadCloser, url *url) {
-	defer content.Close()
+func (c *Source) getRows(file *file) {
+	var err error
+	for try := 0; try < c.maxRetries; try++ {
+		err = c.getRowTry(file)
+		if err == nil {
+			return
+		}
+	}
+	c.records <- record{err: errors.Wrapf(err, "couldn't fetch '%s' - tried %d times, latest", file, c.maxRetries)}
+}
+
+func (c *Source) getRowTry(file *file) error {
+	content, err := file.Open()
+	if err != nil {
+		return errors.Wrap(err, "opening")
+	}
+
 	// scan header line
 	scan := bufio.NewScanner(content)
 	var header []string
-	if scan.Scan() {
+	if scan.Scan() && scan.Err() == nil {
 		header = strings.Split(scan.Text(), ",")
 		if err := validateHeader(header); err != nil {
-			c.records <- record{err: errors.Wrapf(err, "validating header of %s", url.name)}
-			url.done = true
-			return
+			c.records <- record{err: errors.Wrapf(err, "validating header of %s", file)}
+			return nil // error is permanent so we don't return to getRows for retry
 		}
-		if url.line == 0 {
-			url.line++
+		if file.line == 0 {
+			file.line++
 		}
 	}
 	line := 1
 	// catch up to previous location
-	for line < url.line && scan.Scan() {
+	for line < file.line && scan.Scan() {
 		line++
 	}
-	for scan.Scan() {
+	for scan.Scan() && scan.Err() == nil {
 		txt := scan.Text()
 		if strings.TrimSpace(txt) == "" {
-			continue
+			continue // skip empty lines. TODO: add stats tracking
 		}
 		row := strings.Split(txt, ",")
-		url.line++
+		file.line++
 		recordMap, err := parseRecord(header, row)
 		if err != nil {
 			c.records <- record{
-				err: errors.Wrapf(err, "url %v: parsing line %d", url.name, url.line),
+				err: errors.Wrapf(err, "file %s: parsing line %d", file, file.line),
 			}
 			continue
 		}
 		// add file and line number under the comma header since that can't
 		// be a header from the csv file.
-		recordMap[","] = fmt.Sprintf("%s:line%d", url.name, url.line)
+		recordMap[","] = fmt.Sprintf("%s:line%d", file, file.line)
 		c.records <- record{
 			rec: recordMap,
 		}
 	}
-	err := scan.Err()
-	if err != nil {
-		c.records <- record{err: errors.Wrapf(err, "scanning '%s', line %d", url.name, min(line, url.line))}
-	} else {
-		url.done = true
-	}
+	return errors.Wrapf(scan.Err(), "scanning '%s', line %d", file, min(line, file.line))
 }
 
 func min(a, b int) int {
@@ -179,24 +273,6 @@ func parseRecord(header []string, row []string) (map[string]string, error) {
 		ret[header[i]] = row[i]
 	}
 	return ret, nil
-}
-
-func getURL(name string) (io.ReadCloser, error) {
-	var content io.ReadCloser
-	if strings.HasPrefix(name, "http") {
-		resp, err := http.Get(name)
-		if err != nil {
-			return nil, errors.Wrap(err, "getting via http")
-		}
-		content = resp.Body
-	} else {
-		f, err := os.Open(name)
-		if err != nil {
-			return nil, errors.Wrap(err, "opening file")
-		}
-		content = f
-	}
-	return content, nil
 }
 
 func validateHeader(header []string) error {
