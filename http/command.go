@@ -32,7 +32,7 @@ func NewMain() *Main {
 		Index:       "jsonhttp",
 		BatchSize:   10,
 		Framer:      FramerOpts{},
-		Subjecter:   SubjecterOpts{Path: []string{"id"}},
+		Subjecter:   SubjecterOpts{},
 	}
 }
 
@@ -72,7 +72,7 @@ func (m *Main) Run() error {
 				return "", errors.Errorf("map value of unexpected type %#v", nexti)
 			}
 		}
-		return "", errors.Errorf("no keys in subjecter path? %v", m.Subjecter.Path)
+		return "", nil // if there are no keys, return blank subject
 	})
 
 	mapper := pdk.NewCollapsingMapper()
