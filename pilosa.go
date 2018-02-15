@@ -138,12 +138,6 @@ func NewFieldFrameSpec(name string, min int, max int) FrameSpec {
 // threadsafe - callers must hold i.lock.Lock() or guarantee that they have
 // exclusive access to Index before calling.
 func (i *Index) setupFrame(frame FrameSpec) error {
-	// for _, field := range frame.Fields {
-	// 	err := frameOptions.AddIntField(field.Name, field.Min, field.Max)
-	// 	if err != nil {
-	// 		return errors.Wrapf(err, "adding int field %v", field)
-	// 	}
-	// }
 	var fram *pcli.Frame
 	var err error
 	if _, ok := i.bitChans[frame.Name]; !ok {
@@ -183,7 +177,7 @@ func (i *Index) setupFrame(frame FrameSpec) error {
 			continue // valChan for this field exists, so importer should already be running.
 		}
 		i.fieldChans[frame.Name][field.Name] = NewChanValIterator()
-		err := i.client.CreateIntField(fram, field.Name, field.Min, field.Max)
+		err := i.ensureField(fram, field)
 		if err != nil {
 			return errors.Wrapf(err, "creating field %#v", field)
 		}
@@ -199,6 +193,14 @@ func (i *Index) setupFrame(frame FrameSpec) error {
 	return nil
 }
 
+func (i *Index) ensureField(frame *pcli.Frame, fieldSpec FieldSpec) error {
+	if _, exists := frame.Fields()[fieldSpec.Name]; exists {
+		return nil
+	}
+	err := i.client.CreateIntField(frame, fieldSpec.Name, fieldSpec.Min, fieldSpec.Max)
+	return errors.Wrapf(err, "creating field %#v", fieldSpec)
+}
+
 func SetupPilosa(hosts []string, index string, frames []FrameSpec, batchsize uint) (Indexer, error) {
 	indexer := NewIndex()
 	indexer.batchSize = batchsize
@@ -210,14 +212,22 @@ func SetupPilosa(hosts []string, index string, frames []FrameSpec, batchsize uin
 		return nil, errors.Wrap(err, "creating pilosa cluster client")
 	}
 	indexer.client = client
-
-	indexer.index, err = pcli.NewIndex(index)
+	schema, err := client.Schema()
 	if err != nil {
-		return nil, errors.Wrap(err, "making index")
+		return nil, errors.Wrap(err, "getting schema")
+	}
+
+	indexer.index, err = schema.Index(index)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting index")
 	}
 	err = client.EnsureIndex(indexer.index)
 	if err != nil {
 		return nil, errors.Wrap(err, "ensuring index existence")
+	}
+	err = client.SyncSchema(schema)
+	if err != nil {
+		return nil, errors.Wrap(err, "ensuring index exists")
 	}
 	for _, frame := range frames {
 		err := indexer.setupFrame(frame)
