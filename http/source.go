@@ -71,6 +71,14 @@ func NewJSONSource(opts ...JSONSourceOption) (*JSONSource, error) {
 	return j, nil
 }
 
+func (j *JSONSource) Addr() string {
+	if j.listener != nil {
+		return j.listener.Addr().String()
+	} else {
+		return j.addr
+	}
+}
+
 type record struct {
 	data interface{}
 	err  error
