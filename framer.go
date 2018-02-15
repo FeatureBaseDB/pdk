@@ -38,17 +38,50 @@ func (f FramerFunc) Field(path []string) (string, string, error) {
 	if err != nil {
 		return "", "", errors.Wrap(err, "getting frame")
 	}
+	if frame == "" {
+		return "", "", nil
+	}
 	field, err := f([]string{path[len(path)-1]})
 	return frame, field, errors.Wrap(err, "getting field")
 }
 
-func dashFrame(path []string) (string, error) {
-	for i, p := range path {
-		path[i] = strings.TrimSpace(p)
-	}
-	return strings.ToLower(strings.Join(path, "-")), nil
-}
-
 // DashFrame creates a frame name from the path by joining the path elements with
 // the "-" character.
-var DashFrame = FramerFunc(dashFrame)
+type DashFrame struct {
+	Ignore   []string
+	Collapse []string
+}
+
+func (d *DashFrame) clean(path []string) []string {
+	np := []string{}
+OUTER:
+	for _, p := range path {
+		for _, ig := range d.Ignore {
+			if ig == p {
+				return nil
+			}
+		}
+		for _, coll := range d.Collapse {
+			if coll == p {
+				continue OUTER
+			}
+		}
+		np = append(np, strings.TrimSpace(p))
+	}
+	return np
+}
+
+func (d *DashFrame) Frame(path []string) (frame string, err error) {
+	np := d.clean(path)
+	return strings.ToLower(strings.Join(np, "-")), nil
+}
+
+func (d *DashFrame) Field(path []string) (frame, field string, err error) {
+	np := d.clean(path)
+	if len(np) == 0 {
+		return
+	}
+	frame = strings.ToLower(strings.Join(np, "-"))
+	field = strings.ToLower(np[len(np)-1])
+	return frame, field, nil
+}

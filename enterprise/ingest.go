@@ -28,7 +28,7 @@ func NewIngester(source pdk.Source, parser pdk.Parrrser, indexer Indexer) *Inges
 		ParseConcurrency: 1,
 		src:              source,
 		parser:           parser,
-		framer:           pdk.DashFrame,
+		framer:           &pdk.DashFrame{},
 		indexer:          indexer,
 	}
 }

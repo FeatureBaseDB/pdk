@@ -11,8 +11,9 @@ import (
 // Parse method. At the top level it accepts a map or struct (or pointer or
 // interface holding one of these).
 type GenericParser struct {
-	Subjecter Subjecter
-	Framer    Framer
+	Subjecter  Subjecter
+	Framer     Framer
+	SubjectAll bool
 
 	// IncludeUnexportedFields controls whether unexported struct fields will be
 	// included when parsing.
@@ -37,24 +38,33 @@ func (b BlankSubjecter) Subject(d interface{}) (string, error) { return "", nil 
 func NewDefaultGenericParser() *GenericParser {
 	return &GenericParser{
 		Subjecter: BlankSubjecter{},
-		Framer:    DashFrame,
+		Framer:    &DashFrame{},
 	}
 }
 
 // Parse of the GenericParser tries to parse any value into a pdk.Entity.
-func (m *GenericParser) Parse(data interface{}) (*Entity, error) {
+func (m *GenericParser) Parse(data interface{}) (e *Entity, err error) {
 	val := reflect.ValueOf(data)
 	// dereference pointers, and get concrete values from interfaces
 	val = deref(val)
 	// Map and Struct are the only valid Kinds at the top level.
 	switch val.Kind() {
 	case reflect.Map:
-		return m.parseMap(val)
+		e, err = m.parseMap(val)
 	case reflect.Struct:
-		return m.parseStruct(val)
+		e, err = m.parseStruct(val)
 	default:
-		return nil, errors.Errorf("unsupported kind, '%v' in GenericParser: %v", val.Kind(), data)
+		e, err = nil, errors.Errorf("unsupported kind, '%v' in GenericParser: %v", val.Kind(), data)
 	}
+	if err != nil {
+		return e, err
+	}
+	var subj string
+	if !m.SubjectAll {
+		subj, err = m.Subjecter.Subject(data)
+		e.Subject = IRI(subj)
+	}
+	return e, err
 }
 
 func deref(val reflect.Value) reflect.Value {
@@ -68,11 +78,13 @@ func deref(val reflect.Value) reflect.Value {
 
 func (m *GenericParser) parseMap(val reflect.Value) (*Entity, error) {
 	ent := NewEntity()
-	subj, err := m.Subjecter.Subject(val.Interface())
-	if err != nil {
-		return nil, errors.Wrap(err, "getting subject")
+	if m.SubjectAll {
+		subj, err := m.Subjecter.Subject(val.Interface())
+		if err != nil {
+			return nil, errors.Wrap(err, "getting subject")
+		}
+		ent.Subject = IRI(subj)
 	}
-	ent.Subject = IRI(subj)
 
 	for _, kval := range val.MapKeys() {
 		prop, err := m.getProperty(kval)
@@ -224,7 +236,7 @@ func (m *GenericParser) parseObj(val reflect.Value) (Object, error) {
 
 // Properteer is the interface which should be implemented by types which want
 // to explicitly define how they should be interpreted as a string for use as a
-// property when they are used as a map key.
+// Property when they are used as a map key.
 type Properteer interface {
 	Property() Property
 }

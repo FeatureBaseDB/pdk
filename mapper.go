@@ -24,7 +24,7 @@ func NewCollapsingMapper() *CollapsingMapper {
 	return &CollapsingMapper{
 		Translator:    NewMapTranslator(),
 		ColTranslator: NewNexterFrameTranslator(),
-		Framer:        DashFrame,
+		Framer:        &DashFrame{},
 	}
 }
 
@@ -82,11 +82,17 @@ func (m *CollapsingMapper) mapLit(val Literal, pr *PilosaRecord, path []string) 
 		if err != nil {
 			return errors.Wrapf(err, "getting frame/field from %v", path)
 		}
+		if frame == "" || field == "" {
+			return nil
+		}
 		pr.AddVal(frame, field, Int64ize(tval))
 	case S:
 		frame, err := m.Framer.Frame(path)
 		if err != nil {
 			return errors.Wrapf(err, "gettting frame from %v", path)
+		}
+		if frame == "" {
+			return nil
 		}
 		id, err := m.Translator.GetID(frame, tval)
 		if err != nil {
@@ -101,6 +107,9 @@ func (m *CollapsingMapper) mapLit(val Literal, pr *PilosaRecord, path []string) 
 		frame, field, err := m.Framer.Field(path)
 		if err != nil {
 			return errors.Wrapf(err, "getting frame/field from %v", path)
+		}
+		if frame == "" || field == "" {
+			return nil
 		}
 		id, err := m.Translator.GetID(frame, field)
 		if err != nil {
