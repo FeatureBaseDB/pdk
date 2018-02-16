@@ -81,7 +81,7 @@ func (d *DashFrame) Field(path []string) (frame, field string, err error) {
 	if len(np) == 0 {
 		return
 	}
-	frame = strings.ToLower(strings.Join(np, "-"))
+	frame = strings.ToLower(strings.Join(np[:len(np)-1], "-"))
 	field = strings.ToLower(np[len(np)-1])
 	return frame, field, nil
 }

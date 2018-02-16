@@ -23,6 +23,7 @@ type Main struct {
 	BatchSize   uint     `help:"Batch size for Pilosa imports."`
 	Framer      FramerOpts
 	Subjecter   SubjecterOpts
+	Proxy       string `help:"Bind to this address to proxy and translate requests to Pilosa"`
 }
 
 func NewMain() *Main {
@@ -33,6 +34,7 @@ func NewMain() *Main {
 		BatchSize:   10,
 		Framer:      FramerOpts{},
 		Subjecter:   SubjecterOpts{},
+		Proxy:       ":13131",
 	}
 }
 
@@ -87,5 +89,10 @@ func (m *Main) Run() error {
 	}
 
 	ingester := pdk.NewIngester(src, parser, mapper, indexer)
+	go func() {
+		err = pdk.StartMappingProxy(m.Proxy, pdk.NewPilosaForwarder(m.PilosaHosts[0], mapper.Translator))
+		log.Fatal(errors.Wrap(err, "starting mapping proxy"))
+	}()
+	log.Println("starting ingester")
 	return errors.Wrap(ingester.Run(), "running ingester")
 }
