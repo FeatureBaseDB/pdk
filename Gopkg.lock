@@ -262,7 +262,7 @@
   source = "github.com/yuce/go-pilosa"
 
 [[projects]]
-  branch = "test-api-compat"
+  branch = "master"
   name = "github.com/pilosa/pilosa"
   packages = [
     ".",
@@ -277,8 +277,7 @@
     "statsd",
     "test"
   ]
-  revision = "82592adf64d141cbc73048a9151a20c6a7905849"
-  source = "github.com/jaffee/pilosa"
+  revision = "cd5dd9bfd084d00a80ad3cb1c9c32aae6d00b22d"
 
 [[projects]]
   name = "github.com/pkg/errors"
@@ -444,6 +443,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "1e83534129d6ae4c076c58f0fd4d8fdb69f1b14fa71331529940d40856e65c38"
+  inputs-digest = "b368792c82a7fcfd7a228358ba6c50b38b2f82d894635ecba25f1c8d5c0d0aa9"
   solver-name = "gps-cdcl"
   solver-version = 1
