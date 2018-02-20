@@ -135,7 +135,7 @@ func TestEverything(t *testing.T) {
 		if err != nil {
 			t.Fatalf("fram topn query (%v): %v", name, err)
 		}
-		fmt.Printf("%v: TopN: %v\n", name, resp.Result().CountItems)
+		fmt.Printf("%v: TopN: %v\n", name, resp.Result().CountItems())
 	}
 
 }
