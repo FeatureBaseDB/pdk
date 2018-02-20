@@ -8,16 +8,16 @@
   revision = "39b0596a2da3c92787b3319c6b5425a474b4e0da"
 
 [[projects]]
+  branch = "master"
   name = "github.com/DataDog/datadog-go"
   packages = ["statsd"]
-  revision = "9487d3a9d3be5bf3cf60b86ae810b97926964515"
-  version = "2.0.0"
+  revision = "1db03a3cc56bf5b5b80de306274c7b8f8eb6abfa"
 
 [[projects]]
   name = "github.com/Shopify/sarama"
   packages = ["."]
-  revision = "3b1b38866a79f06deddf0487d5c27ba0697ccd65"
-  version = "v1.15.0"
+  revision = "f7be6aa2bc7b2e38edf816b08b582782194a1c02"
+  version = "v1.16.0"
 
 [[projects]]
   branch = "master"
@@ -48,6 +48,12 @@
   packages = ["."]
   revision = "3001c2453136632aa3219a58ea3795bb584b83b5"
   version = "v2.1.12"
+
+[[projects]]
+  name = "github.com/cespare/xxhash"
+  packages = ["."]
+  revision = "5c37fe3735342a2e0d01c87a907579987c8936cc"
+  version = "v1.0.0"
 
 [[projects]]
   name = "github.com/davecgh/go-spew"
@@ -212,8 +218,8 @@
 [[projects]]
   name = "github.com/magiconair/properties"
   packages = ["."]
-  revision = "d419a98cdbed11a922bf76f257b7c4be79b50e73"
-  version = "v1.7.4"
+  revision = "c3beff4c2358b44d0493c7dda585e7db7ff28ae6"
+  version = "v1.7.6"
 
 [[projects]]
   name = "github.com/miekg/dns"
@@ -246,17 +252,17 @@
   version = "v0.1.1"
 
 [[projects]]
-  branch = "cluster-resize-support"
+  branch = "consolidate-master-cluster-resize"
   name = "github.com/pilosa/go-pilosa"
   packages = [
     ".",
     "gopilosa_pbuf"
   ]
-  revision = "14aad104cf87242e17c2a646c645128b54056cbd"
+  revision = "5a69cc66c76c7cf557621dfc33c2a791555f0247"
   source = "github.com/yuce/go-pilosa"
 
 [[projects]]
-  branch = "cluster-resize"
+  branch = "test-api-compat"
   name = "github.com/pilosa/pilosa"
   packages = [
     ".",
@@ -271,7 +277,8 @@
     "statsd",
     "test"
   ]
-  revision = "8db3a9b64d9752a1714c23583025619bc1cf05e9"
+  revision = "82592adf64d141cbc73048a9151a20c6a7905849"
+  source = "github.com/jaffee/pilosa"
 
 [[projects]]
   name = "github.com/pkg/errors"
@@ -306,21 +313,13 @@
 [[projects]]
   name = "github.com/shirou/gopsutil"
   packages = [
-    "cpu",
     "host",
     "internal/common",
     "mem",
-    "net",
     "process"
   ]
   revision = "c432be29ccce470088d07eea25b3ea7e68a8afbb"
   version = "v2.18.01"
-
-[[projects]]
-  branch = "master"
-  name = "github.com/shirou/w32"
-  packages = ["."]
-  revision = "bb4de0191aa41b5507caa14b0650cdbddcd9280b"
 
 [[projects]]
   name = "github.com/sony/gobreaker"
@@ -340,8 +339,8 @@
 [[projects]]
   name = "github.com/spf13/cast"
   packages = ["."]
-  revision = "acbeb36b902d72a7a4c18e8f3241075e7ab763e4"
-  version = "v1.1.0"
+  revision = "8965335b8c7107321228e3e3702cab9832751bac"
+  version = "v1.2.0"
 
 [[projects]]
   name = "github.com/spf13/cobra"
@@ -393,7 +392,7 @@
     "ed25519",
     "ed25519/internal/edwards25519"
   ]
-  revision = "5119cf507ed5294cc409c092980c7497ee5d6fd2"
+  revision = "432090b8f568c018896cd8a0fb0345872bbac6ce"
 
 [[projects]]
   branch = "master"
@@ -406,7 +405,7 @@
     "ipv4",
     "ipv6"
   ]
-  revision = "f5dfe339be1d06f81b22525fe34671ee7d2c8904"
+  revision = "cbe0f9307d0156177f9dd5dc85da1a31abc5f2fb"
 
 [[projects]]
   branch = "master"
@@ -445,6 +444,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "edcd3d71c4648886b97a0ca69e2317770325cbc991a21416ec7b647b67d6b6e2"
+  inputs-digest = "1e83534129d6ae4c076c58f0fd4d8fdb69f1b14fa71331529940d40856e65c38"
   solver-name = "gps-cdcl"
   solver-version = 1
