@@ -7,21 +7,10 @@ import (
 
 	pcli "github.com/pilosa/go-pilosa"
 	"github.com/pilosa/pdk"
+	"github.com/pkg/errors"
 )
 
-func (m *Main) testCache() {
-	fmt.Printf("Read %d weather records\n", len(m.WeatherCache.data))
-	day, _ := m.WeatherCache.GetDailyRecord(time.Date(2010, 4, 3, 0, 0, 0, 0, time.UTC))
-	fmt.Printf("%+v\n", day)
-	hour, _ := m.WeatherCache.GetHourlyRecord(time.Date(2010, 4, 3, 3, 0, 0, 0, time.UTC))
-	fmt.Printf("%+v\n", hour)
-
-	day, err := m.WeatherCache.GetDailyRecord(time.Date(2003, 4, 3, 0, 0, 0, 0, time.UTC))
-	fmt.Printf("%+v %v\n", day, err)
-	hour, err = m.WeatherCache.GetHourlyRecord(time.Date(2003, 4, 3, 3, 0, 0, 0, time.UTC))
-	fmt.Printf("%+v %v\n", hour, err)
-}
-
+// Main holds options and execution state for the weather usecase.
 type Main struct {
 	PilosaHost  string
 	Concurrency int
@@ -29,7 +18,7 @@ type Main struct {
 	BufferSize  int
 	URLFile     string
 
-	importer pdk.PilosaImporter
+	importer pdk.Indexer
 	client   *pcli.Client
 	frames   map[string]*pcli.Frame
 	index    *pcli.Index
@@ -37,6 +26,7 @@ type Main struct {
 	WeatherCache *WeatherCache
 }
 
+// NewMain returns a new Main.
 func NewMain() *Main {
 	m := &Main{
 		Concurrency:  1,
@@ -96,33 +86,44 @@ func (m *Main) appendWeatherData() {
 
 		for _, ID := range response.Result().Bitmap().Bits {
 			// SetBit(weather.precip_code, ID, "precipitation_type")  // not implemented in weatherCache
-			m.importer.SetBit(condID, ID, "weather_condition")
+			m.importer.AddBit("weather_condition", ID, condID)
 
 			if err1 == nil && weather.Precipi > -100 {
-				m.importer.SetBit(precipID, ID, "precipitation_inches")
+				m.importer.AddBit("precipitation_inches", ID, precipID)
 			}
 			if err2 == nil {
-				m.importer.SetBit(tempID, ID, "temp_f")
+				m.importer.AddBit("temp_f", ID, tempID)
 			}
 			if err3 == nil {
-				m.importer.SetBit(pressureID, ID, "pressure_i")
+				m.importer.AddBit("pressure_i", ID, pressureID)
 			}
 			if err4 == nil && weather.Humidity > 10 {
-				m.importer.SetBit(humidID, ID, "humidity")
+				m.importer.AddBit("humidity", ID, humidID)
 			}
 		}
 	}
 
 }
 
-func (m *Main) Run() error {
+// Run runs the weather usecase.
+func (m *Main) Run() (err error) {
 	go func() {
 		fmt.Println(http.ListenAndServe("localhost:6060", nil))
 	}()
 
 	readFrames := []string{"cab_type", "passenger_count", "total_amount_dollars", "pickup_time", "pickup_day", "pickup_mday", "pickup_month", "pickup_year", "drop_time", "drop_day", "drop_mday", "drop_month", "drop_year", "dist_miles", "duration_minutes", "speed_mph", "pickup_grid_id", "drop_grid_id"}
-	writeFrames := []string{"weather_condition", "precipitation_type", "precipitation_inches", "temp_f", "pressure_i", "humidity"}
-	m.importer = pdk.NewImportClient(m.PilosaHost, m.Index, writeFrames, m.BufferSize)
+	writeFrames := []pdk.FrameSpec{
+		pdk.NewRankedFrameSpec("weather_condition", 0),
+		pdk.NewRankedFrameSpec("precipitation_type", 0),
+		pdk.NewRankedFrameSpec("precipitation_inches", 0),
+		pdk.NewRankedFrameSpec("temp_f", 0),
+		pdk.NewRankedFrameSpec("pressure_i", 0),
+		pdk.NewRankedFrameSpec("humidity", 0),
+	}
+	m.importer, err = pdk.SetupPilosa([]string{m.PilosaHost}, m.Index, writeFrames, uint(m.BufferSize))
+	if err != nil {
+		return errors.Wrap(err, "setting up pilosa")
+	}
 
 	pilosaURI, err := pcli.NewURIFromAddress(m.PilosaHost)
 	if err != nil {
@@ -150,24 +151,13 @@ func (m *Main) Run() error {
 			return fmt.Errorf("creating frame '%v': %v", frame, err)
 		}
 	}
-	for _, frame := range writeFrames {
-		fram, err := index.Frame(frame, &pcli.FrameOptions{})
-		if err != nil {
-			return fmt.Errorf("making frame: %v", err)
-		}
-		err = setupClient.EnsureFrame(fram)
-		if err != nil {
-			return fmt.Errorf("creating frame '%v': %v", frame, err)
-		}
-	}
 
 	err = m.WeatherCache.ReadAll()
 	if err != nil {
-		return err
+		return errors.Wrap(err, "reading weather cache")
 	}
 
 	m.appendWeatherData()
 
-	m.importer.Close()
-	return nil
+	return errors.Wrap(m.importer.Close(), "closing indexer")
 }

@@ -15,16 +15,21 @@ type Translator interface {
 	GetID(frame string, val interface{}) (uint64, error)
 }
 
+// FrameTranslator works like a Translator, but the methods don't take frames as
+// arguments. Typically a Translator will include a FrameTranslator for each
+// frame.
 type FrameTranslator interface {
 	Get(id uint64) (interface{}, error)
 	GetID(val interface{}) (uint64, error)
 }
 
+// MapTranslator is an in-memory implementation of Translator using maps.
 type MapTranslator struct {
 	lock   sync.RWMutex
 	frames map[string]*MapFrameTranslator
 }
 
+// NewMapTranslator creates a new MapTranslator.
 func NewMapTranslator() *MapTranslator {
 	return &MapTranslator{
 		frames: make(map[string]*MapFrameTranslator),
@@ -47,6 +52,7 @@ func (m *MapTranslator) getFrameTranslator(frame string) *MapFrameTranslator {
 	return m.frames[frame]
 }
 
+// Get returns the value mapped to the given id in the given frame.
 func (m *MapTranslator) Get(frame string, id uint64) (interface{}, error) {
 	val, err := m.getFrameTranslator(frame).Get(id)
 	if err != nil {
@@ -55,10 +61,14 @@ func (m *MapTranslator) Get(frame string, id uint64) (interface{}, error) {
 	return val, nil
 }
 
+// GetID returns the integer id associated with the given value in the given
+// frame. It allocates a new ID if the value is not found.
 func (m *MapTranslator) GetID(frame string, val interface{}) (id uint64, err error) {
 	return m.getFrameTranslator(frame).GetID(val)
 }
 
+// MapFrameTranslator is an in-memory implementation of FrameTranslator using
+// sync.Map and a slice.
 type MapFrameTranslator struct {
 	m sync.Map
 
@@ -68,6 +78,7 @@ type MapFrameTranslator struct {
 	s []interface{}
 }
 
+// NewMapFrameTranslator creates a new MapFrameTranslator.
 func NewMapFrameTranslator() *MapFrameTranslator {
 	return &MapFrameTranslator{
 		n: NewNexter(),
@@ -75,6 +86,7 @@ func NewMapFrameTranslator() *MapFrameTranslator {
 	}
 }
 
+// Get returns the value mapped to the given id.
 func (m *MapFrameTranslator) Get(id uint64) (interface{}, error) {
 	m.l.RLock()
 	defer m.l.RUnlock()
@@ -84,15 +96,17 @@ func (m *MapFrameTranslator) Get(id uint64) (interface{}, error) {
 	return m.s[id], nil
 }
 
+// GetID returns the integer id associated with the given value. It allocates a
+// new ID if the value is not found.
 func (m *MapFrameTranslator) GetID(val interface{}) (id uint64, err error) {
 	// TODO - this is a janky way to support byte slice value - revisit would be
 	// nice to support values of any type, but currently only things that are
 	// acceptable map keys are supported.(and byte slices because of this hack)
 	var valMap interface{}
 	var valSlice interface{}
-	if val_b, ok := val.([]byte); ok {
-		valMap = string(val_b)
-		valSlice = val_b
+	if valB, ok := val.([]byte); ok {
+		valMap = string(valB)
+		valSlice = valB
 	} else {
 		valMap, valSlice = val, val
 	}
@@ -130,6 +144,7 @@ type NexterFrameTranslator struct {
 	n *Nexter
 }
 
+// NewNexterFrameTranslator creates a new NexterFrameTranslator
 func NewNexterFrameTranslator() *NexterFrameTranslator {
 	return &NexterFrameTranslator{
 		n: NewNexter(),
@@ -144,5 +159,5 @@ func (n *NexterFrameTranslator) GetID(val interface{}) (id uint64, err error) {
 
 // Get always returns nil, and a non-nil error for the NexterFrameTranslator.
 func (n *NexterFrameTranslator) Get(id uint64) (interface{}, error) {
-	return nil, errors.New("NexterFrameTranslator \"Get\" method should not be used. cannot map ids back to values.")
+	return nil, errors.New("the NexterFrameTranslator \"Get\" method should not be used - cannot map ids back to values")
 }

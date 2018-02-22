@@ -142,17 +142,6 @@ func (u urlOpener) String() string {
 	return string(u)
 }
 
-// func (c *Source) nextFile() *file {
-// 	startpos := c.pos
-// 	for c.files[c.pos].done {
-// 		c.pos = (c.pos + 1) % len(c.files)
-// 		if c.pos == startpos {
-// 			return nil
-// 		}
-// 	}
-// 	return c.files[c.pos]
-// }
-
 // Record returns a map[string]string representing a single data line of a
 // CSV file. Each key is taken from the header, and each value is parsed from a
 // row - empty fields are skipped.
