@@ -32,7 +32,15 @@ func (i *Index) Client() *pcli.Client {
 	return i.client
 }
 
+func (i *Index) AddBitTimestamp(frame string, row, col uint64, ts time.Time) {
+	i.addBit(frame, row, col, ts.UnixNano())
+}
+
 func (i *Index) AddBit(frame string, col uint64, row uint64) {
+	i.addBit(frame, col, row, 0)
+}
+
+func (i *Index) addBit(frame string, col uint64, row uint64, ts int64) {
 	var c ChanBitIterator
 	var ok bool
 	i.lock.RLock()
@@ -40,7 +48,11 @@ func (i *Index) AddBit(frame string, col uint64, row uint64) {
 		i.lock.RUnlock()
 		i.lock.Lock()
 		defer i.lock.Unlock()
-		err := i.setupFrame(FrameSpec{Name: frame, CacheType: pcli.CacheTypeRanked, CacheSize: 100000})
+		frameSpec := FrameSpec{Name: frame, CacheType: pcli.CacheTypeRanked, CacheSize: 100000}
+		if ts != 0 {
+			frameSpec.TimeQuantum = pcli.TimeQuantumYearMonthDayHour
+		}
+		err := i.setupFrame(frameSpec)
 		if err != nil {
 			log.Println(errors.Wrapf(err, "setting up frame '%s'", frame)) // TODO make AddBit/AddValue return err?
 			return
@@ -49,7 +61,7 @@ func (i *Index) AddBit(frame string, col uint64, row uint64) {
 	} else {
 		i.lock.RUnlock()
 	}
-	c <- pcli.Bit{RowID: row, ColumnID: col}
+	c <- pcli.Bit{RowID: row, ColumnID: col, Timestamp: ts}
 }
 
 func (i *Index) AddValue(frame, field string, col uint64, val int64) {
@@ -103,7 +115,18 @@ type FrameSpec struct {
 	CacheType      pcli.CacheType
 	CacheSize      uint
 	InverseEnabled bool
+	TimeQuantum    pcli.TimeQuantum
 	Fields         []FieldSpec
+}
+
+func (f FrameSpec) ToOptions() *pcli.FrameOptions {
+	return &pcli.FrameOptions{
+		TimeQuantum:    f.TimeQuantum,
+		CacheType:      f.CacheType,
+		CacheSize:      f.CacheSize,
+		InverseEnabled: f.InverseEnabled,
+		RangeEnabled:   len(f.Fields) > 0,
+	}
 }
 
 type FieldSpec struct {
@@ -141,11 +164,7 @@ func (i *Index) setupFrame(frame FrameSpec) error {
 	var fram *pcli.Frame
 	var err error
 	if _, ok := i.bitChans[frame.Name]; !ok {
-		frameOptions := &pcli.FrameOptions{CacheType: frame.CacheType, CacheSize: frame.CacheSize}
-		if len(frame.Fields) > 0 {
-			frameOptions.RangeEnabled = true
-		}
-		fram, err = i.index.Frame(frame.Name, frameOptions)
+		fram, err = i.index.Frame(frame.Name, frame.ToOptions())
 		if err != nil {
 			return errors.Wrapf(err, "making frame: %v", frame.Name)
 		}
