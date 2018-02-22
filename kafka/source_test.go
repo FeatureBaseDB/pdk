@@ -147,7 +147,7 @@ func RegistryHandler(w http.ResponseWriter, r *http.Request) {
 	enc := json.NewEncoder(w)
 
 	if id == 1 {
-		err := enc.Encode(Schema{Schema: schema1, Id: 1})
+		err := enc.Encode(Schema{Schema: schema1, ID: 1})
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return

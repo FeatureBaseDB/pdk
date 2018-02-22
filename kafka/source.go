@@ -15,17 +15,19 @@ import (
 	"github.com/pkg/errors"
 )
 
-type KafkaSource struct {
-	KafkaHosts []string
-	Topics     []string
-	Group      string
-	Type       string
+// Source implements the pdk.Source interface using kafka as a data source.
+type Source struct {
+	Hosts  []string
+	Topics []string
+	Group  string
+	Type   string
 
 	consumer *cluster.Consumer
 	messages <-chan *sarama.ConsumerMessage
 }
 
-func (s *KafkaSource) Record() (interface{}, error) {
+// Record returns the value of the next kafka message.
+func (s *Source) Record() (interface{}, error) {
 	msg, ok := <-s.consumer.Messages()
 	if ok {
 		var ret interface{}
@@ -44,12 +46,12 @@ func (s *KafkaSource) Record() (interface{}, error) {
 		}
 		s.consumer.MarkOffset(msg, "") // mark message as processed
 		return ret, nil
-	} else {
-		return nil, errors.New("messages channel closed")
 	}
+	return nil, errors.New("messages channel closed")
 }
 
-func (s *KafkaSource) Open() error {
+// Open initializes the kafka source.
+func (s *Source) Open() error {
 	// init (custom) config, enable errors and notifications
 	config := cluster.NewConfig()
 	config.Config.Version = sarama.V0_10_0_0
@@ -58,7 +60,7 @@ func (s *KafkaSource) Open() error {
 	config.Group.Return.Notifications = true
 
 	var err error
-	s.consumer, err = cluster.NewConsumer(s.KafkaHosts, s.Group, s.Topics, config)
+	s.consumer, err = cluster.NewConsumer(s.Hosts, s.Group, s.Topics, config)
 	if err != nil {
 		return errors.Wrap(err, "getting new consumer")
 	}
@@ -80,18 +82,22 @@ func (s *KafkaSource) Open() error {
 	return nil
 }
 
-func (s *KafkaSource) Close() error {
+// Close closes the underlying kafka consumer.
+func (s *Source) Close() error {
 	err := s.consumer.Close()
 	return errors.Wrap(err, "closing kafka consumer")
 }
 
+// ConfluentSource implements pdk.Source using Kafka and the Confluent schema
+// registry.
 type ConfluentSource struct {
-	KafkaSource
+	Source
 	RegistryURL string
 	lock        sync.RWMutex
 	cache       map[int32]avro.Schema
 }
 
+// NewConfluentSource returns a new ConfluentSource.
 func NewConfluentSource() *ConfluentSource {
 	src := &ConfluentSource{
 		cache: make(map[int32]avro.Schema),
@@ -100,8 +106,9 @@ func NewConfluentSource() *ConfluentSource {
 	return src
 }
 
+// Record returns the next value from kafka.
 func (s *ConfluentSource) Record() (interface{}, error) {
-	rec, err := s.KafkaSource.Record()
+	rec, err := s.Source.Record()
 	if err != nil {
 		return rec, err
 	}
@@ -118,11 +125,11 @@ func (s *ConfluentSource) decodeAvroValueWithSchemaRegistry(val []byte) (interfa
 		return nil, errors.Errorf("unexpected magic byte or length in avro kafka value, should be 0x00, but got 0x%.8s", val)
 	}
 	id := int32(binary.BigEndian.Uint32(val[1:]))
-	codec, err := s.GetCodec(id)
+	codec, err := s.getCodec(id)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting avro codec")
 	}
-	ret, err := AvroDecode(codec, val[5:])
+	ret, err := avroDecode(codec, val[5:])
 	return ret, errors.Wrap(err, "decoding avro record")
 }
 
@@ -131,19 +138,19 @@ type Schema struct {
 	Schema  string `json:"schema"`  // The actual AVRO schema
 	Subject string `json:"subject"` // Subject where the schema is registered for
 	Version int    `json:"version"` // Version within this subject
-	Id      int    `json:"id"`      // Registry's unique id
+	ID      int    `json:"id"`      // Registry's unique id
 }
 
-func (p *ConfluentSource) GetCodec(id int32) (s avro.Schema, rerr error) {
-	p.lock.RLock()
-	if codec, ok := p.cache[id]; ok {
-		p.lock.RUnlock()
+func (s *ConfluentSource) getCodec(id int32) (rschema avro.Schema, rerr error) {
+	s.lock.RLock()
+	if codec, ok := s.cache[id]; ok {
+		s.lock.RUnlock()
 		return codec, nil
 	}
-	p.lock.RUnlock()
-	p.lock.Lock()
-	defer p.lock.Unlock()
-	r, err := http.Get(fmt.Sprintf("http://%s/schemas/ids/%d", p.RegistryURL, id))
+	s.lock.RUnlock()
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	r, err := http.Get(fmt.Sprintf("http://%s/schemas/ids/%d", s.RegistryURL, id))
 	if err != nil {
 		return nil, errors.Wrap(err, "getting schema from registry")
 	}
@@ -168,11 +175,11 @@ func (p *ConfluentSource) GetCodec(id int32) (s avro.Schema, rerr error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "parsing schema")
 	}
-	p.cache[id] = codec
+	s.cache[id] = codec
 	return codec, rerr
 }
 
-func AvroDecode(codec avro.Schema, data []byte) (map[string]interface{}, error) {
+func avroDecode(codec avro.Schema, data []byte) (map[string]interface{}, error) {
 	reader := avro.NewGenericDatumReader()
 	// SetSchema must be called before calling Read
 	reader.SetSchema(codec)

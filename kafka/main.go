@@ -1,26 +1,27 @@
-package ingest
+package kafka
 
 import (
 	"github.com/pilosa/pdk"
-	"github.com/pilosa/pdk/kafka"
 	"github.com/pkg/errors"
 )
 
+// Main holds the options for running Pilosa ingestion from Kafka.
 type Main struct {
-	KafkaHosts  []string
-	KafkaTopics []string
-	KafkaGroup  string
+	Hosts       []string
+	Topics      []string
+	Group       string
 	RegistryURL string
 	PilosaHosts []string
 	Index       string
 	BatchSize   uint
 }
 
+// NewMain returns a new Main.
 func NewMain() *Main {
 	return &Main{
-		KafkaHosts:  []string{"localhost:9092"},
-		KafkaTopics: []string{"test"},
-		KafkaGroup:  "group0",
+		Hosts:       []string{"localhost:9092"},
+		Topics:      []string{"test"},
+		Group:       "group0",
 		RegistryURL: "localhost:8081",
 		PilosaHosts: []string{"localhost:10101"},
 		Index:       "pdk",
@@ -28,26 +29,25 @@ func NewMain() *Main {
 	}
 }
 
+// Run begins indexing data from Kafka into Pilosa.
 func (m *Main) Run() error {
-	src := &kafka.KafkaSource{}
-	src.KafkaHosts = m.KafkaHosts
-	src.Topics = m.KafkaTopics
-	src.Group = m.KafkaGroup
+	src := &Source{}
+	src.Hosts = m.Hosts
+	src.Topics = m.Topics
+	src.Group = m.Group
 	if m.RegistryURL != "" {
 		src.Type = "json"
 	} else {
 		src.Type = "raw"
 	}
-	err := src.Open()
-	if err != nil {
+
+	if err := src.Open(); err != nil {
 		return errors.Wrap(err, "opening kafka source")
 	}
 
-	var parser pdk.Parrrser
-	parser = pdk.NewDefaultGenericParser()
+	parser := pdk.NewDefaultGenericParser()
 
-	var mapper pdk.Mapppper
-	mapper = pdk.NewCollapsingMapper()
+	mapper := pdk.NewCollapsingMapper()
 
 	indexer, err := pdk.SetupPilosa(m.PilosaHosts, m.Index, []pdk.FrameSpec{}, m.BatchSize)
 	if err != nil {
