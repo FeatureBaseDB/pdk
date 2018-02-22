@@ -155,13 +155,13 @@ func (i *Index) setupFrame(frame FrameSpec) error {
 		}
 		i.bitChans[frame.Name] = NewChanBitIterator()
 		i.importWG.Add(1)
-		go func(fram *pcli.Frame, frame FrameSpec) {
+		go func(fram *pcli.Frame, cbi ChanBitIterator) {
 			defer i.importWG.Done()
-			err := i.client.ImportFrame(fram, i.bitChans[frame.Name], i.batchSize)
+			err := i.client.ImportFrame(fram, cbi, i.batchSize)
 			if err != nil {
 				log.Println(errors.Wrapf(err, "starting frame import for %v", frame.Name))
 			}
-		}(fram, frame)
+		}(fram, i.bitChans[frame.Name])
 	} else {
 		fram, err = i.index.Frame(frame.Name, nil)
 		if err != nil {
@@ -182,13 +182,13 @@ func (i *Index) setupFrame(frame FrameSpec) error {
 			return errors.Wrapf(err, "creating field %#v", field)
 		}
 		i.importWG.Add(1)
-		go func(fram *pcli.Frame, frame FrameSpec, field FieldSpec) {
+		go func(fram *pcli.Frame, field FieldSpec, cvi ChanValIterator) {
 			defer i.importWG.Done()
-			err := i.client.ImportValueFrame(fram, field.Name, i.fieldChans[frame.Name][field.Name], i.batchSize)
+			err := i.client.ImportValueFrame(fram, field.Name, cvi, i.batchSize)
 			if err != nil {
 				log.Println(errors.Wrapf(err, "starting field import for %v", field))
 			}
-		}(fram, frame, field)
+		}(fram, field, i.fieldChans[frame.Name][field.Name])
 	}
 	return nil
 }
