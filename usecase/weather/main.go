@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"time"
 
-	pcli "github.com/pilosa/go-pilosa"
+	gopilosa "github.com/pilosa/go-pilosa"
 	"github.com/pilosa/pdk"
 	"github.com/pkg/errors"
 )
@@ -19,9 +19,9 @@ type Main struct {
 	URLFile     string
 
 	importer pdk.Indexer
-	client   *pcli.Client
-	frames   map[string]*pcli.Frame
-	index    *pcli.Index
+	client   *gopilosa.Client
+	frames   map[string]*gopilosa.Frame
+	index    *gopilosa.Index
 
 	WeatherCache *WeatherCache
 }
@@ -30,7 +30,7 @@ type Main struct {
 func NewMain() *Main {
 	m := &Main{
 		Concurrency:  1,
-		frames:       make(map[string]*pcli.Frame),
+		frames:       make(map[string]*gopilosa.Frame),
 		WeatherCache: NewWeatherCache(),
 	}
 	return m
@@ -125,13 +125,13 @@ func (m *Main) Run() (err error) {
 		return errors.Wrap(err, "setting up pilosa")
 	}
 
-	pilosaURI, err := pcli.NewURIFromAddress(m.PilosaHost)
+	pilosaURI, err := gopilosa.NewURIFromAddress(m.PilosaHost)
 	if err != nil {
 		return fmt.Errorf("interpreting pilosaHost '%v': %v", m.PilosaHost, err)
 	}
-	setupClient := pcli.NewClientWithURI(pilosaURI)
+	setupClient := gopilosa.NewClientWithURI(pilosaURI)
 	m.client = setupClient
-	index, err := pcli.NewIndex(m.Index)
+	index, err := gopilosa.NewIndex(m.Index)
 	m.index = index
 	if err != nil {
 		return fmt.Errorf("making index: %v", err)
@@ -141,7 +141,7 @@ func (m *Main) Run() (err error) {
 		return fmt.Errorf("ensuring index existence: %v", err)
 	}
 	for _, frame := range readFrames {
-		fram, err := index.Frame(frame, &pcli.FrameOptions{})
+		fram, err := index.Frame(frame, &gopilosa.FrameOptions{})
 		m.frames[frame] = fram
 		if err != nil {
 			return fmt.Errorf("making frame: %v", err)

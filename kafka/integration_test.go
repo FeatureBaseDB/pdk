@@ -15,7 +15,7 @@ import (
 	"testing"
 	"time"
 
-	pcli "github.com/pilosa/go-pilosa"
+	gopilosa "github.com/pilosa/go-pilosa"
 	"github.com/pilosa/pdk"
 	"github.com/pilosa/pdk/kafka"
 	"github.com/pilosa/pilosa/server"
@@ -108,7 +108,7 @@ func TestEverything(t *testing.T) {
 	}
 	<-done
 
-	cli, err := pcli.NewClientFromAddresses([]string{s.Server.Addr().String()}, nil)
+	cli, err := gopilosa.NewClientFromAddresses([]string{s.Server.Addr().String()}, nil)
 	if err != nil {
 		t.Fatalf("getting pilosa client: %v", err)
 	}

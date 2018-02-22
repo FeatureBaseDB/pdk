@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	pcli "github.com/pilosa/go-pilosa"
+	gopilosa "github.com/pilosa/go-pilosa"
 	"github.com/pilosa/pdk"
 	ptest "github.com/pilosa/pilosa/test"
 )
@@ -19,13 +19,13 @@ func TestSetupPilosa(t *testing.T) {
 	frames := []pdk.FrameSpec{
 		{
 			Name:           "frame1",
-			CacheType:      pcli.CacheTypeRanked,
+			CacheType:      gopilosa.CacheTypeRanked,
 			CacheSize:      17,
 			InverseEnabled: true,
 		},
 		{
 			Name:           "frame2",
-			CacheType:      pcli.CacheTypeLRU,
+			CacheType:      gopilosa.CacheTypeLRU,
 			CacheSize:      19,
 			InverseEnabled: false,
 		},
@@ -46,9 +46,9 @@ func TestSetupPilosa(t *testing.T) {
 		},
 		{
 			Name:        "frametime",
-			CacheType:   pcli.CacheTypeRanked,
+			CacheType:   gopilosa.CacheTypeRanked,
 			CacheSize:   100,
-			TimeQuantum: pcli.TimeQuantumYearMonthDay,
+			TimeQuantum: gopilosa.TimeQuantumYearMonthDay,
 		},
 	}
 
@@ -66,7 +66,7 @@ func TestSetupPilosa(t *testing.T) {
 		t.Fatalf("closing indexer: %v", err)
 	}
 
-	client, err := pcli.NewClientFromAddresses(hosts, nil)
+	client, err := gopilosa.NewClientFromAddresses(hosts, nil)
 	if err != nil {
 		t.Fatalf("getting client: %v", err)
 	}
