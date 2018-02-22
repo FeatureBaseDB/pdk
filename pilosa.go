@@ -6,51 +6,55 @@ import (
 	"sync"
 	"time"
 
-	pcli "github.com/pilosa/go-pilosa"
+	gopilosa "github.com/pilosa/go-pilosa"
 	"github.com/pkg/errors"
 )
 
+// Index holds the operating state for importing into a particular Pilosa index.
 type Index struct {
-	client    *pcli.Client
+	client    *gopilosa.Client
 	batchSize uint
 
 	lock       sync.RWMutex
-	index      *pcli.Index
+	index      *gopilosa.Index
 	importWG   sync.WaitGroup
-	bitChans   map[string]ChanBitIterator
-	fieldChans map[string]map[string]ChanValIterator
+	bitChans   map[string]chanBitIterator
+	fieldChans map[string]map[string]chanValIterator
 }
 
-func NewIndex() *Index {
+func newIndex() *Index {
 	return &Index{
-		bitChans:   make(map[string]ChanBitIterator),
-		fieldChans: make(map[string]map[string]ChanValIterator),
+		bitChans:   make(map[string]chanBitIterator),
+		fieldChans: make(map[string]map[string]chanValIterator),
 	}
 }
 
-func (i *Index) Client() *pcli.Client {
+// Client returns a Pilosa client.
+func (i *Index) Client() *gopilosa.Client {
 	return i.client
 }
 
+// AddBitTimestamp adds a bit to be imported to Pilosa with a timestamp.
 func (i *Index) AddBitTimestamp(frame string, row, col uint64, ts time.Time) {
 	i.addBit(frame, row, col, ts.UnixNano())
 }
 
+// AddBit adds a bit to be imported to Pilosa.
 func (i *Index) AddBit(frame string, col uint64, row uint64) {
 	i.addBit(frame, col, row, 0)
 }
 
 func (i *Index) addBit(frame string, col uint64, row uint64, ts int64) {
-	var c ChanBitIterator
+	var c chanBitIterator
 	var ok bool
 	i.lock.RLock()
 	if c, ok = i.bitChans[frame]; !ok {
 		i.lock.RUnlock()
 		i.lock.Lock()
 		defer i.lock.Unlock()
-		frameSpec := FrameSpec{Name: frame, CacheType: pcli.CacheTypeRanked, CacheSize: 100000}
+		frameSpec := FrameSpec{Name: frame, CacheType: gopilosa.CacheTypeRanked, CacheSize: 100000}
 		if ts != 0 {
-			frameSpec.TimeQuantum = pcli.TimeQuantumYearMonthDayHour
+			frameSpec.TimeQuantum = gopilosa.TimeQuantumYearMonthDayHour
 		}
 		err := i.setupFrame(frameSpec)
 		if err != nil {
@@ -61,11 +65,12 @@ func (i *Index) addBit(frame string, col uint64, row uint64, ts int64) {
 	} else {
 		i.lock.RUnlock()
 	}
-	c <- pcli.Bit{RowID: row, ColumnID: col, Timestamp: ts}
+	c <- gopilosa.Bit{RowID: row, ColumnID: col, Timestamp: ts}
 }
 
+// AddValue adds a value to be imported to Pilosa.
 func (i *Index) AddValue(frame, field string, col uint64, val int64) {
-	var c ChanValIterator
+	var c chanValIterator
 	i.lock.RLock()
 	fieldmap, ok := i.fieldChans[frame]
 	if ok {
@@ -77,7 +82,7 @@ func (i *Index) AddValue(frame, field string, col uint64, val int64) {
 		defer i.lock.Unlock()
 		err := i.setupFrame(FrameSpec{
 			Name:      frame,
-			CacheType: pcli.CacheTypeRanked,
+			CacheType: gopilosa.CacheTypeRanked,
 			CacheSize: 1000,
 			Fields: []FieldSpec{
 				{
@@ -94,9 +99,11 @@ func (i *Index) AddValue(frame, field string, col uint64, val int64) {
 	} else {
 		i.lock.RUnlock()
 	}
-	c <- pcli.FieldValue{ColumnID: col, Value: val}
+	c <- gopilosa.FieldValue{ColumnID: col, Value: val}
 }
 
+// Close ensures that all ongoing imports have finished and cleans up internal
+// state.
 func (i *Index) Close() error {
 	for _, cbi := range i.bitChans {
 		close(cbi)
@@ -110,17 +117,18 @@ func (i *Index) Close() error {
 	return nil
 }
 
+// FrameSpec holds a frame name and options.
 type FrameSpec struct {
 	Name           string
-	CacheType      pcli.CacheType
+	CacheType      gopilosa.CacheType
 	CacheSize      uint
 	InverseEnabled bool
-	TimeQuantum    pcli.TimeQuantum
+	TimeQuantum    gopilosa.TimeQuantum
 	Fields         []FieldSpec
 }
 
-func (f FrameSpec) ToOptions() *pcli.FrameOptions {
-	return &pcli.FrameOptions{
+func (f FrameSpec) toOptions() *gopilosa.FrameOptions {
+	return &gopilosa.FrameOptions{
 		TimeQuantum:    f.TimeQuantum,
 		CacheType:      f.CacheType,
 		CacheSize:      f.CacheSize,
@@ -129,16 +137,19 @@ func (f FrameSpec) ToOptions() *pcli.FrameOptions {
 	}
 }
 
+// FieldSpec holds a field name and options.
 type FieldSpec struct {
 	Name string
 	Min  int
 	Max  int
 }
 
+// NewRankedFrameSpec returns a new FrameSpec with the cache type ranked and the
+// given name and size.
 func NewRankedFrameSpec(name string, size int) FrameSpec {
 	fs := FrameSpec{
 		Name:      name,
-		CacheType: pcli.CacheTypeRanked,
+		CacheType: gopilosa.CacheTypeRanked,
 		CacheSize: uint(size),
 	}
 	return fs
@@ -149,7 +160,7 @@ func NewRankedFrameSpec(name string, size int) FrameSpec {
 func NewFieldFrameSpec(name string, min int, max int) FrameSpec {
 	fs := FrameSpec{
 		Name:      name,
-		CacheType: pcli.CacheType(""),
+		CacheType: gopilosa.CacheType(""),
 		CacheSize: 0,
 		Fields:    []FieldSpec{{Name: name, Min: min, Max: max}},
 	}
@@ -161,10 +172,10 @@ func NewFieldFrameSpec(name string, min int, max int) FrameSpec {
 // threadsafe - callers must hold i.lock.Lock() or guarantee that they have
 // exclusive access to Index before calling.
 func (i *Index) setupFrame(frame FrameSpec) error {
-	var fram *pcli.Frame
+	var fram *gopilosa.Frame
 	var err error
 	if _, ok := i.bitChans[frame.Name]; !ok {
-		fram, err = i.index.Frame(frame.Name, frame.ToOptions())
+		fram, err = i.index.Frame(frame.Name, frame.toOptions())
 		if err != nil {
 			return errors.Wrapf(err, "making frame: %v", frame.Name)
 		}
@@ -172,9 +183,9 @@ func (i *Index) setupFrame(frame FrameSpec) error {
 		if err != nil {
 			return errors.Wrapf(err, "creating frame '%v'", frame)
 		}
-		i.bitChans[frame.Name] = NewChanBitIterator()
+		i.bitChans[frame.Name] = newChanBitIterator()
 		i.importWG.Add(1)
-		go func(fram *pcli.Frame, cbi ChanBitIterator) {
+		go func(fram *gopilosa.Frame, cbi chanBitIterator) {
 			defer i.importWG.Done()
 			err := i.client.ImportFrame(fram, cbi, i.batchSize)
 			if err != nil {
@@ -188,20 +199,20 @@ func (i *Index) setupFrame(frame FrameSpec) error {
 		}
 	}
 	if _, ok := i.fieldChans[frame.Name]; !ok {
-		i.fieldChans[frame.Name] = make(map[string]ChanValIterator)
+		i.fieldChans[frame.Name] = make(map[string]chanValIterator)
 	}
 
 	for _, field := range frame.Fields {
 		if _, ok := i.fieldChans[frame.Name][field.Name]; ok {
 			continue // valChan for this field exists, so importer should already be running.
 		}
-		i.fieldChans[frame.Name][field.Name] = NewChanValIterator()
+		i.fieldChans[frame.Name][field.Name] = newChanValIterator()
 		err := i.ensureField(fram, field)
 		if err != nil {
 			return errors.Wrapf(err, "creating field %#v", field)
 		}
 		i.importWG.Add(1)
-		go func(fram *pcli.Frame, field FieldSpec, cvi ChanValIterator) {
+		go func(fram *gopilosa.Frame, field FieldSpec, cvi chanValIterator) {
 			defer i.importWG.Done()
 			err := i.client.ImportValueFrame(fram, field.Name, cvi, i.batchSize)
 			if err != nil {
@@ -212,7 +223,7 @@ func (i *Index) setupFrame(frame FrameSpec) error {
 	return nil
 }
 
-func (i *Index) ensureField(frame *pcli.Frame, fieldSpec FieldSpec) error {
+func (i *Index) ensureField(frame *gopilosa.Frame, fieldSpec FieldSpec) error {
 	if _, exists := frame.Fields()[fieldSpec.Name]; exists {
 		return nil
 	}
@@ -220,11 +231,12 @@ func (i *Index) ensureField(frame *pcli.Frame, fieldSpec FieldSpec) error {
 	return errors.Wrapf(err, "creating field %#v", fieldSpec)
 }
 
+// SetupPilosa returns a new Indexer after creating the given frames and starting importers.
 func SetupPilosa(hosts []string, index string, frames []FrameSpec, batchsize uint) (Indexer, error) {
-	indexer := NewIndex()
+	indexer := newIndex()
 	indexer.batchSize = batchsize
-	client, err := pcli.NewClientFromAddresses(hosts,
-		&pcli.ClientOptions{SocketTimeout: time.Minute * 60,
+	client, err := gopilosa.NewClientFromAddresses(hosts,
+		&gopilosa.ClientOptions{SocketTimeout: time.Minute * 60,
 			ConnectTimeout: time.Second * 60,
 		})
 	if err != nil {
@@ -257,13 +269,13 @@ func SetupPilosa(hosts []string, index string, frames []FrameSpec, batchsize uin
 	return indexer, nil
 }
 
-func NewChanBitIterator() ChanBitIterator {
-	return make(chan pcli.Bit, 200000)
+func newChanBitIterator() chanBitIterator {
+	return make(chan gopilosa.Bit, 200000)
 }
 
-type ChanBitIterator chan pcli.Bit
+type chanBitIterator chan gopilosa.Bit
 
-func (c ChanBitIterator) NextBit() (pcli.Bit, error) {
+func (c chanBitIterator) NextBit() (gopilosa.Bit, error) {
 	b, ok := <-c
 	if !ok {
 		return b, io.EOF
@@ -271,13 +283,13 @@ func (c ChanBitIterator) NextBit() (pcli.Bit, error) {
 	return b, nil
 }
 
-func NewChanValIterator() ChanValIterator {
-	return make(chan pcli.FieldValue, 200000)
+func newChanValIterator() chanValIterator {
+	return make(chan gopilosa.FieldValue, 200000)
 }
 
-type ChanValIterator chan pcli.FieldValue
+type chanValIterator chan gopilosa.FieldValue
 
-func (c ChanValIterator) NextValue() (pcli.FieldValue, error) {
+func (c chanValIterator) NextValue() (gopilosa.FieldValue, error) {
 	b, ok := <-c
 	if !ok {
 		return b, io.EOF
