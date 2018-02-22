@@ -17,7 +17,7 @@ import (
 
 var _ pdk.Translator = &Translator{}
 
-// Translator is a Translator which stores the two way val/id mapping in
+// Translator is a pdk.Translator which stores the two way val/id mapping in
 // leveldb.
 type Translator struct {
 	lock    sync.RWMutex
@@ -25,16 +25,17 @@ type Translator struct {
 	frames  map[string]*FrameTranslator
 }
 
+// FrameTranslator is a pdk.FrameTranslator which uses leveldb.
 type FrameTranslator struct {
-	lock   ValueLocker
+	lock   valueLocker
 	idMap  *leveldb.DB
 	valMap *leveldb.DB
 	curID  *uint64
 }
 
-type Errors []error
+type errorList []error
 
-func (errs Errors) Error() string {
+func (errs errorList) Error() string {
 	errstrings := make([]string, len(errs))
 	for i, err := range errs {
 		errstrings[i] = err.Error()
@@ -44,7 +45,7 @@ func (errs Errors) Error() string {
 
 // Close closes all of the underlying leveldb instances.
 func (lt *Translator) Close() error {
-	errs := make(Errors, 0)
+	errs := make(errorList, 0)
 	for f, lft := range lt.frames {
 		err := lft.Close()
 		if err != nil {
@@ -59,7 +60,7 @@ func (lt *Translator) Close() error {
 
 // Close closes the two leveldbs used by the FrameTranslator.
 func (lft *FrameTranslator) Close() error {
-	errs := make(Errors, 0)
+	errs := make(errorList, 0)
 	err := lft.idMap.Close()
 	if err != nil {
 		errs = append(errs, errors.Wrap(err, "closing idMap"))
@@ -102,10 +103,10 @@ func NewFrameTranslator(dirname string, frame string) (*FrameTranslator, error) 
 	if err != nil {
 		return nil, errors.Wrap(err, "making directory")
 	}
-	var initialID uint64 = 0
+	var initialID uint64
 	mdbs := &FrameTranslator{
 		curID: &initialID,
-		lock:  NewBucketVLock(),
+		lock:  newBucketVLock(),
 	}
 	mdbs.idMap, err = leveldb.OpenFile(dirname+"/"+frame+"-id", &opt.Options{})
 	if err != nil {
@@ -118,6 +119,7 @@ func NewFrameTranslator(dirname string, frame string) (*FrameTranslator, error) 
 	return mdbs, nil
 }
 
+// NewTranslator gets a new Translator.
 func NewTranslator(dirname string, frames ...string) (lt *Translator, err error) {
 	lt = &Translator{
 		dirname: dirname,
@@ -133,6 +135,7 @@ func NewTranslator(dirname string, frames ...string) (lt *Translator, err error)
 	return lt, err
 }
 
+// Get returns the value mapped to the given id in the given frame.
 func (lt *Translator) Get(frame string, id uint64) (val interface{}, err error) {
 	lft, err := lt.getFrameTranslator(frame)
 	if err != nil {
@@ -142,6 +145,7 @@ func (lt *Translator) Get(frame string, id uint64) (val interface{}, err error) 
 	return val, err
 }
 
+// Get returns the value mapped to the given id.
 func (lft *FrameTranslator) Get(id uint64) (val interface{}, err error) {
 	idBytes := make([]byte, 8)
 	binary.BigEndian.PutUint64(idBytes, id)
@@ -152,6 +156,8 @@ func (lft *FrameTranslator) Get(id uint64) (val interface{}, err error) {
 	return pdk.FromBytes(data), nil
 }
 
+// GetID returns the integer id associated with the given value in the given
+// frame. It allocates a new ID if the value is not found.
 func (lt *Translator) GetID(frame string, val interface{}) (id uint64, err error) {
 	lft, err := lt.getFrameTranslator(frame)
 	if err != nil {
@@ -160,6 +166,8 @@ func (lt *Translator) GetID(frame string, val interface{}) (id uint64, err error
 	return lft.GetID(val)
 }
 
+// GetID returns the integer id associated with the given value. It allocates a
+// new ID if the value is not found.
 func (lft *FrameTranslator) GetID(val interface{}) (id uint64, err error) {
 	var vall pdk.Literal
 	switch valt := val.(type) {
@@ -210,46 +218,46 @@ func (lft *FrameTranslator) GetID(val interface{}) (id uint64, err error) {
 	return new - 1, nil
 }
 
-type ValueLocker interface {
+type valueLocker interface {
 	Lock(val []byte)
 	Unlock(val []byte)
 }
 
-type SingleVLock struct {
+type singleVLock struct {
 	m *sync.Mutex
 }
 
-func NewSingleVLock() SingleVLock {
-	return SingleVLock{
+func newSingleVLock() singleVLock {
+	return singleVLock{
 		m: &sync.Mutex{},
 	}
 }
 
-func (s SingleVLock) Lock(val []byte) {
+func (s singleVLock) Lock(val []byte) {
 	s.m.Lock()
 }
 
-func (s SingleVLock) Unlock(val []byte) {
+func (s singleVLock) Unlock(val []byte) {
 	s.m.Unlock()
 }
 
-type BucketVLock struct {
+type bucketVLock struct {
 	ms []sync.Mutex
 }
 
-func NewBucketVLock() BucketVLock {
-	return BucketVLock{
+func newBucketVLock() bucketVLock {
+	return bucketVLock{
 		ms: make([]sync.Mutex, 1000),
 	}
 }
 
-func (b BucketVLock) Lock(val []byte) {
+func (b bucketVLock) Lock(val []byte) {
 	hsh := fnv.New32a()
 	hsh.Write(val) // never returns error for hash
 	b.ms[hsh.Sum32()%1000].Lock()
 }
 
-func (b BucketVLock) Unlock(val []byte) {
+func (b bucketVLock) Unlock(val []byte) {
 	hsh := fnv.New32a()
 	hsh.Write(val) // never returns error for hash
 	b.ms[hsh.Sum32()%1000].Unlock()

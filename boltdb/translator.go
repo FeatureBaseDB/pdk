@@ -1,3 +1,7 @@
+// Package boltdb provides a pdk.Translator implementation using boltdb. BoltDB
+// is great, but this package is not particularly well-used or tested, and it is
+// recommended that one use the leveldb translator instead which has better
+// write performance.
 package boltdb
 
 import (
@@ -23,6 +27,7 @@ type Translator struct {
 	frames map[string]struct{}
 }
 
+// Close syncs and closes the underlying boltdb.
 func (bt *Translator) Close() error {
 	err := bt.Db.Sync()
 	if err != nil {
@@ -31,6 +36,7 @@ func (bt *Translator) Close() error {
 	return bt.Db.Close()
 }
 
+// NewTranslator gets a new Translator
 func NewTranslator(filename string, frames ...string) (bt *Translator, err error) {
 	bt = &Translator{
 		frames: make(map[string]struct{}),
@@ -161,6 +167,7 @@ func (bt *Translator) GetID(frame string, val interface{}) (id uint64, err error
 	return id, nil
 }
 
+// BulkAdd adds many values to a frame at once, allocating ids.
 func (bt *Translator) BulkAdd(frame string, values [][]byte) error {
 	var batchSize uint64 = 10000
 	var batch uint64 = 0
