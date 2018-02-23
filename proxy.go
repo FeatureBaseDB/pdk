@@ -12,15 +12,8 @@ import (
 
 	"github.com/pilosa/pilosa"
 	"github.com/pilosa/pilosa/pql"
+	"github.com/pkg/errors"
 )
-
-// Translator describes the functionality which the proxy server requires to
-// translate row ids to what they were mapped from.
-type Translator interface {
-	// Get must be safe for concurrent access
-	Get(frame string, id uint64) interface{}
-	GetID(frame string, val interface{}) (uint64, error)
-}
 
 // KeyMapper describes the functionality for mapping the keys contained
 // in requests and responses.
@@ -172,6 +165,7 @@ type PilosaKeyMapper struct {
 	t Translator
 }
 
+// NewPilosaKeyMapper returns a PilosaKeyMapper.
 func NewPilosaKeyMapper(t Translator) *PilosaKeyMapper {
 	return &PilosaKeyMapper{
 		t: t,
@@ -203,7 +197,11 @@ func (p *PilosaKeyMapper) MapResult(frame string, res interface{}) (mappedRes in
 				if !(isKeyFloat && isCountFloat) {
 					return nil, fmt.Errorf("expected pilosa.Pair, but have wrong value types: got %v", pair)
 				}
-				keyVal := p.t.Get(frame, uint64(keyFloat))
+				keyVal, err := p.t.Get(frame, uint64(keyFloat))
+				if err != nil {
+					return nil, errors.Wrap(err, "translator.Get")
+				}
+
 				switch kv := keyVal.(type) {
 				case []byte:
 					mr[i].Key = string(kv)
@@ -229,6 +227,7 @@ func (p *PilosaKeyMapper) MapResult(frame string, res interface{}) (mappedRes in
 	return mappedRes, nil
 }
 
+// MapRequest takes a request body and returns a mapped version of that body.
 func (p *PilosaKeyMapper) MapRequest(body []byte) ([]byte, error) {
 	query, err := pql.ParseString(string(body))
 	if err != nil {

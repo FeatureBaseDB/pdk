@@ -2,41 +2,43 @@ package ssb
 
 import (
 	"fmt"
-	"log"
 
-	"github.com/pilosa/pdk"
+	"github.com/pilosa/pdk/leveldb"
+	"github.com/pkg/errors"
 )
 
-type Translator struct {
-	lt *pdk.LevelTranslator
+type translator struct {
+	lt *leveldb.Translator
 }
 
-func NewTranslator(storedir string) (*Translator, error) {
-	lt, err := pdk.NewLevelTranslator(storedir, []string{"c_city", "c_nation", "c_region", "s_city", "s_nation", "s_region", "p_mfgr", "p_category", "p_brand1"}...)
+func newTranslator(storedir string) (*translator, error) {
+	lt, err := leveldb.NewTranslator(storedir, []string{"c_city", "c_nation", "c_region", "s_city", "s_nation", "s_region", "p_mfgr", "p_category", "p_brand1"}...)
 	if err != nil {
 		return nil, err
 	}
-	return &Translator{
+	return &translator{
 		lt: lt,
 	}, nil
 }
 
-func (t *Translator) Get(frame string, id uint64) interface{} {
+func (t *translator) Get(frame string, id uint64) (interface{}, error) {
 	switch frame {
 	case "c_city", "c_nation", "c_region", "s_city", "s_nation", "s_region", "p_mfgr", "p_category", "p_brand1":
-		val := t.lt.Get(frame, id)
-		return string(val.([]byte))
+		val, err := t.lt.Get(frame, id)
+		if err != nil {
+			return nil, errors.Wrap(err, "string from level translator")
+		}
+		return string(val.([]byte)), nil
 	case "lo_month":
-		return monthsSlice[id]
+		return monthsSlice[id], nil
 	case "lo_weeknum", "lo_year", "lo_quantity_b", "lo_discount_b":
-		return id
+		return id, nil
 	default:
-		log.Printf("Unimplemented in ssb.Translator.Get frame: %v, id: %v", frame, id)
-		return nil
+		return nil, errors.Errorf("Unimplemented in ssb.Translator.Get frame: %v, id: %v", frame, id)
 	}
 }
 
-func (t *Translator) GetID(frame string, val interface{}) (uint64, error) {
+func (t *translator) GetID(frame string, val interface{}) (uint64, error) {
 	switch frame {
 	case "c_city", "c_nation", "c_region", "s_city", "s_nation", "s_region", "p_mfgr", "p_category", "p_brand1":
 		return t.lt.GetID(frame, []byte(val.(string)))

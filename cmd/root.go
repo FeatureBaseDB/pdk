@@ -11,7 +11,9 @@ import (
 )
 
 var (
-	Version   string
+	// Version of this software - filled in by ldflags in Makefile.
+	Version string
+	// BuildTime of this software - filled in by ldflags in Makefile.
 	BuildTime string
 )
 
@@ -26,6 +28,8 @@ func setupVersionBuild() {
 
 var subcommandFns = map[string]func(stdin io.Reader, stdout, stderr io.Writer) *cobra.Command{}
 
+// NewRootCommand reads the map of subcommandFns and creates a top level cobra
+// command with each of them as subcommands.
 func NewRootCommand(stdin io.Reader, stdout, stderr io.Writer) *cobra.Command {
 	setupVersionBuild()
 	rc := &cobra.Command{
@@ -39,11 +43,7 @@ Version: ` + Version + `
 Build Time: ` + BuildTime + "\n",
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			v := viper.New()
-			err := setAllConfig(v, cmd.Flags(), "PDK")
-			if err != nil {
-				return err
-			}
-			return nil
+			return setAllConfig(v, cmd.Flags(), "PDK")
 		},
 	}
 	for _, subcomFn := range subcommandFns {

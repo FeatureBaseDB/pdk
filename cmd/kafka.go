@@ -1,58 +1,45 @@
 package cmd
 
 import (
-	"fmt"
 	"io"
-	"os"
-	"os/signal"
+	"log"
+	"time"
 
 	"github.com/pilosa/pdk/kafka"
 	"github.com/spf13/cobra"
 )
 
-var KafkaSource *kafka.Source
+// KafkaMain is wrapped by NewKafkaCommand and only exported for testing
+// purposes.
+var KafkaMain *kafka.Main
 
+// NewKafkaCommand returns a new cobra command wrapping KafkaMain.
 func NewKafkaCommand(stdin io.Reader, stdout, stderr io.Writer) *cobra.Command {
-	KafkaSource = kafka.NewSource()
+	var err error
+	KafkaMain = kafka.NewMain()
 	kafkaCommand := &cobra.Command{
 		Use:   "kafka",
-		Short: "kafka - read from kafka using the PDK kafka.Source.",
-		Long: `The kakfa subcommand essentially exists to allow one to test the PDK's Kafka
-functionality. The PDK contains an implementation of its Source interface which
-reads records from Kafka. This command uses that and prints the records to
-stdout.
-`,
+		Short: "kafka - index data from kafka in Pilosa",
+		Long:  `TODO`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			err := KafkaSource.Open()
+			start := time.Now()
+			err = KafkaMain.Run()
 			if err != nil {
 				return err
 			}
-			signals := make(chan os.Signal, 1)
-			signal.Notify(signals, os.Interrupt)
-			go func() {
-				<-signals
-				err := KafkaSource.Close()
-				if err != nil {
-				}
-			}()
-			for {
-				rec, err := KafkaSource.Record()
-				if err != nil {
-					return err
-				}
-				val, err := kafka.Decode(rec)
-				if err != nil {
-					return err
-				}
-				fmt.Fprintf(stdout, "Key: '%s', Val: '%s', Timestamp: '%s'\n", val.Key, val.Value, val.Timestamp)
-			}
-			return nil
+			log.Println("Done: ", time.Since(start))
+			select {}
 		},
 	}
 	flags := kafkaCommand.Flags()
-	flags.StringSliceVarP(&KafkaSource.KafkaHosts, "kafka-hosts", "k", []string{"localhost:9092"}, "Kafka cluster.")
-	flags.StringSliceVarP(&KafkaSource.Topics, "topics", "t", []string{"test"}, "Topics to consume from Kafka.")
-	flags.StringVarP(&KafkaSource.Group, "group", "g", "group0", "Group id to use when consuming from Kafka.")
+	flags.StringSliceVarP(&KafkaMain.Hosts, "hosts", "k", KafkaMain.Hosts, "Comma separated list of  kafka cluster host:port.")
+	flags.StringSliceVarP(&KafkaMain.Topics, "topics", "t", KafkaMain.Topics, "Comma separated list of kafka topics.")
+	flags.StringVarP(&KafkaMain.Group, "group", "g", KafkaMain.Group, "Group id to use when consuming from Kafka.")
+	flags.StringVarP(&KafkaMain.RegistryURL, "registry-url", "r", KafkaMain.RegistryURL, "Schema registry URL.")
+	flags.StringSliceVarP(&KafkaMain.PilosaHosts, "pilosa-hosts", "p", KafkaMain.PilosaHosts, "Pilosa cluster.")
+	flags.StringVarP(&KafkaMain.Index, "index", "i", KafkaMain.Index, "Index to use in Pilosa.")
+	flags.UintVarP(&KafkaMain.BatchSize, "batch-size", "b", KafkaMain.BatchSize, "Number of bits or values to buffer before importing into Pilosa (per frame).")
+
 	return kafkaCommand
 }
 

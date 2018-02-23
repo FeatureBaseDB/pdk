@@ -22,33 +22,10 @@
 
 
 [[constraint]]
-  name = "github.com/google/gopacket"
-  version = "1.1.12"
-
-[[constraint]]
-  name = "github.com/pilosa/go-pilosa"
-  branch = "master"
-
-[[constraint]]
   name = "github.com/pilosa/pilosa"
   branch = "master"
 
 [[constraint]]
-  name = "github.com/pkg/errors"
-  version = "0.8.0"
-
-[[constraint]]
-  branch = "master"
-  name = "github.com/spf13/cobra"
-
-[[constraint]]
-  name = "github.com/spf13/pflag"
-  version = "=1.0.0"
-
-[[constraint]]
-  name = "github.com/spf13/viper"
-  version = "=1.0.0"
-
-[[constraint]]
-  branch = "master"
-  name = "github.com/syndtr/goleveldb"
+  name = "github.com/pilosa/go-pilosa"
+  source = "github.com/yuce/go-pilosa"
+  branch = "consolidate-master-cluster-resize"

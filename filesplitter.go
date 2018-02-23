@@ -7,12 +7,15 @@ import (
 	"github.com/pkg/errors"
 )
 
+// FileFragment implements io.ReadCloser for part of a file.
 type FileFragment struct {
 	file     *os.File
 	startLoc int64
 	endLoc   int64
 }
 
+// NewFileFragment returns a FileFragment which will read only from startLoc to
+// endLoc in a file.
 func NewFileFragment(f *os.File, startLoc, endLoc int64) (*FileFragment, error) {
 	thisF, err := os.Open(f.Name())
 	if err != nil {
@@ -29,6 +32,7 @@ func NewFileFragment(f *os.File, startLoc, endLoc int64) (*FileFragment, error) 
 	}, nil
 }
 
+// Read implements io.Reader for FileFragment.
 func (ff *FileFragment) Read(b []byte) (n int, err error) {
 	offset, err := ff.file.Seek(0, io.SeekCurrent)
 	if err != nil {
@@ -45,10 +49,14 @@ func (ff *FileFragment) Read(b []byte) (n int, err error) {
 	return ff.file.Read(b)
 }
 
+// Close implements io.Closer for a FileFragment.
 func (ff *FileFragment) Close() error {
 	return nil // TODO
 }
 
+// SplitFileLines returns a slice of file fragments which is numParts in length.
+// Each FileFragment will read a different section of the file, but the split
+// points are guaranteed to be on line breaks.
 func SplitFileLines(f *os.File, numParts int64) ([]*FileFragment, error) {
 	stats, err := f.Stat()
 	if err != nil {
@@ -57,7 +65,7 @@ func SplitFileLines(f *os.File, numParts int64) ([]*FileFragment, error) {
 	splitSize := stats.Size() / numParts
 
 	ret := make([]*FileFragment, 0)
-	var startLoc int64 = 0
+	var startLoc int64
 	for {
 		endLoc, errSeek := seekAndSearch(f, splitSize, '\n')
 		if errSeek != nil && errSeek != io.EOF {
