@@ -266,7 +266,6 @@
   name = "github.com/pilosa/pilosa"
   packages = [
     ".",
-    "ctl",
     "diagnostics",
     "gossip",
     "internal",
@@ -277,7 +276,7 @@
     "statsd",
     "test"
   ]
-  revision = "cd5dd9bfd084d00a80ad3cb1c9c32aae6d00b22d"
+  revision = "fcfc54eeeba6f9b486b71520b95d678f4c36d67a"
 
 [[projects]]
   name = "github.com/pkg/errors"
@@ -312,13 +311,21 @@
 [[projects]]
   name = "github.com/shirou/gopsutil"
   packages = [
+    "cpu",
     "host",
     "internal/common",
     "mem",
+    "net",
     "process"
   ]
   revision = "c432be29ccce470088d07eea25b3ea7e68a8afbb"
   version = "v2.18.01"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/shirou/w32"
+  packages = ["."]
+  revision = "bb4de0191aa41b5507caa14b0650cdbddcd9280b"
 
 [[projects]]
   name = "github.com/sony/gobreaker"
@@ -443,6 +450,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "b368792c82a7fcfd7a228358ba6c50b38b2f82d894635ecba25f1c8d5c0d0aa9"
+  inputs-digest = "968c3d8158bfe06ae50245ab60f0b7b4ed03ed5bae3078206308c4df42f8dc05"
   solver-name = "gps-cdcl"
   solver-version = 1
