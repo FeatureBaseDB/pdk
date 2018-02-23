@@ -5,6 +5,8 @@ import (
 	"testing"
 )
 
+// MustBe uses reflect.DeepEqual to assert that thing1 and thing2 are equal, and
+// fails otherwise.
 func MustBe(t *testing.T, thing1, thing2 interface{}, context ...string) {
 	var ctx string
 	if len(context) == 0 {
@@ -17,12 +19,14 @@ func MustBe(t *testing.T, thing1, thing2 interface{}, context ...string) {
 	}
 }
 
+// ErrNil asserts that the err is nil and fails otherwise.
 func ErrNil(t *testing.T, err error, ctx string) {
 	if err != nil {
 		t.Fatalf("%v: %v", ctx, err)
 	}
 }
 
+// Uint64Slice implements the sorting interface on []uint64.
 type Uint64Slice []uint64
 
 func (p Uint64Slice) Len() int           { return len(p) }

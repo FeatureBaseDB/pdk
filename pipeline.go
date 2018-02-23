@@ -12,18 +12,18 @@ type Source interface {
 	Record() (interface{}, error)
 }
 
-// Parser is the interface for turning raw records from Source into Go objects.
-// Implementations of Parser should be thread safe. The current naming is a
-// temporary workaround until the previous Parser interface can be deprecated.
-type Parrrser interface {
+// RecordParser is the interface for turning raw records from Source into Go
+// objects. Implementations of Parser should be thread safe.
+type RecordParser interface {
 	Parse(data interface{}) (*Entity, error)
 }
 
-// Mapper is the interface for taking parsed records from the Parser and
-// figuring out what bits and values to set in Pilosa. Mappers usually have a
-// Translator and a Nexter for converting arbitrary values to monotonic integer
-// ids and generating column ids respectively.
-type Mapppper interface {
+// RecordMapper is the interface for taking parsed records from the Parser and
+// figuring out what bits and values to set in Pilosa. RecordMappers usually
+// have a Translator and a Nexter for converting arbitrary values to monotonic
+// integer ids and generating column ids respectively. Implementations should be
+// thread safe.
+type RecordMapper interface {
 	Map(record *Entity) (PilosaRecord, error)
 }
 

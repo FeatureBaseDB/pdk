@@ -4,6 +4,8 @@ import (
 	"sync/atomic"
 )
 
+// INexter is the horribly named interface for threadsafe, monotonic,
+// sequential, unique ID generation.
 type INexter interface {
 	Next() uint64
 	Last() uint64

@@ -139,7 +139,7 @@ func (bt *Translator) GetID(frame string, val interface{}) (id uint64, err error
 		ret = fvb.Get(bsval)
 		return nil
 	})
-	if ret != nil && len(ret) == 8 {
+	if len(ret) == 8 {
 		return binary.BigEndian.Uint64(ret), nil
 	}
 
@@ -148,7 +148,10 @@ func (bt *Translator) GetID(frame string, val interface{}) (id uint64, err error
 		fib := tx.Bucket(idBucket).Bucket([]byte(frame))
 		fvb := tx.Bucket(valBucket).Bucket([]byte(frame))
 
-		id, _ = fib.NextSequence()
+		id, err = fib.NextSequence()
+		if err != nil {
+			return err
+		}
 		keybytes := make([]byte, 8)
 		binary.BigEndian.PutUint64(keybytes, id)
 		err = fib.Put(keybytes, bsval)
@@ -170,7 +173,7 @@ func (bt *Translator) GetID(frame string, val interface{}) (id uint64, err error
 // BulkAdd adds many values to a frame at once, allocating ids.
 func (bt *Translator) BulkAdd(frame string, values [][]byte) error {
 	var batchSize uint64 = 10000
-	var batch uint64 = 0
+	var batch uint64
 	for batch*batchSize < uint64(len(values)) {
 		err := bt.Db.Batch(func(tx *bolt.Tx) error {
 			fib := tx.Bucket(idBucket).Bucket([]byte(frame))

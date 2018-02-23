@@ -15,12 +15,13 @@ type Ingester struct {
 	ParseConcurrency int
 
 	src     Source
-	parser  Parrrser
-	mapper  Mapppper
+	parser  RecordParser
+	mapper  RecordMapper
 	indexer Indexer
 }
 
-func NewIngester(source Source, parser Parrrser, mapper Mapppper, indexer Indexer) *Ingester {
+// NewIngester gets a new Ingester.
+func NewIngester(source Source, parser RecordParser, mapper RecordMapper, indexer Indexer) *Ingester {
 	return &Ingester{
 		ParseConcurrency: 1,
 		src:              source,
@@ -30,17 +31,18 @@ func NewIngester(source Source, parser Parrrser, mapper Mapppper, indexer Indexe
 	}
 }
 
+// Run runs the ingest.
 func (n *Ingester) Run() error {
 	pwg := sync.WaitGroup{}
 	for i := 0; i < n.ParseConcurrency; i++ {
 		pwg.Add(1)
 		go func() {
 			defer pwg.Done()
-			var err error
+			var recordErr error
 			for {
 				var rec interface{}
-				rec, err = n.src.Record()
-				if err != nil {
+				rec, recordErr = n.src.Record()
+				if recordErr != nil {
 					break
 				}
 				val, err := n.parser.Parse(rec)
@@ -60,8 +62,8 @@ func (n *Ingester) Run() error {
 					n.indexer.AddValue(val.Frame, val.Field, pr.Col, val.Value)
 				}
 			}
-			if err != io.EOF && err != nil {
-				log.Printf("error in ingest run loop: %v", err)
+			if recordErr != io.EOF && recordErr != nil {
+				log.Printf("error in ingest run loop: %v", recordErr)
 			}
 		}()
 	}

@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// NewHTTPCommand returns a new cobra command which wraps http.Main
 func NewHTTPCommand(stdin io.Reader, stdout, stderr io.Writer) *cobra.Command {
 	com, err := cobrafy.Command(http.NewMain())
 	if err != nil {

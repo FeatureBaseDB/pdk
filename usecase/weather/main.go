@@ -23,7 +23,7 @@ type Main struct {
 	frames   map[string]*gopilosa.Frame
 	index    *gopilosa.Index
 
-	WeatherCache *WeatherCache
+	WeatherCache *weatherCache
 }
 
 // NewMain returns a new Main.
@@ -31,7 +31,7 @@ func NewMain() *Main {
 	m := &Main{
 		Concurrency:  1,
 		frames:       make(map[string]*gopilosa.Frame),
-		WeatherCache: NewWeatherCache(),
+		WeatherCache: newWeatherCache(),
 	}
 	return m
 }

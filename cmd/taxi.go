@@ -9,8 +9,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// TaxiMain is wrapped by NewTaxiCommand. It is exported for testing purposes.
 var TaxiMain *taxi.Main
 
+// NewTaxiCommand wraps taxi.Main with cobra.Command for use from a CLI.
 func NewTaxiCommand(stdin io.Reader, stdout, stderr io.Writer) *cobra.Command {
 	TaxiMain = taxi.NewMain()
 	taxiCommand := &cobra.Command{

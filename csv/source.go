@@ -22,7 +22,6 @@ import (
 // to return duplicate data. TODO: this functionality needs more testing.
 type Source struct {
 	files       []*file
-	pos         int
 	maxRetries  int
 	concurrency int
 
@@ -76,7 +75,7 @@ func WithOpenStringers(os []OpenStringer) Option {
 	}
 }
 
-// MaxRetries returns an Option which sets the max number of retries per file on
+// WithMaxRetries returns an Option which sets the max number of retries per file on
 // a Source.
 func WithMaxRetries(maxRetries int) Option {
 	return func(s *Source) {
@@ -84,7 +83,7 @@ func WithMaxRetries(maxRetries int) Option {
 	}
 }
 
-// Concurrency returns an Option which sets the number of goroutines fetching
+// WithConcurrency returns an Option which sets the number of goroutines fetching
 // files simultaneously.
 func WithConcurrency(c int) Option {
 	return func(s *Source) {

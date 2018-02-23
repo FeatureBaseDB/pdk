@@ -7,15 +7,18 @@ import (
 	"github.com/pkg/errors"
 )
 
+// FramerOpts are options for the Framer.
 type FramerOpts struct {
 	Ignore   []string `help:"Do not index paths containing any of these components"`
 	Collapse []string `help:"Remove these components from the path before getting frame."`
 }
 
+// SubjecterOpts are options for the Subjecter.
 type SubjecterOpts struct {
 	Path []string `help:"Path to subject."`
 }
 
+// Main holds the config for the http command.
 type Main struct {
 	Bind        string   `help:"Listen for post requests on this address."`
 	PilosaHosts []string `help:"List of host:port pairs for Pilosa cluster."`
@@ -26,6 +29,7 @@ type Main struct {
 	Proxy       string `help:"Bind to this address to proxy and translate requests to Pilosa"`
 }
 
+// NewMain gets a new Main with default values.
 func NewMain() *Main {
 	return &Main{
 		Bind:        ":12121",
@@ -38,6 +42,7 @@ func NewMain() *Main {
 	}
 }
 
+// Run runs the http command.
 func (m *Main) Run() error {
 	src, err := NewJSONSource(WithAddr(m.Bind))
 	if err != nil {

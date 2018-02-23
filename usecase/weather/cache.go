@@ -12,30 +12,30 @@ import (
 	"time"
 )
 
-type WeatherCache struct {
+type weatherCache struct {
 	URLFile string
-	data    map[string]HistoryRecord
+	data    map[string]historyRecord
 }
 
-func NewWeatherCache() *WeatherCache {
-	c := &WeatherCache{
-		data: make(map[string]HistoryRecord),
+func newWeatherCache() *weatherCache {
+	c := &weatherCache{
+		data: make(map[string]historyRecord),
 	}
 	return c
 }
 
-func (c *WeatherCache) GetDailyRecord(day time.Time) (DailyRecord, error) {
+func (c *weatherCache) GetDailyRecord(day time.Time) (dailyRecord, error) {
 	dayKey := fmt.Sprintf("%d%02d%02d", day.Year(), day.Month(), day.Day())
 	if _, ok := c.data[dayKey]; !ok {
-		return DailyRecord{}, fmt.Errorf("not found")
+		return dailyRecord{}, fmt.Errorf("not found")
 	}
 	return c.data[dayKey].DailyRecord[0], nil
 }
 
-func (c *WeatherCache) GetHourlyRecord(daytime time.Time) (HourlyRecord, error) {
+func (c *weatherCache) GetHourlyRecord(daytime time.Time) (hourlyRecord, error) {
 	dayKey := fmt.Sprintf("%d%02d%02d", daytime.Year(), daytime.Month(), daytime.Day())
 	if _, ok := c.data[dayKey]; !ok {
-		return HourlyRecord{}, fmt.Errorf("day not found")
+		return hourlyRecord{}, fmt.Errorf("day not found")
 	}
 
 	hourly := c.data[dayKey].HourlyRecords
@@ -47,10 +47,10 @@ func (c *WeatherCache) GetHourlyRecord(daytime time.Time) (HourlyRecord, error) 
 			return rec, nil
 		}
 	}
-	return HourlyRecord{}, fmt.Errorf("hour not found")
+	return hourlyRecord{}, fmt.Errorf("hour not found")
 }
 
-func (c *WeatherCache) ReadAll() error {
+func (c *weatherCache) ReadAll() error {
 	// read URL file
 	if c.URLFile == "" {
 		return fmt.Errorf("Need to specify a URL File")
@@ -93,7 +93,7 @@ func (c *WeatherCache) ReadAll() error {
 			continue
 		}
 
-		record := new(RecordFile)
+		record := new(recordFile)
 		if err := json.Unmarshal(body, &record); err != nil {
 			// fmt.Printf("error unmarshalling json %v: %v\n", url, err)
 			continue
@@ -104,23 +104,23 @@ func (c *WeatherCache) ReadAll() error {
 	return nil
 }
 
-type RecordFile struct {
-	History  HistoryRecord `json:"history"`
-	Response ApiResponse   `json:"response"`
+type recordFile struct {
+	History  historyRecord `json:"history"`
+	Response apiResponse   `json:"response"`
 }
 
-type ApiResponse struct {
+type apiResponse struct {
 	Version string `json:"version"`
 	Tos     string `json:"termsofService"`
 }
 
-type HistoryRecord struct {
-	DailyRecord   []DailyRecord  `json:"dailysummary"`
-	HourlyRecords []HourlyRecord `json:"observations"`
+type historyRecord struct {
+	DailyRecord   []dailyRecord  `json:"dailysummary"`
+	HourlyRecords []hourlyRecord `json:"observations"`
 	// Time          TimeRecord     `json:"date"`
 }
 
-type TimeRecord struct {
+type timeRecord struct {
 	Year int `json:"year,string"`
 	Mon  int `json:"mon,string"`
 	Mday int `json:"mday,string"`
@@ -128,7 +128,7 @@ type TimeRecord struct {
 	Min  int `json:"min,string"`
 }
 
-type DailyRecord struct {
+type dailyRecord struct {
 	// Time TimeRecord `json:"date"`
 
 	Rain    int `json:"rain,string"`
@@ -139,13 +139,13 @@ type DailyRecord struct {
 	Tornado int `json:"tornado,string"`
 
 	// Humidity float32 `json:"humidity,string"`  // sometimes ""
-	Meantempi     DumbFloat `json:"meantempi,string"`
-	Meanpressurei DumbFloat `json:"meanpressurei,string"`
-	Precipi       DumbFloat `json:"precipi,string"`
+	Meantempi     dumbFloat `json:"meantempi,string"`
+	Meanpressurei dumbFloat `json:"meanpressurei,string"`
+	Precipi       dumbFloat `json:"precipi,string"`
 }
 
-type HourlyRecord struct {
-	Time TimeRecord `json:"date"`
+type hourlyRecord struct {
+	Time timeRecord `json:"date"`
 
 	Rain    int `json:"rain,string"`
 	Fog     int `json:"fog,string"`
@@ -154,39 +154,39 @@ type HourlyRecord struct {
 	Thunder int `json:"thunder,string"`
 	Tornado int `json:"tornado,string"`
 
-	Humidity  DumbFloat `json:"hum,string"`
-	Tempi     DumbFloat `json:"tempi,string"`
-	Pressurei DumbFloat `json:"pressurei,string"`
-	Precipi   DumbFloat `json:"precipi,string"`
+	Humidity  dumbFloat `json:"hum,string"`
+	Tempi     dumbFloat `json:"tempi,string"`
+	Pressurei dumbFloat `json:"pressurei,string"`
+	Precipi   dumbFloat `json:"precipi,string"`
 
 	// CondString     string `json:"conds"`
-	Cond *Condition `json:"conds"`
+	Cond *condition `json:"conds"`
 }
 
-type Condition int
+type condition int
 
-func (c *Condition) UnmarshalJSON(b []byte) error {
+func (c *condition) UnmarshalJSON(b []byte) error {
 	var condString string
 	if err := json.Unmarshal(b, &condString); err != nil {
 		return err
 	}
-	*c = Condition(conditionMap[condString])
+	*c = condition(conditionMap[condString])
 	return nil
 }
 
-type DumbFloat float32
+type dumbFloat float32
 
-func (f *DumbFloat) UnmarshalJSON(b []byte) error {
+func (f *dumbFloat) UnmarshalJSON(b []byte) error {
 	var floatVal float32
 	if err := json.Unmarshal(b, &floatVal); err != nil {
 		*f = 0
 	} else {
-		*f = DumbFloat(floatVal)
+		*f = dumbFloat(floatVal)
 	}
 	return nil
 }
 
-func (c Condition) String() string {
+func (c condition) String() string {
 	for s, i := range conditionMap {
 		if int(c) == i {
 			return s

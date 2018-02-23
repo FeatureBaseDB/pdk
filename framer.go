@@ -71,11 +71,14 @@ OUTER:
 	return np
 }
 
+// Frame gets a frame from a path by joining the path elements with dashes.
 func (d *DashFrame) Frame(path []string) (frame string, err error) {
 	np := d.clean(path)
 	return strings.ToLower(strings.Join(np, "-")), nil
 }
 
+// Field gets a frame and field from a path dash framing the beginning elements
+// and returning the last element as the field.
 func (d *DashFrame) Field(path []string) (frame, field string, err error) {
 	np := d.clean(path)
 	if len(np) == 0 {

@@ -65,7 +65,7 @@ func SplitFileLines(f *os.File, numParts int64) ([]*FileFragment, error) {
 	splitSize := stats.Size() / numParts
 
 	ret := make([]*FileFragment, 0)
-	var startLoc int64 = 0
+	var startLoc int64
 	for {
 		endLoc, errSeek := seekAndSearch(f, splitSize, '\n')
 		if errSeek != nil && errSeek != io.EOF {

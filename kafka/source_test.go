@@ -31,7 +31,7 @@ func TestConfluentSource(t *testing.T) {
 
 }
 
-var value map[string]interface{} = map[string]interface{}{
+var value = map[string]interface{}{
 	"thing_string": "blah",
 	"thing_int":    34,
 	"mysubthing": map[string]interface{}{

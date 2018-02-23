@@ -37,6 +37,9 @@ func TestBoltTranslator(t *testing.T) {
 	}
 
 	bt, err = NewTranslator(boltFile, "f1", "f2")
+	if err != nil {
+		t.Fatalf("getting new translator: %v", err)
+	}
 	val = bt.Get("f1", id1)
 	if !bytes.Equal(val.([]byte), []byte("hello")) {
 		t.Fatalf("after reopen, unexpected value for hello id in f1: %s", val)

@@ -15,6 +15,7 @@ import (
 	"github.com/pkg/errors"
 )
 
+// Main holds the configuration and execution state for the ssb command.
 type Main struct {
 	Dir             string
 	Hosts           []string
@@ -29,6 +30,7 @@ type Main struct {
 	nexter pdk.INexter
 }
 
+// NewMain crates a new Main with default values.
 func NewMain() (*Main, error) {
 	return &Main{
 		Index:           "ssb",
@@ -40,8 +42,9 @@ func NewMain() (*Main, error) {
 	}, nil
 }
 
+// Run runs Main.
 func (m *Main) Run() (err error) {
-	m.trans, err = NewTranslator("ssdbmapping")
+	m.trans, err = newTranslator("ssdbmapping")
 	if err != nil {
 		return errors.Wrap(err, "getting new translator")
 	}
@@ -61,19 +64,25 @@ func (m *Main) Run() (err error) {
 	rc := make(chan *record, m.RecordBuf) // TODO tweak for perf
 
 	go func() {
-		m.runReaders(rc, custs, parts, supps, dates)
+		err := m.runReaders(rc, custs, parts, supps, dates)
+		if err != nil {
+			log.Println(errors.Wrap(err, "running readers"))
+		}
 		close(rc)
 	}()
 
 	log.Println("running mappers")
-	m.runMappers(rc)
+	err = m.runMappers(rc)
+	if err != nil {
+		return errors.Wrap(err, "running mappers")
+	}
 
 	log.Println("mappers finished - starting proxy")
 	ph := pdk.NewPilosaForwarder("localhost:10101", m.trans)
 	return pdk.StartMappingProxy("localhost:3456", ph)
 }
 
-func (m *Main) runMappers(rc <-chan *record) {
+func (m *Main) runMappers(rc <-chan *record) error {
 	wg := sync.WaitGroup{}
 	for i := 0; i < m.MapConcurrency; i++ {
 		wg.Add(1)
@@ -83,7 +92,7 @@ func (m *Main) runMappers(rc <-chan *record) {
 		}()
 	}
 	wg.Wait()
-	m.index.Close() // close import channels
+	return errors.Wrap(m.index.Close(), "closing index") // close import channels
 }
 
 func (m *Main) mapRecords(rc <-chan *record) {
@@ -185,13 +194,6 @@ func (m *Main) mapRecords(rc <-chan *record) {
 }
 
 type record struct {
-	// TODO add lo orderkey and linenumber so we can store column/key mapping?
-	lo_quantity      uint8
-	lo_extendedprice uint16
-	lo_discount      uint8
-	lo_revenue       uint16
-	lo_supplycost    uint32
-
 	c_city   string
 	c_nation string
 	c_region string
@@ -204,9 +206,16 @@ type record struct {
 	p_category string
 	p_brand1   string
 
-	order_year    uint16
 	order_month   string
+	order_year    uint16
 	order_weeknum uint8
+
+	// TODO add lo orderkey and linenumber so we can store column/key mapping?
+	lo_quantity      uint8
+	lo_discount      uint8
+	lo_extendedprice uint16
+	lo_revenue       uint16
+	lo_supplycost    uint32
 }
 
 func (r *record) String() string {
@@ -225,10 +234,10 @@ func (m *Main) runReaders(rc chan<- *record, custs map[int]customer, parts map[i
 	wg := sync.WaitGroup{}
 	for _, frag := range frags {
 		wg.Add(1)
-		go func() {
+		go func(frag *pdk.FileFragment) {
 			defer wg.Done()
 			parseLineOrder(frag, rc, custs, parts, supps, dates)
-		}()
+		}(frag)
 	}
 	wg.Wait()
 	return nil
@@ -438,7 +447,7 @@ func mapCustomer(f io.Reader, sf int) map[int]customer {
 	for scanner.Scan() {
 		i++
 		line := strings.Split(scanner.Text(), "|")
-		key, err := strconv.Atoi(string(line[0]))
+		key, err := strconv.Atoi(line[0])
 		if err != nil {
 			log.Printf("Line %v of customer table: %v. Converting key to int: %v", i, line, err)
 			continue
@@ -466,7 +475,7 @@ func mapSupplier(f io.Reader, sf int) map[int]supplier {
 	for scanner.Scan() {
 		i++
 		line := strings.Split(scanner.Text(), "|")
-		key, err := strconv.Atoi(string(line[0]))
+		key, err := strconv.Atoi(line[0])
 		if err != nil {
 			log.Printf("Line %v of supplier table: %v. Converting key to int: %v", i, line, err)
 			continue

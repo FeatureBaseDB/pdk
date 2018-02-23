@@ -9,7 +9,6 @@ import (
 
 func TestDashFrame(t *testing.T) {
 	tests := []struct {
-		name     string
 		path     []string
 		ignore   []string
 		collapse []string

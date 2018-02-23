@@ -223,24 +223,6 @@ type valueLocker interface {
 	Unlock(val []byte)
 }
 
-type singleVLock struct {
-	m *sync.Mutex
-}
-
-func newSingleVLock() singleVLock {
-	return singleVLock{
-		m: &sync.Mutex{},
-	}
-}
-
-func (s singleVLock) Lock(val []byte) {
-	s.m.Lock()
-}
-
-func (s singleVLock) Unlock(val []byte) {
-	s.m.Unlock()
-}
-
 type bucketVLock struct {
 	ms []sync.Mutex
 }

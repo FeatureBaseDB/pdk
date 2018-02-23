@@ -165,6 +165,7 @@ type PilosaKeyMapper struct {
 	t Translator
 }
 
+// NewPilosaKeyMapper returns a PilosaKeyMapper.
 func NewPilosaKeyMapper(t Translator) *PilosaKeyMapper {
 	return &PilosaKeyMapper{
 		t: t,
@@ -226,6 +227,7 @@ func (p *PilosaKeyMapper) MapResult(frame string, res interface{}) (mappedRes in
 	return mappedRes, nil
 }
 
+// MapRequest takes a request body and returns a mapped version of that body.
 func (p *PilosaKeyMapper) MapRequest(body []byte) ([]byte, error) {
 	query, err := pql.ParseString(string(body))
 	if err != nil {

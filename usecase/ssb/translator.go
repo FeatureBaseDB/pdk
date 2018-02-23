@@ -7,21 +7,21 @@ import (
 	"github.com/pkg/errors"
 )
 
-type Translator struct {
+type translator struct {
 	lt *leveldb.Translator
 }
 
-func NewTranslator(storedir string) (*Translator, error) {
+func newTranslator(storedir string) (*translator, error) {
 	lt, err := leveldb.NewTranslator(storedir, []string{"c_city", "c_nation", "c_region", "s_city", "s_nation", "s_region", "p_mfgr", "p_category", "p_brand1"}...)
 	if err != nil {
 		return nil, err
 	}
-	return &Translator{
+	return &translator{
 		lt: lt,
 	}, nil
 }
 
-func (t *Translator) Get(frame string, id uint64) (interface{}, error) {
+func (t *translator) Get(frame string, id uint64) (interface{}, error) {
 	switch frame {
 	case "c_city", "c_nation", "c_region", "s_city", "s_nation", "s_region", "p_mfgr", "p_category", "p_brand1":
 		val, err := t.lt.Get(frame, id)
@@ -38,7 +38,7 @@ func (t *Translator) Get(frame string, id uint64) (interface{}, error) {
 	}
 }
 
-func (t *Translator) GetID(frame string, val interface{}) (uint64, error) {
+func (t *translator) GetID(frame string, val interface{}) (uint64, error) {
 	switch frame {
 	case "c_city", "c_nation", "c_region", "s_city", "s_nation", "s_region", "p_mfgr", "p_category", "p_brand1":
 		return t.lt.GetID(frame, []byte(val.(string)))

@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/pilosa/pdk/test"
+	"github.com/pkg/errors"
 )
 
 func TestMapTranslator(t *testing.T) {
@@ -43,6 +44,7 @@ func TestConcMapTranslator(t *testing.T) {
 
 	wg := &sync.WaitGroup{}
 	rets := make([][]uint64, 8)
+	errs := make(chan error, 8)
 	for i := 0; i < 8; i++ {
 		rets[i] = make([]uint64, 1000)
 		wg.Add(1)
@@ -51,7 +53,8 @@ func TestConcMapTranslator(t *testing.T) {
 			for j := 0; j < 1000; j++ {
 				id, err := bt.GetID("f1", []byte(strconv.Itoa(j)))
 				if err != nil {
-					t.Fatalf("error getting id: %v", err)
+					errs <- errors.Wrapf(err, "error getting id")
+					return
 				}
 				ret[j] = id
 			}
@@ -59,6 +62,10 @@ func TestConcMapTranslator(t *testing.T) {
 	}
 
 	wg.Wait()
+	close(errs)
+	for err := range errs {
+		t.Fatal(err)
+	}
 	for i, ret := range rets {
 		if i != 0 {
 			if !reflect.DeepEqual(ret, rets[i-1]) {
