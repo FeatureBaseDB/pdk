@@ -14,58 +14,12 @@ import (
 	"sync"
 	"time"
 
+	// for profiling
 	_ "net/http/pprof"
 
-	pcli "github.com/pilosa/go-pilosa"
 	"github.com/pilosa/pdk"
-	"github.com/pilosa/pilosa"
+	"github.com/pkg/errors"
 )
-
-/***************
-use case setup
-***************/
-var greenFields = map[string]int{
-	"vendor_id":          0,
-	"pickup_datetime":    1,
-	"dropoff_datetime":   2,
-	"passenger_count":    9,
-	"trip_distance":      10,
-	"pickup_longitude":   5,
-	"pickup_latitude":    6,
-	"ratecode_id":        4,
-	"store_and_fwd_flag": 3,
-	"dropoff_longitude":  7,
-	"dropoff_latitude":   8,
-	"payment_type":       18,
-	"fare_amount":        11,
-	"extra":              12,
-	"mta_tax":            13,
-	"tip_amount":         14,
-	"tolls_amount":       15,
-	"total_amount":       17,
-}
-
-var yellowFields = map[string]int{
-	"vendor_id":             0,
-	"pickup_datetime":       1,
-	"dropoff_datetime":      2,
-	"passenger_count":       3,
-	"trip_distance":         4,
-	"pickup_longitude":      5,
-	"pickup_latitude":       6,
-	"ratecode_id":           7,
-	"store_and_fwd_flag":    8,
-	"dropoff_longitude":     9,
-	"dropoff_latitude":      10,
-	"payment_type":          11,
-	"fare_amount":           12,
-	"extra":                 13,
-	"mta_tax":               14,
-	"tip_amount":            15,
-	"tolls_amount":          16,
-	"total_amount":          18,
-	"improvement_surcharge": 17,
-}
 
 /***********************
 use case implementation
@@ -76,6 +30,7 @@ use case implementation
 // TODO autoscan 3. write results from ^^ to config file
 // TODO read ParserMapper config from file (cant do CustomMapper)
 
+// Main holds options and execution state for taxi usecase.
 type Main struct {
 	PilosaHost       string
 	URLFile          string
@@ -85,51 +40,54 @@ type Main struct {
 	BufferSize       int
 	UseReadAll       bool
 
-	importer  pdk.PilosaImporter
+	indexer   pdk.Indexer
 	urls      []string
 	greenBms  []pdk.BitMapper
 	yellowBms []pdk.BitMapper
 	ams       []pdk.AttrMapper
 
-	nexter *Nexter
+	nexter pdk.INexter
 
 	totalBytes int64
 	bytesLock  sync.Mutex
 
-	totalRecs     *Counter
-	skippedRecs   *Counter
-	nullLocs      *Counter
-	badLocs       *Counter
-	badSpeeds     *Counter
-	badTotalAmnts *Counter
-	badDurations  *Counter
-	badPassCounts *Counter
-	badDist       *Counter
-	badUnknowns   *Counter
+	totalRecs     *counter
+	skippedRecs   *counter
+	nullLocs      *counter
+	badLocs       *counter
+	badSpeeds     *counter
+	badTotalAmnts *counter
+	badDurations  *counter
+	badPassCounts *counter
+	badDist       *counter
+	badUnknowns   *counter
 }
 
+// NewMain returns a new instance of Main with default values.
 func NewMain() *Main {
 	m := &Main{
 		Concurrency:      1,
 		FetchConcurrency: 1,
-		nexter:           &Nexter{},
+		Index:            "taxi",
+		nexter:           pdk.NewNexter(),
 		urls:             make([]string, 0),
 
-		totalRecs:     &Counter{},
-		skippedRecs:   &Counter{},
-		nullLocs:      &Counter{},
-		badLocs:       &Counter{},
-		badSpeeds:     &Counter{},
-		badTotalAmnts: &Counter{},
-		badDurations:  &Counter{},
-		badPassCounts: &Counter{},
-		badDist:       &Counter{},
-		badUnknowns:   &Counter{},
+		totalRecs:     &counter{},
+		skippedRecs:   &counter{},
+		nullLocs:      &counter{},
+		badLocs:       &counter{},
+		badSpeeds:     &counter{},
+		badTotalAmnts: &counter{},
+		badDurations:  &counter{},
+		badPassCounts: &counter{},
+		badDist:       &counter{},
+		badUnknowns:   &counter{},
 	}
 
 	return m
 }
 
+// Run runs the taxi usecase.
 func (m *Main) Run() error {
 	go func() {
 		log.Println(http.ListenAndServe("localhost:6060", nil))
@@ -140,37 +98,28 @@ func (m *Main) Run() error {
 		return err
 	}
 
-	frames := []string{"cab_type", "passenger_count", "total_amount_dollars", "pickup_time", "pickup_day", "pickup_mday", "pickup_month", "pickup_year", "drop_time", "drop_day", "drop_mday", "drop_month", "drop_year", "dist_miles", "duration_minutes", "speed_mph", "pickup_grid_id", "drop_grid_id", "pickup_elevation", "drop_elevation"}
-	m.importer = pdk.NewImportClient(m.PilosaHost, m.Index, frames, m.BufferSize)
+	frames := []pdk.FrameSpec{
+		pdk.NewRankedFrameSpec("cab_type", 10), pdk.NewRankedFrameSpec("passenger_count", 1000),
+		pdk.NewRankedFrameSpec("total_amount_dollars", 10000), pdk.NewRankedFrameSpec("pickup_time", 10000),
+		pdk.NewRankedFrameSpec("pickup_day", 10000), pdk.NewRankedFrameSpec("pickup_mday", 10000),
+		pdk.NewRankedFrameSpec("pickup_month", 13), pdk.NewRankedFrameSpec("pickup_year", 100),
+		pdk.NewRankedFrameSpec("drop_time", 10000), pdk.NewRankedFrameSpec("drop_day", 10000),
+		pdk.NewRankedFrameSpec("drop_mday", 10000), pdk.NewRankedFrameSpec("drop_month", 13),
+		pdk.NewRankedFrameSpec("drop_year", 1000), pdk.NewRankedFrameSpec("dist_miles", 1000),
+		pdk.NewRankedFrameSpec("duration_minutes", 10000), pdk.NewRankedFrameSpec("speed_mph", 10000),
+		pdk.NewRankedFrameSpec("pickup_grid_id", 10000), pdk.NewRankedFrameSpec("drop_grid_id", 10000),
+		pdk.NewRankedFrameSpec("pickup_elevation", 10000), pdk.NewRankedFrameSpec("drop_elevation", 10000),
+	}
 
-	pilosaURI, err := pcli.NewURIFromAddress(m.PilosaHost)
+	m.indexer, err = pdk.SetupPilosa([]string{m.PilosaHost}, m.Index, frames, uint(m.BufferSize))
 	if err != nil {
-		return fmt.Errorf("interpreting pilosaHost '%v': %v", m.PilosaHost, err)
-	}
-	setupClient := pcli.NewClientWithURI(pilosaURI)
-	index, err := pcli.NewIndex(m.Index, &pcli.IndexOptions{})
-	if err != nil {
-		return fmt.Errorf("making index: %v", err)
-	}
-	err = setupClient.EnsureIndex(index)
-	if err != nil {
-		return fmt.Errorf("ensuring index existence: %v", err)
-	}
-	for _, frame := range frames {
-		fram, err := index.Frame(frame, &pcli.FrameOptions{CacheType: pilosa.CacheTypeRanked})
-		if err != nil {
-			return fmt.Errorf("making frame: %v", err)
-		}
-		err = setupClient.EnsureFrame(fram)
-		if err != nil {
-			return fmt.Errorf("creating frame '%v': %v", frame, err)
-		}
+		return errors.Wrap(err, "setting up indexer")
 	}
 
 	ticker := m.printStats()
 
 	urls := make(chan string, 100)
-	records := make(chan Record, 10000)
+	records := make(chan record, 10000)
 
 	go func() {
 		for _, url := range m.urls {
@@ -187,7 +136,7 @@ func (m *Main) Run() error {
 	signal.Notify(c, os.Interrupt)
 	go func() {
 		for range c {
-			log.Printf("Rides: %d, Bytes: %s", m.nexter.Last(), pdk.Bytes(m.BytesProcessed()))
+			log.Printf("Rides: %d, Bytes: %s", m.nexter.Last(), pdk.Bytes(m.bytesProcessed()))
 			os.Exit(0)
 		}
 	}()
@@ -211,9 +160,9 @@ func (m *Main) Run() error {
 	wg.Wait()
 	close(records)
 	wg2.Wait()
-	m.importer.Close()
+	err = m.indexer.Close()
 	ticker.Stop()
-	return err
+	return errors.Wrap(err, "closing indexer")
 }
 
 func (m *Main) readURLs() error {
@@ -222,16 +171,14 @@ func (m *Main) readURLs() error {
 	}
 	f, err := os.Open(m.URLFile)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "opening url file")
 	}
 	s := bufio.NewScanner(f)
 	for s.Scan() {
 		m.urls = append(m.urls, s.Text())
 	}
-	if err := s.Err(); err != nil {
-		return err
-	}
-	return nil
+	err = s.Err()
+	return errors.Wrap(err, "scanning url file")
 }
 
 func (m *Main) printStats() *time.Ticker {
@@ -240,7 +187,7 @@ func (m *Main) printStats() *time.Ticker {
 	go func() {
 		for range t.C {
 			duration := time.Since(start)
-			bytes := m.BytesProcessed()
+			bytes := m.bytesProcessed()
 			log.Printf("Rides: %d, Bytes: %s, Records: %v, Duration: %v, Rate: %v/s", m.nexter.Last(), pdk.Bytes(bytes), m.totalRecs.Get(), duration, pdk.Bytes(float64(bytes)/duration.Seconds()))
 			log.Printf("Skipped: %v, badLocs: %v, nullLocs: %v, badSpeeds: %v, badTotalAmnts: %v, badDurations: %v, badUnknowns: %v, badPassCounts: %v, badDist: %v", m.skippedRecs.Get(), m.badLocs.Get(), m.nullLocs.Get(), m.badSpeeds.Get(), m.badTotalAmnts.Get(), m.badDurations.Get(), m.badUnknowns.Get(), m.badPassCounts.Get(), m.badDist.Get())
 		}
@@ -255,7 +202,7 @@ func (m *Main) printStats() *time.Ticker {
 func getNextURL(urls <-chan string, failedURLs map[string]int) (string, bool) {
 	url, open := <-urls
 	if !open {
-		for url, _ := range failedURLs {
+		for url := range failedURLs {
 			return url, true
 		}
 		return "", false
@@ -263,7 +210,7 @@ func getNextURL(urls <-chan string, failedURLs map[string]int) (string, bool) {
 	return url, true
 }
 
-func (m *Main) fetch(urls <-chan string, records chan<- Record) {
+func (m *Main) fetch(urls <-chan string, records chan<- record) {
 	failedURLs := make(map[string]int)
 	for {
 		url, ok := getNextURL(urls, failedURLs)
@@ -329,18 +276,18 @@ func (m *Main) fetch(urls <-chan string, records chan<- Record) {
 		}
 		for scan.Scan() {
 			m.totalRecs.Add(1)
-			record := scan.Text()
-			m.AddBytes(len(record))
+			rec := scan.Text()
+			m.addBytes(len(rec))
 			if correctLine {
 				// last field needs to be shifted over by 1
-				lastcomma := strings.LastIndex(record, ",")
+				lastcomma := strings.LastIndex(rec, ",")
 				if lastcomma == -1 {
 					m.skippedRecs.Add(1)
 					continue
 				}
-				record = record[:lastcomma] + "," + record[lastcomma:]
+				rec = rec[:lastcomma] + "," + rec[lastcomma:]
 			}
-			records <- Record{Val: record, Type: typ}
+			records <- record{Val: rec, Type: typ}
 		}
 		err := scan.Err()
 		if err != nil {
@@ -350,12 +297,12 @@ func (m *Main) fetch(urls <-chan string, records chan<- Record) {
 	}
 }
 
-type Record struct {
+type record struct {
 	Type rune
 	Val  string
 }
 
-func (r Record) Clean() ([]string, bool) {
+func (r record) clean() ([]string, bool) {
 	if len(r.Val) == 0 {
 		return nil, false
 	}
@@ -363,15 +310,15 @@ func (r Record) Clean() ([]string, bool) {
 	return fields, true
 }
 
-type BitFrame struct {
+type bitFrame struct {
 	Bit   uint64
 	Frame string
 }
 
-func (m *Main) parseMapAndPost(records <-chan Record) {
+func (m *Main) parseMapAndPost(records <-chan record) {
 Records:
 	for record := range records {
-		fields, ok := record.Clean()
+		fields, ok := record.clean()
 		if !ok {
 			m.skippedRecs.Add(1)
 			continue
@@ -390,8 +337,8 @@ Records:
 			m.skippedRecs.Add(1)
 			continue
 		}
-		bitsToSet := make([]BitFrame, 0)
-		bitsToSet = append(bitsToSet, BitFrame{Bit: cabType, Frame: "cab_type"})
+		bitsToSet := make([]bitFrame, 0)
+		bitsToSet = append(bitsToSet, bitFrame{Bit: cabType, Frame: "cab_type"})
 		for _, bm := range bms {
 			if len(bm.Fields) != len(bm.Parsers) {
 				// TODO if len(pm.Parsers) == 1, use that for all fields
@@ -463,12 +410,12 @@ Records:
 				continue Records
 			}
 			for _, id := range ids {
-				bitsToSet = append(bitsToSet, BitFrame{Bit: uint64(id), Frame: bm.Frame})
+				bitsToSet = append(bitsToSet, bitFrame{Bit: uint64(id), Frame: bm.Frame})
 			}
 		}
 		columnID := m.nexter.Next()
 		for _, bit := range bitsToSet {
-			m.importer.SetBit(bit.Bit, columnID, bit.Frame)
+			m.indexer.AddBit(bit.Frame, columnID, bit.Bit)
 		}
 	}
 }
@@ -656,55 +603,79 @@ func getBitMappers(fields map[string]int) []pdk.BitMapper {
 	return bms
 }
 
-func (m *Main) AddBytes(n int) {
+func (m *Main) addBytes(n int) {
 	m.bytesLock.Lock()
 	m.totalBytes += int64(n)
 	m.bytesLock.Unlock()
 }
 
-func (m *Main) BytesProcessed() (num int64) {
+func (m *Main) bytesProcessed() (num int64) {
 	m.bytesLock.Lock()
 	num = m.totalBytes
 	m.bytesLock.Unlock()
 	return
 }
 
-type Counter struct {
+type counter struct {
 	num  int64
 	lock sync.Mutex
 }
 
-func (c *Counter) Add(n int) {
+func (c *counter) Add(n int) {
 	c.lock.Lock()
 	c.num += int64(n)
 	c.lock.Unlock()
 }
 
-func (c *Counter) Get() (ret int64) {
+func (c *counter) Get() (ret int64) {
 	c.lock.Lock()
 	ret = c.num
 	c.lock.Unlock()
 	return
 }
 
-// Nexter generates unique sequential ids in a threadsafe way.
-type Nexter struct {
-	id   uint64
-	lock sync.Mutex
+/***************
+use case setup
+***************/
+var greenFields = map[string]int{
+	"vendor_id":          0,
+	"pickup_datetime":    1,
+	"dropoff_datetime":   2,
+	"passenger_count":    9,
+	"trip_distance":      10,
+	"pickup_longitude":   5,
+	"pickup_latitude":    6,
+	"ratecode_id":        4,
+	"store_and_fwd_flag": 3,
+	"dropoff_longitude":  7,
+	"dropoff_latitude":   8,
+	"payment_type":       18,
+	"fare_amount":        11,
+	"extra":              12,
+	"mta_tax":            13,
+	"tip_amount":         14,
+	"tolls_amount":       15,
+	"total_amount":       17,
 }
 
-// Next generates a new id
-func (n *Nexter) Next() (nextID uint64) {
-	n.lock.Lock()
-	nextID = n.id
-	n.id++
-	n.lock.Unlock()
-	return
-}
-
-func (n *Nexter) Last() (lastID uint64) {
-	n.lock.Lock()
-	lastID = n.id - 1
-	n.lock.Unlock()
-	return
+var yellowFields = map[string]int{
+	"vendor_id":             0,
+	"pickup_datetime":       1,
+	"dropoff_datetime":      2,
+	"passenger_count":       3,
+	"trip_distance":         4,
+	"pickup_longitude":      5,
+	"pickup_latitude":       6,
+	"ratecode_id":           7,
+	"store_and_fwd_flag":    8,
+	"dropoff_longitude":     9,
+	"dropoff_latitude":      10,
+	"payment_type":          11,
+	"fare_amount":           12,
+	"extra":                 13,
+	"mta_tax":               14,
+	"tip_amount":            15,
+	"tolls_amount":          16,
+	"total_amount":          18,
+	"improvement_surcharge": 17,
 }

@@ -8,13 +8,15 @@ import (
 )
 
 const (
-	BYTE     = 1.0
-	KILOBYTE = 1024 * BYTE
-	MEGABYTE = 1024 * KILOBYTE
-	GIGABYTE = 1024 * MEGABYTE
-	TERABYTE = 1024 * GIGABYTE
+	bbyte    = 1.0
+	kilobyte = 1024 * bbyte
+	megabyte = 1024 * kilobyte
+	gigabyte = 1024 * megabyte
+	terabyte = 1024 * gigabyte
 )
 
+// Bytes is a wrapper type for numbers which represent bytes. It provides a
+// String method which produces sensible readable output like 1.2G or 4M, etc.
 type Bytes uint64
 
 // Returns a human-readable byte string of the form 10M, 12.5K, and so forth.  The following units are available:
@@ -29,19 +31,19 @@ func (b Bytes) String() string {
 	value := float32(b)
 
 	switch {
-	case b >= TERABYTE:
+	case b >= terabyte:
 		unit = "T"
-		value = value / TERABYTE
-	case b >= GIGABYTE:
+		value = value / terabyte
+	case b >= gigabyte:
 		unit = "G"
-		value = value / GIGABYTE
-	case b >= MEGABYTE:
+		value = value / gigabyte
+	case b >= megabyte:
 		unit = "M"
-		value = value / MEGABYTE
-	case b >= KILOBYTE:
+		value = value / megabyte
+	case b >= kilobyte:
 		unit = "K"
-		value = value / KILOBYTE
-	case b >= BYTE:
+		value = value / kilobyte
+	case b >= bbyte:
 		unit = "B"
 	case b == 0:
 		return "0"

@@ -1,4 +1,4 @@
-.PHONY: dep pdk vendor-update docker pdk crossbuild install 
+.PHONY: dep pdk vendor-update docker pdk crossbuild install test
 
 DEP := $(shell command -v dep 2>/dev/null)
 PROTOC := $(shell command -v protoc 2>/dev/null)

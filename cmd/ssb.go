@@ -9,8 +9,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// SSBMain is wrapped by NewSSBCommand. It is exported for testing purposes.
 var SSBMain *ssb.Main
 
+// NewSSBCommand wraps ssb.Main with cobra.Command for use from a CLI.
 func NewSSBCommand(stdin io.Reader, stdout, stderr io.Writer) *cobra.Command {
 	var err error
 	SSBMain, err = ssb.NewMain()

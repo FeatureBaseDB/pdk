@@ -9,8 +9,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// WeatherMain is wrapped by NewWeatherCommand. It is exported for testing purposes.
 var WeatherMain *weather.Main
 
+// NewWeatherCommand wraps weather.Main with cobra.Command for use from a CLI.
 func NewWeatherCommand(stdin io.Reader, stdout, stderr io.Writer) *cobra.Command {
 	WeatherMain = weather.NewMain()
 	weatherCommand := &cobra.Command{
