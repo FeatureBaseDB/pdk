@@ -258,11 +258,11 @@
     ".",
     "gopilosa_pbuf"
   ]
-  revision = "5a69cc66c76c7cf557621dfc33c2a791555f0247"
+  revision = "ad34833fd9fc3c313a8c1cefc514ce9c49a189c4"
   source = "github.com/yuce/go-pilosa"
 
 [[projects]]
-  branch = "master"
+  branch = "cluster-resize"
   name = "github.com/pilosa/pilosa"
   packages = [
     ".",
@@ -276,7 +276,7 @@
     "statsd",
     "test"
   ]
-  revision = "fcfc54eeeba6f9b486b71520b95d678f4c36d67a"
+  revision = "66cc7a35c0f0863d08d76a3c1447243e036d3498"
 
 [[projects]]
   name = "github.com/pkg/errors"
@@ -450,6 +450,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "968c3d8158bfe06ae50245ab60f0b7b4ed03ed5bae3078206308c4df42f8dc05"
+  inputs-digest = "1c713c0b2f16c17fff401116710379de992a6f98a1150ceaabd2255525595452"
   solver-name = "gps-cdcl"
   solver-version = 1
