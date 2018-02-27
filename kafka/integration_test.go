@@ -108,7 +108,7 @@ func TestEverything(t *testing.T) {
 	}
 	<-done
 
-	cli, err := gopilosa.NewClientFromAddresses([]string{s.Server.Addr().String()}, nil)
+	cli, err := gopilosa.NewClient([]string{s.Server.Addr().String()})
 	if err != nil {
 		t.Fatalf("getting pilosa client: %v", err)
 	}

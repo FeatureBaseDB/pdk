@@ -234,10 +234,10 @@ func (i *Index) ensureField(frame *gopilosa.Frame, fieldSpec FieldSpec) error {
 func SetupPilosa(hosts []string, index string, frames []FrameSpec, batchsize uint) (Indexer, error) {
 	indexer := newIndex()
 	indexer.batchSize = batchsize
-	client, err := gopilosa.NewClientFromAddresses(hosts,
-		&gopilosa.ClientOptions{SocketTimeout: time.Minute * 60,
-			ConnectTimeout: time.Second * 60,
-		})
+	client, err := gopilosa.NewClient(hosts,
+		gopilosa.SocketTimeout(time.Minute*60),
+		gopilosa.ConnectTimeout(time.Second*60),
+		gopilosa.LegacyMode(false))
 	if err != nil {
 		return nil, errors.Wrap(err, "creating pilosa cluster client")
 	}

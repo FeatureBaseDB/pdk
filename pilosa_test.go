@@ -66,7 +66,7 @@ func TestSetupPilosa(t *testing.T) {
 		t.Fatalf("closing indexer: %v", err)
 	}
 
-	client, err := gopilosa.NewClientFromAddresses(hosts, nil)
+	client, err := gopilosa.NewClient(hosts, gopilosa.LegacyMode(false))
 	if err != nil {
 		t.Fatalf("getting client: %v", err)
 	}

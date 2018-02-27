@@ -258,15 +258,14 @@
     ".",
     "gopilosa_pbuf"
   ]
-  revision = "5a69cc66c76c7cf557621dfc33c2a791555f0247"
+  revision = "ad34833fd9fc3c313a8c1cefc514ce9c49a189c4"
   source = "github.com/yuce/go-pilosa"
 
 [[projects]]
-  branch = "master"
+  branch = "cluster-resize"
   name = "github.com/pilosa/pilosa"
   packages = [
     ".",
-    "ctl",
     "diagnostics",
     "gossip",
     "internal",
@@ -277,7 +276,7 @@
     "statsd",
     "test"
   ]
-  revision = "cd5dd9bfd084d00a80ad3cb1c9c32aae6d00b22d"
+  revision = "66cc7a35c0f0863d08d76a3c1447243e036d3498"
 
 [[projects]]
   name = "github.com/pkg/errors"
@@ -312,13 +311,21 @@
 [[projects]]
   name = "github.com/shirou/gopsutil"
   packages = [
+    "cpu",
     "host",
     "internal/common",
     "mem",
+    "net",
     "process"
   ]
   revision = "c432be29ccce470088d07eea25b3ea7e68a8afbb"
   version = "v2.18.01"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/shirou/w32"
+  packages = ["."]
+  revision = "bb4de0191aa41b5507caa14b0650cdbddcd9280b"
 
 [[projects]]
   name = "github.com/sony/gobreaker"
@@ -443,6 +450,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "b368792c82a7fcfd7a228358ba6c50b38b2f82d894635ecba25f1c8d5c0d0aa9"
+  inputs-digest = "1c713c0b2f16c17fff401116710379de992a6f98a1150ceaabd2255525595452"
   solver-name = "gps-cdcl"
   solver-version = 1
