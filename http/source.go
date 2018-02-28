@@ -3,6 +3,7 @@ package http
 import (
 	"encoding/json"
 	"io"
+	"log"
 	"net"
 	"net/http"
 	"time"
@@ -109,14 +110,18 @@ func (j *JSONSource) Record() (interface{}, error) {
 // ServeHTTP implements http.Handler for JSONSource
 func (j *JSONSource) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		j.records <- record{err: errors.Errorf("unsupported method: %v, request: %#v", r.Method, r)}
+		err := errors.Errorf("unsupported method: %v, request: %#v", r.Method, r)
+		log.Println(err)
+		http.Error(w, err.Error(), http.StatusMethodNotAllowed)
 		return
 	}
 	dec := json.NewDecoder(r.Body)
 	stuff := make(map[string]interface{})
 	err := dec.Decode(&stuff)
 	if err != nil {
-		j.records <- record{err: errors.Wrap(err, "decoding json")}
+		err := errors.Wrap(err, "decoding json")
+		log.Println(err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 	j.records <- record{data: stuff}
