@@ -27,5 +27,4 @@
 
 [[constraint]]
   name = "github.com/pilosa/go-pilosa"
-  source = "github.com/yuce/go-pilosa"
-  branch = "consolidate-master-cluster-resize"
+  branch = "master"

@@ -20,16 +20,16 @@
   version = "v1.16.0"
 
 [[projects]]
-  branch = "master"
   name = "github.com/StackExchange/wmi"
   packages = ["."]
   revision = "5d049714c4a64225c3c79a7cf7d02f7fb5b96338"
+  version = "1.0.0"
 
 [[projects]]
   branch = "master"
   name = "github.com/armon/go-metrics"
   packages = ["."]
-  revision = "7aa49fde808223f8dadfdbfd3a20ff6c19e5f9ec"
+  revision = "783273d703149aaeb9897cf58613d5af48861c25"
 
 [[projects]]
   name = "github.com/blang/semver"
@@ -231,7 +231,7 @@
   branch = "master"
   name = "github.com/mitchellh/mapstructure"
   packages = ["."]
-  revision = "a4e142e9c047c904fa2f1e144d9a84e6133024bc"
+  revision = "00c29f56e2386353d58c599509e8dc3801b0d716"
 
 [[projects]]
   name = "github.com/pelletier/go-toml"
@@ -252,14 +252,13 @@
   version = "v0.1.1"
 
 [[projects]]
-  branch = "consolidate-master-cluster-resize"
   name = "github.com/pilosa/go-pilosa"
   packages = [
     ".",
     "gopilosa_pbuf"
   ]
-  revision = "ad34833fd9fc3c313a8c1cefc514ce9c49a189c4"
-  source = "github.com/yuce/go-pilosa"
+  revision = "f97bdbb39e171044a7e834c978c6fec41c923206"
+  version = "v0.8.1"
 
 [[projects]]
   branch = "cluster-resize"
@@ -267,6 +266,7 @@
   packages = [
     ".",
     "diagnostics",
+    "gcnotify",
     "gossip",
     "internal",
     "pql",
@@ -276,7 +276,7 @@
     "statsd",
     "test"
   ]
-  revision = "66cc7a35c0f0863d08d76a3c1447243e036d3498"
+  revision = "97915cf5f9e3dfa31c61bc91df058180d894f16c"
 
 [[projects]]
   name = "github.com/pkg/errors"
@@ -311,21 +311,13 @@
 [[projects]]
   name = "github.com/shirou/gopsutil"
   packages = [
-    "cpu",
     "host",
     "internal/common",
     "mem",
-    "net",
     "process"
   ]
   revision = "c432be29ccce470088d07eea25b3ea7e68a8afbb"
   version = "v2.18.01"
-
-[[projects]]
-  branch = "master"
-  name = "github.com/shirou/w32"
-  packages = ["."]
-  revision = "bb4de0191aa41b5507caa14b0650cdbddcd9280b"
 
 [[projects]]
   name = "github.com/sony/gobreaker"
@@ -389,7 +381,7 @@
     "leveldb/table",
     "leveldb/util"
   ]
-  revision = "211f780988068502fe874c44dae530528ebd840f"
+  revision = "c7a14d4b00e222eab6111b4cd1af829c13f53ec2"
 
 [[projects]]
   branch = "master"
@@ -398,7 +390,7 @@
     "ed25519",
     "ed25519/internal/edwards25519"
   ]
-  revision = "432090b8f568c018896cd8a0fb0345872bbac6ce"
+  revision = "91a49db82a88618983a78a06c1cbd4e00ab749ab"
 
 [[projects]]
   branch = "master"
@@ -426,10 +418,9 @@
     "unix",
     "windows"
   ]
-  revision = "37707fdb30a5b38865cfb95e5aab41707daec7fd"
+  revision = "f6cff0780e542efa0c8e864dc8fa522808f6a598"
 
 [[projects]]
-  branch = "master"
   name = "golang.org/x/text"
   packages = [
     "internal/gen",
@@ -439,17 +430,18 @@
     "unicode/cldr",
     "unicode/norm"
   ]
-  revision = "4e4a3210bb54bb31f6ab2cdca2edcc0b50c420c1"
+  revision = "f21a4dfb5e38f5895301dc265a8def02365cc3d0"
+  version = "v0.3.0"
 
 [[projects]]
-  branch = "v2"
   name = "gopkg.in/yaml.v2"
   packages = ["."]
-  revision = "d670f9405373e636a5a2765eea47fac0c9bc91a4"
+  revision = "7f97868eec74b32b0982dd158a51a446d1da7eb5"
+  version = "v2.1.1"
 
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "1c713c0b2f16c17fff401116710379de992a6f98a1150ceaabd2255525595452"
+  inputs-digest = "6336ed8934b457931ba06d4add22775a56ba2498fcda51497ed8cb2bac8b51d6"
   solver-name = "gps-cdcl"
   solver-version = 1
