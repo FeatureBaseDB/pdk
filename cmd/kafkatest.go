@@ -52,6 +52,7 @@ stdout.
 	flags.StringSliceVarP(&KafkaSource.Hosts, "hosts", "k", []string{"localhost:9092"}, "Kafka cluster.")
 	flags.StringSliceVarP(&KafkaSource.Topics, "topics", "t", []string{"test"}, "Topics to consume from Kafka.")
 	flags.StringVarP(&KafkaSource.Group, "group", "g", "group0", "Group id to use when consuming from Kafka.")
+	flags.StringVarP(&KafkaSource.Type, "type", "y", "json", "Type of messages to consume, json or raw.")
 	return kafkaCommand
 }
 
