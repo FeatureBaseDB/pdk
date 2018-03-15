@@ -26,6 +26,16 @@ type Source struct {
 	messages <-chan *sarama.ConsumerMessage
 }
 
+// NewSource gets a new Source
+func NewSource() *Source {
+	return &Source{
+		Hosts:  []string{"localhost:9092"},
+		Topics: []string{"test"},
+		Group:  "group0",
+		Type:   "json",
+	}
+}
+
 // Record returns the value of the next kafka message.
 func (s *Source) Record() (interface{}, error) {
 	msg, ok := <-s.consumer.Messages()
