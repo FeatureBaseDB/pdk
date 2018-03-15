@@ -1,7 +1,6 @@
 package pdk
 
 import (
-	"fmt"
 	"io"
 	"log"
 	"sync"
@@ -46,19 +45,16 @@ func (n *Ingester) Run() error {
 				if recordErr != nil {
 					break
 				}
-				fmt.Printf("got record %#v\n", rec)
 				val, err := n.parser.Parse(rec)
 				if err != nil {
 					log.Printf("couldn't parse record %s, err: %v", rec, err)
 					continue
 				}
-				fmt.Printf("parsed record %#v\n", val)
 				pr, err := n.mapper.Map(val)
 				if err != nil {
 					log.Printf("couldn't map val: %s, err: %v", val, err)
 					continue
 				}
-				fmt.Printf("mapped record %#v\n", pr)
 				for _, row := range pr.Rows {
 					n.indexer.AddBit(row.Frame, pr.Col, row.ID)
 				}
