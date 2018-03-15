@@ -69,9 +69,14 @@ func (m *GenericParser) Parse(data interface{}) (e *Entity, err error) {
 
 func deref(val reflect.Value) reflect.Value {
 	knd := val.Kind()
+	i := 0
 	for knd == reflect.Ptr || knd == reflect.Interface {
 		val = val.Elem()
 		knd = val.Kind()
+		i++
+		if i > 100 {
+			panic(fmt.Sprintf("deref loop with: %#v", val.Interface()))
+		}
 	}
 	return val
 }
@@ -119,6 +124,7 @@ func (m *GenericParser) parseStruct(val reflect.Value) (*Entity, error) {
 			continue // this field is unexported, so we ignore it.
 		}
 		fieldv := val.Field(i)
+		fieldv = deref(fieldv)
 		obj, err := m.parseValue(fieldv)
 		if err != nil {
 			return nil, errors.Wrapf(err, "parsing field:%v value:%v", field, fieldv)
@@ -172,6 +178,7 @@ func (m *GenericParser) parseContainer(val reflect.Value) (Object, error) {
 	ret := make(Objects, val.Len())
 	for i := 0; i < val.Len(); i++ {
 		ival := val.Index(i)
+		ival = deref(ival)
 		iobj, err := m.parseValue(ival)
 		if err != nil {
 			return nil, errors.Wrap(err, "parsing value")

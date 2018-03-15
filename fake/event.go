@@ -31,6 +31,8 @@ type Event struct {
 	// Ordered list of objects.
 	Ranking []Item
 
+	IfaceThing Interface
+
 	// An integer with a set range of possible values to associate with this event.
 	Velocity int `json:"velocity"`
 
@@ -40,6 +42,17 @@ type Event struct {
 	// The location of this event.
 	Geo Geo `json:"geo"`
 }
+
+// Interface exists to make sure that parsing code can handle interface
+// values.
+type Interface interface {
+	isFake()
+}
+
+// String wraps string so that it can implement Interface
+type String string
+
+func (String) isFake() {}
 
 // Geo represents a location.
 type Geo struct {
@@ -64,16 +77,17 @@ func GenEvent() *Event {
 		active = true
 	}
 	return &Event{
-		ID:        fmt.Sprintf("%d", rand.Uint64()),
-		Station:   gen.String(6, 2000),
-		UserID:    int(gen.Uint64(100000000)) + 1,
-		Timestamp: gen.Time(time.Date(2017, time.January, 1, 0, 0, 0, 0, time.UTC), time.Second*3).Format(time.RFC3339),
-		Favorites: genFavorites(),
-		Items:     genItems(),
-		Ranking:   genItems(),
-		Velocity:  rand.Intn(1000) + 2500,
-		Active:    active,
-		Geo:       genGeo(),
+		ID:         fmt.Sprintf("%d", rand.Uint64()),
+		Station:    gen.String(6, 2000),
+		UserID:     int(gen.Uint64(100000000)) + 1,
+		Timestamp:  gen.Time(time.Date(2017, time.January, 1, 0, 0, 0, 0, time.UTC), time.Second*3).Format(time.RFC3339),
+		Favorites:  genFavorites(),
+		Items:      genItems(),
+		Ranking:    genItems(),
+		IfaceThing: String(gen.String(5, 5)),
+		Velocity:   rand.Intn(1000) + 2500,
+		Active:     active,
+		Geo:        genGeo(),
 	}
 }
 

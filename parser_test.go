@@ -1,9 +1,12 @@
 package pdk
 
 import (
+	"encoding/json"
 	"fmt"
 	"reflect"
 	"testing"
+
+	"github.com/pilosa/pdk/fake"
 )
 
 type blaher struct {
@@ -51,6 +54,30 @@ func TestAnyImplements(t *testing.T) {
 				t.FailNow()
 			}
 		})
+	}
+}
+
+func TestGenericParserWithEvent(t *testing.T) {
+	testRec := fake.GenEvent()
+	gp := NewDefaultGenericParser()
+	_, err := gp.Parse(testRec)
+	if err != nil {
+		t.Fatalf("parsing Event as struct: %v", err)
+	}
+
+	bytes, err := json.Marshal(testRec)
+	if err != nil {
+		t.Fatalf("marshalling event: %v", err)
+	}
+
+	var thing interface{}
+	err = json.Unmarshal(bytes, &thing)
+	if err != nil {
+		t.Fatalf("unmarshalling event: %v", err)
+	}
+
+	if err != nil {
+		t.Fatalf("parsing Event as unmarshalled json: %v", err)
 	}
 }
 
