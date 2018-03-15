@@ -17,7 +17,7 @@ var KafkaSource *kafka.Source
 
 // NewKafkaTestCommand returns a new cobra command wrapping KafkaSource.
 func NewKafkaTestCommand(stdin io.Reader, stdout, stderr io.Writer) *cobra.Command {
-	KafkaSource = &kafka.Source{}
+	KafkaSource = kafka.NewSource()
 	kafkaCommand := &cobra.Command{
 		Use:   "kafkatest",
 		Short: "kafkatest - read from kafka using the PDK kafka.Source.",
