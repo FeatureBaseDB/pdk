@@ -76,6 +76,7 @@ func TestGenericParserWithEvent(t *testing.T) {
 		t.Fatalf("unmarshalling event: %v", err)
 	}
 
+	_, err = gp.Parse(testRec)
 	if err != nil {
 		t.Fatalf("parsing Event as unmarshalled json: %v", err)
 	}
