@@ -5,6 +5,7 @@ import (
 	"log"
 	"time"
 
+	"github.com/jaffee/commandeer"
 	"github.com/pilosa/pdk/kafka"
 	"github.com/spf13/cobra"
 )
@@ -32,14 +33,10 @@ func NewKafkaCommand(stdin io.Reader, stdout, stderr io.Writer) *cobra.Command {
 		},
 	}
 	flags := kafkaCommand.Flags()
-	flags.StringSliceVarP(&KafkaMain.Hosts, "hosts", "k", KafkaMain.Hosts, "Comma separated list of  kafka cluster host:port.")
-	flags.StringSliceVarP(&KafkaMain.Topics, "topics", "t", KafkaMain.Topics, "Comma separated list of kafka topics.")
-	flags.StringVarP(&KafkaMain.Group, "group", "g", KafkaMain.Group, "Group id to use when consuming from Kafka.")
-	flags.StringVarP(&KafkaMain.RegistryURL, "registry-url", "r", KafkaMain.RegistryURL, "Schema registry URL.")
-	flags.StringSliceVarP(&KafkaMain.PilosaHosts, "pilosa-hosts", "p", KafkaMain.PilosaHosts, "Pilosa cluster.")
-	flags.StringVarP(&KafkaMain.Index, "index", "i", KafkaMain.Index, "Index to use in Pilosa.")
-	flags.UintVarP(&KafkaMain.BatchSize, "batch-size", "b", KafkaMain.BatchSize, "Number of bits or values to buffer before importing into Pilosa (per frame).")
-
+	err = commandeer.Flags(flags, KafkaMain)
+	if err != nil {
+		panic(err)
+	}
 	return kafkaCommand
 }
 

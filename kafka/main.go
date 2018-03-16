@@ -14,11 +14,11 @@ type Main struct {
 	Group       string   `help:"Kafka group"`
 	RegistryURL string   `help:"URL of the confluent schema registry. Not required."`
 	Framer      pdk.DashFrame
-	PilosaHosts []string        `help:"Comma separated list of Pilosa hosts and ports."`
-	Index       string          `help:"Pilosa index."`
-	BatchSize   uint            `help:"Batch size for Pilosa imports (latency/throughput tradeoff)."`
-	SubjectPath pdk.SubjectPath `help:"Path to value in each record that should be mapped to column ID. Blank gets a sequential ID."`
-	Proxy       string          `help:"Bind to this address to proxy and translate requests to Pilosa"`
+	PilosaHosts []string `help:"Comma separated list of Pilosa hosts and ports."`
+	Index       string   `help:"Pilosa index."`
+	BatchSize   uint     `help:"Batch size for Pilosa imports (latency/throughput tradeoff)."`
+	SubjectPath []string `help:"Path to value in each record that should be mapped to column ID. Blank gets a sequential ID."`
+	Proxy       string   `help:"Bind to this address to proxy and translate requests to Pilosa"`
 }
 
 // NewMain returns a new Main.
@@ -52,7 +52,7 @@ func (m *Main) Run() error {
 	}
 
 	parser := pdk.NewDefaultGenericParser()
-	parser.EntitySubjecter = m.SubjectPath
+	parser.EntitySubjecter = pdk.SubjectPath(m.SubjectPath)
 
 	mapper := pdk.NewCollapsingMapper()
 	mapper.Framer = &m.Framer
