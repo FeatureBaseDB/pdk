@@ -48,8 +48,8 @@ func (f FramerFunc) Field(path []string) (string, string, error) {
 // DashFrame creates a frame name from the path by joining the path elements with
 // the "-" character.
 type DashFrame struct {
-	Ignore   []string
-	Collapse []string
+	Ignore   []string `help:"Do not index paths containing any of these components"`
+	Collapse []string `help:"Remove these components from the path before getting frame."`
 }
 
 func (d *DashFrame) clean(path []string) []string {
