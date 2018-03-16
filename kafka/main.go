@@ -41,7 +41,7 @@ func (m *Main) Run() error {
 	src.Hosts = m.Hosts
 	src.Topics = m.Topics
 	src.Group = m.Group
-	if m.RegistryURL != "" {
+	if m.RegistryURL == "" {
 		src.Type = "json"
 	} else {
 		src.Type = "raw"
