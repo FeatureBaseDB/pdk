@@ -9,6 +9,54 @@ import (
 	"github.com/pilosa/pdk/fake"
 )
 
+func TestEntitySubjecter(t *testing.T) {
+	es := SubjectPath([]string{"id"})
+	event := fake.GenEvent()
+	bytes, err := json.Marshal(event)
+	if err != nil {
+		t.Fatalf("mashalling event: %v", err)
+	}
+	var eventjson interface{}
+	err = json.Unmarshal(bytes, &eventjson)
+	if err != nil {
+		t.Fatalf("unmarshaling json: %v", err)
+	}
+
+	gp := NewDefaultGenericParser()
+	ent, err := gp.Parse(eventjson)
+	if err != nil {
+		t.Fatalf("parsing evenjson: %v", err)
+	}
+	subj, err := es.Subject(ent)
+	if err != nil {
+		t.Fatalf("getting subject: %v", err)
+	}
+	if subj != IRI(event.ID) {
+		t.Fatalf("exp %v != %v", event.ID, subj)
+	}
+	if val, ok := ent.Objects[Property("id")]; ok {
+		t.Fatalf("should not have found 'id', but got %v", val)
+	}
+
+	es = SubjectPath([]string{"geo", "time_zone"})
+	subj, err = es.Subject(ent)
+	if err != nil {
+		t.Fatalf("getting subject: %v", err)
+	}
+	if subj != IRI(event.Geo.TimeZone) {
+		t.Fatalf("exp %v != %v", event.Geo.TimeZone, subj)
+	}
+	if val, ok := ent.Objects[Property("geo")].(*Entity).Objects[Property("time_zone")]; ok {
+		t.Fatalf("should not have found 'geo.time_zone', but got %v", val)
+	}
+
+	es = SubjectPath([]string{"thisdoesntexist"})
+	subj, err = es.Subject(ent)
+	if err == nil {
+		t.Fatalf("should have gotten an error looking for 'thisdoesntexist, but got %v", subj)
+	}
+}
+
 type blaher struct {
 	a bool
 }

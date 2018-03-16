@@ -11,25 +11,70 @@ import (
 // Parse method. At the top level it accepts a map or struct (or pointer or
 // interface holding one of these).
 type GenericParser struct {
-	Subjecter  Subjecter
-	Framer     Framer
-	SubjectAll bool
+	Subjecter       Subjecter
+	EntitySubjecter EntitySubjecter
+	Framer          Framer
+	SubjectAll      bool
 
 	// IncludeUnexportedFields controls whether unexported struct fields will be
 	// included when parsing.
-	IncludeUnexportedFields bool
+	IncludeUnexportedFields bool // TODO: I don't think this actually works
 }
 
+// EntitySubjecter is an alternate interface for getting the Subject of a
+// record, which operates on the parsed Entity rather than the unparsed data.
+type EntitySubjecter interface {
+	Subject(e *Entity) (string, error)
+}
+
+// SubjectPath is an EntitySubjecter which extracts a subject by walking the
+// Entity properties denoted by the strings in SubjectPath.
+type SubjectPath []string
+
+// Subject implements EntitySubjecter.
+func (p SubjectPath) Subject(e *Entity) (string, error) {
+	var next Object = e
+	var prev *Entity
+	var item string
+	for _, item = range p {
+		ent, ok := next.(*Entity)
+		if !ok {
+			return "", errors.Errorf("can't get '%v' out of non-entity %#v.", item, next)
+		}
+		prev = ent
+		next = ent.Objects[Property(item)]
+	}
+	delete(prev.Objects, Property(item)) // remove the subject from the entity so that it isn't indexed
+	switch next.(type) {
+	case I, I8, I16, I32, I64, U, U8, U16, U32, U64:
+		return fmt.Sprintf("%d", next), nil
+	case F32, F64:
+		return fmt.Sprintf("%f", next), nil
+	case S:
+		return string(next.(S)), nil
+	default:
+		return "", fmt.Errorf("can't make %v of type %T an IRI", next, next)
+	}
+}
+
+// Subjecter is an interface for getting the Subject of a record.
 type Subjecter interface {
 	Subject(d interface{}) (string, error)
 }
 
+// SubjectFunc is a wrapper like http.HandlerFunc which allows you to use a bare
+// func as a Subjecter.
 type SubjectFunc func(d interface{}) (string, error)
 
+// Subject implements Subjecter.
 func (s SubjectFunc) Subject(d interface{}) (string, error) { return s(d) }
 
+// BlankSubjecter is a Subjecter which always returns an empty subject.
+// Typically this means that a sequential ID will be generated for each record.
 type BlankSubjecter struct{}
 
+// Subject implements Subjecter, and always returns an empty string and nil
+// error.
 func (b BlankSubjecter) Subject(d interface{}) (string, error) { return "", nil }
 
 // NewDefaultGenericParser returns a GenericParser with basic implementations of
@@ -61,7 +106,11 @@ func (m *GenericParser) Parse(data interface{}) (e *Entity, err error) {
 	}
 	var subj string
 	if !m.SubjectAll {
-		subj, err = m.Subjecter.Subject(data)
+		if m.EntitySubjecter != nil {
+			subj, err = m.EntitySubjecter.Subject(e)
+		} else {
+			subj, err = m.Subjecter.Subject(data)
+		}
 		e.Subject = IRI(subj)
 	}
 	return e, err

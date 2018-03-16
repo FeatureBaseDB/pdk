@@ -7,12 +7,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-// FramerOpts are options for the Framer.
-type FramerOpts struct {
-	Ignore   []string `help:"Do not index paths containing any of these components"`
-	Collapse []string `help:"Remove these components from the path before getting frame."`
-}
-
 // SubjecterOpts are options for the Subjecter.
 type SubjecterOpts struct {
 	Path []string `help:"Path to subject."`
@@ -24,7 +18,7 @@ type Main struct {
 	PilosaHosts []string `help:"List of host:port pairs for Pilosa cluster."`
 	Index       string   `help:"Pilosa index to write to."`
 	BatchSize   uint     `help:"Batch size for Pilosa imports."`
-	Framer      FramerOpts
+	Framer      pdk.DashFrame
 	Subjecter   SubjecterOpts
 	Proxy       string `help:"Bind to this address to proxy and translate requests to Pilosa"`
 }
@@ -36,7 +30,7 @@ func NewMain() *Main {
 		PilosaHosts: []string{"localhost:10101"},
 		Index:       "jsonhttp",
 		BatchSize:   10,
-		Framer:      FramerOpts{},
+		Framer:      pdk.DashFrame{},
 		Subjecter:   SubjecterOpts{},
 		Proxy:       ":13131",
 	}
@@ -83,10 +77,7 @@ func (m *Main) Run() error {
 	})
 
 	mapper := pdk.NewCollapsingMapper()
-	mapper.Framer = &pdk.DashFrame{
-		Ignore:   m.Framer.Ignore,
-		Collapse: m.Framer.Collapse,
-	}
+	mapper.Framer = &m.Framer
 
 	indexer, err := pdk.SetupPilosa(m.PilosaHosts, m.Index, []pdk.FrameSpec{}, m.BatchSize)
 	if err != nil {
