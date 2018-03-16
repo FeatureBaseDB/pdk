@@ -52,7 +52,11 @@ func (m *Main) Run() error {
 	}
 
 	parser := pdk.NewDefaultGenericParser()
-	parser.EntitySubjecter = pdk.SubjectPath(m.SubjectPath)
+	if len(m.SubjectPath) == 0 {
+		parser.Subjecter = pdk.BlankSubjecter{}
+	} else {
+		parser.EntitySubjecter = pdk.SubjectPath(m.SubjectPath)
+	}
 
 	mapper := pdk.NewCollapsingMapper()
 	mapper.Framer = &m.Framer
