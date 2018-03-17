@@ -31,7 +31,7 @@ func TestEntitySubjecter(t *testing.T) {
 	if err != nil {
 		t.Fatalf("getting subject: %v", err)
 	}
-	if subj != IRI(event.ID) {
+	if subj != event.ID {
 		t.Fatalf("exp %v != %v", event.ID, subj)
 	}
 	if val, ok := ent.Objects[Property("id")]; ok {
@@ -43,7 +43,7 @@ func TestEntitySubjecter(t *testing.T) {
 	if err != nil {
 		t.Fatalf("getting subject: %v", err)
 	}
-	if subj != IRI(event.Geo.TimeZone) {
+	if subj != event.Geo.TimeZone {
 		t.Fatalf("exp %v != %v", event.Geo.TimeZone, subj)
 	}
 	if val, ok := ent.Objects[Property("geo")].(*Entity).Objects[Property("time_zone")]; ok {
