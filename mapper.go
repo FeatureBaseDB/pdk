@@ -82,8 +82,11 @@ func (m *CollapsingMapper) mapLit(val Literal, pr *PilosaRecord, path []string) 
 		if err != nil {
 			return errors.Wrapf(err, "getting frame/field from %v", path)
 		}
-		if frame == "" || field == "" {
+		if field == "" {
 			return nil
+		}
+		if frame == "" {
+			frame = "default"
 		}
 		pr.AddVal(frame, field, Int64ize(tval))
 	case S:
@@ -108,8 +111,11 @@ func (m *CollapsingMapper) mapLit(val Literal, pr *PilosaRecord, path []string) 
 		if err != nil {
 			return errors.Wrapf(err, "getting frame/field from %v", path)
 		}
-		if frame == "" || field == "" {
+		if field == "" {
 			return nil
+		}
+		if frame == "" {
+			frame = "default"
 		}
 		id, err := m.Translator.GetID(frame, field)
 		if err != nil {
