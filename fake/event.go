@@ -14,7 +14,7 @@ type Event struct {
 	ID string `json:"id"`
 
 	// Station is a medium cardinality (1000s) string that has a 1 to many association with Events
-	Station string `json:"name"`
+	Station string `json:"station"`
 
 	// UserID is a high cardinality (100s of millions) identifier that has a 1 to many association with events.
 	UserID int `json:"user_id"`
@@ -26,18 +26,18 @@ type Event struct {
 	Favorites []string `json:"favorites"`
 
 	// Set of complex objects.
-	Items []Item
+	Items []Item `json:"items"`
 
 	// Ordered list of objects.
-	Ranking []Item
+	Ranking []Item `json:"ranking"`
 
-	IfaceThing Interface
+	IfaceThing Interface `json:"ifacething"`
 
 	// An integer with a set range of possible values to associate with this event.
 	Velocity int `json:"velocity"`
 
 	// A boolean to associate with this event.
-	Active bool
+	Active bool `json:"active"`
 
 	// The location of this event.
 	Geo Geo `json:"geo"`
@@ -57,7 +57,7 @@ func (String) isFake() {}
 // Geo represents a location.
 type Geo struct {
 	// Low cardinality association.
-	TimeZone string `json:"time_zone"`
+	TimeZone string `json:"timezone"`
 
 	// Fine grained location.
 	Longitude float64 `json:"longitude"`

@@ -3,7 +3,10 @@ package pdk
 import (
 	"io"
 	"log"
+	"os"
 	"sync"
+
+	"github.com/pilosa/pdk/termstat"
 )
 
 // Ingester combines a Source, Parser, Mapper, and Indexer, and uses them to
@@ -18,6 +21,12 @@ type Ingester struct {
 	parser  RecordParser
 	mapper  RecordMapper
 	indexer Indexer
+
+	Stats statter
+}
+
+type statter interface {
+	Count(name string, value int64, rate float64)
 }
 
 // NewIngester gets a new Ingester.
@@ -28,6 +37,7 @@ func NewIngester(source Source, parser RecordParser, mapper RecordMapper, indexe
 		parser:           parser,
 		mapper:           mapper,
 		indexer:          indexer,
+		Stats:            termstat.NewCollector(os.Stdout),
 	}
 }
 
@@ -45,21 +55,30 @@ func (n *Ingester) Run() error {
 				if recordErr != nil {
 					break
 				}
+				n.Stats.Count("ingest.Record", 1, 1)
 				val, err := n.parser.Parse(rec)
 				if err != nil {
 					log.Printf("couldn't parse record %s, err: %v", rec, err)
+					n.Stats.Count("ingest.ParseError", 1, 1)
 					continue
 				}
+
+				n.Stats.Count("ingest.Parse", 1, 1)
 				pr, err := n.mapper.Map(val)
 				if err != nil {
 					log.Printf("couldn't map val: %s, err: %v", val, err)
+					n.Stats.Count("ingest.MapError", 1, 1)
 					continue
 				}
+
+				n.Stats.Count("ingest.Map", 1, 1)
 				for _, row := range pr.Rows {
 					n.indexer.AddBit(row.Frame, pr.Col, row.ID)
+					n.Stats.Count("ingest.AddBit", 1, 1)
 				}
 				for _, val := range pr.Vals {
 					n.indexer.AddValue(val.Frame, val.Field, pr.Col, val.Value)
+					n.Stats.Count("ingest.AddValue", 1, 1)
 				}
 			}
 			if recordErr != io.EOF && recordErr != nil {
