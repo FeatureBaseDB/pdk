@@ -50,7 +50,12 @@ func (g *Generator) String(length, cardinality int) string {
 func (g *Generator) Uint64(cardinality int) uint64 {
 	z, ok := g.zs[cardinality]
 	if !ok {
-		imax := uint64(cardinality)
+		// We subtract one from cardinality because rand.Zipf generates values
+		// in [0, imax], but the expectation from funcs like rand.Intn is to
+		// generate values in [0, n). Also since we can generate 0, this means
+		// that the actual cardinality of the values we can return matches
+		// "cardinality".
+		imax := uint64(cardinality) - 1
 		v := 0.05 * float64(imax)
 		if v < 1.0 {
 			v = 1.0
