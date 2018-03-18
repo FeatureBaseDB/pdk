@@ -15,7 +15,6 @@ resource "aws_instance" "gen" {
   vpc_security_group_ids = ["${aws_security_group.default.id}"]
   subnet_id = "${aws_subnet.default.id}"
 
-
   provisioner "remote-exec" {
     script = "setup-gen.sh"
   }
@@ -35,19 +34,15 @@ resource "aws_instance" "kafka" {
   subnet_id = "${aws_subnet.default.id}"
 
   provisioner "remote-exec" {
-    inline = [
-      "sudo cp /etc/hosts hosts.bak",
-      "echo ${aws_instance.kafka.public_ip} `hostname` localhost | sudo tee /etc/hosts",
-      "sudo tee -a /etc/hosts <hosts.bak",
-    ]
-  }
-
-  provisioner "remote-exec" {
     script = "setup-kafka.sh"
   }
 
   provisioner "remote-exec" {
-    inline = "./confluent-4.0.0/bin/kafka-server-start -daemon ./confluent-4.0.0/etc/kafka/server.properties --override listeners=PLAINTEXT://${aws_instance.kafka.private_ip}:9092",
+    inline = [
+    "echo starting on ${aws_instance.kafka.private_ip}",
+    "./confluent-4.0.0/bin/kafka-server-start -daemon ./confluent-4.0.0/etc/kafka/server.properties --override listeners=PLAINTEXT://${aws_instance.kafka.private_ip}:9092",
+    "sleep 1", # strangely this seems to be necessary to get kafka to start properly
+    ]
   }
 }
 
@@ -97,12 +92,20 @@ output "kafka_ip" {
   value = "${aws_instance.kafka.public_ip}"
 }
 
+output "kafka_private_ip" {
+ value = "${aws_instance.kafka.private_ip}"
+}
+
 output "pdk_ip" {
   value = "${aws_instance.pdk.public_ip}"
 }
 
 output "pilosa_ip" {
   value = "${aws_instance.pilosa.public_ip}"
+}
+
+output "pilosa_private_ip" {
+ value = "${aws_instance.pilosa.private_ip}"
 }
 
 # Create a VPC to launch our instances into

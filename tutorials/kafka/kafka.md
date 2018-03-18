@@ -1,89 +1,33 @@
 Strap in, you're about to learn how to automatically index your data from Kafka into Pilosa using the tools from the PDK.
 
-## Crank up a Kafka
-You've probably already got one, right? But if not, you can use the following commands to set it up in... "THE CLOUD".
-
-Assuming you have an AWS account with a key pair set up and the [AWS CLI](https://aws.amazon.com/cli) installed 
-
-list your keys:
-
-```bash
-aws ec2 describe-keys
-```
-
-Find your key and use its name in the following command - feel free to change the image id, region, and instance type to your liking
-
-```bash
-aws ec2 run-instances --image-id=ami-e3c3b8f4 --region us-east-1 --instance-type r4.2xlarge --key-name <KeyName>
-```
-
-Note your `InstanceId` from the json that command barfs out. Now you may have to wait a few minutes for the instance to finish launching, but run
-
-```bash
-aws ec2 describe-instances --instance-ids <InstanceId>
-```
-
-and now get your `PublicIpAddress` from that json. You may need to open port 22 on your instance's security group to allow ssh access, in which case, you'll also need the `GroupId` from the `SecurityGroups` list.
-
-```bash
-aws ec2 authorize-security-group-ingress --port 22 --cidr 0.0.0.0/0 --group-id <GroupId> --protocol tcp
-```
-
-Now let's get cracking with Kafka - we'll be using the [Confluent Kafka stack](https://www.confluent.io/download/) which includes a schema registry and REST proxy. 
-
-```bash
-
-ssh ubuntu@<PublicIpAddress>
-sudo apt-get update
-sudo apt-get -y install default-jre
-
-wget http://packages.confluent.io/archive/4.0/confluent-oss-4.0.0-2.11.tar.gz
-
-tar xzf confluent-oss-4.0.0-2.11.tar.gz
-./confluent-4.0.0/bin/confluent start kafka-rest
-
-```
-
-## Install Go and the PDK
-
-```bash
-wget https://storage.googleapis.com/golang/go1.10.linux-amd64.tar.gz
-sudo tar -C /usr/local -xzf go1.10.linux-amd64.tar.gz
-sudo chown -R $USER:$USER /usr/local/go
-mkdir -p /home/$USER/go/src/github.com/pilosa
-mkdir -p /home/$USER/go/bin
-GOPATH=/home/$USER/go
-export GOPATH
-PATH=$PATH:/usr/local/go/bin:$GOPATH/bin
-export PATH
-
-echo "export GOPATH=/home/$USER/go" >> .profile
-echo "export PATH=$PATH:/usr/local/go/bin:$GOPATH/bin" >> .profile
-
-curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
-
-sudo apt-get -y install make git
-
-git clone https://github.com/pilosa/pdk.git $GOPATH/src/github.com/pilosa/pdk
-git checkout blah
-cd $GOPATH/src/github.com/pilosa/pdk
-git remote add jaffee https://github.com/jaffee/pdk.git
-git checkout jaffee/kafka-tutorial
-make install
-```
-
-
 ## Provision Infrastructure with Terraform
+
+Terraform is an infrastructure provisioning tool which is written in Go and very easy to use. We use it here because it makes following this tutorial very straightforward. First you must [install it](https://www.terraform.io/intro/getting-started/install.html), which is just a matter of downloading the appropriate binary and putting it on your `PATH` - see the linked instructions for more detail.
+
+Now that Terraform is installed, we need to tell it where to find our public ssh key so that we'll be able to log into our instances. Replace the file path in the following command with the path to your public key. If you don't know what I'm talking about, follow [these instructions](https://help.github.com/articles/generating-a-new-ssh-key-and-adding-it-to-the-ssh-agent/) to generate a key, and then you should be in good shape.
 
 ```bash
 export TF_VAR_public_key_path=/Users/jaffee/.ssh/id_rsa_aws.pub
+```
 
-# from this directory:
+Now, clone this repository, enter the directory for this tutorial, and start terraforming! 
+
+```bash
+git clone https://github.com/pilosa/pdk.git
+cd ./pdk/tutorials/kafka
 terraform apply -auto-approve
-export PDK_GEN_IP=`terraform output | grep gen_ip | cut -d' ' -f3`
-export PDK_KAFKA_IP=`terraform output | grep kafka_ip | cut -d' ' -f3`
-export PDK_PDK_IP=`terraform output | grep pdk_ip | cut -d' ' -f3`
-export PDK_PILOSA_IP=`terraform output | grep pilosa_ip | cut -d' ' -f3`
+```
+
+Now we'll set some handy environment variables from terraform's output that
+we'll need to refer to later.
+
+```bash
+export PDK_GEN_IP=`terraform output gen_ip`
+export PDK_KAFKA_IP=`terraform output kafka_ip`
+export PDK_KAFKA_PRIV_IP=`terraform output kafka_private_ip`
+export PDK_PDK_IP=`terraform output pdk_ip`
+export PDK_PILOSA_IP=`terraform output pilosa_ip`
+export PDK_PILOSA_PRIV_IP=`terraform output pilosa_private_ip`
 ```
 
 ## Shove data into Kafka
@@ -97,7 +41,34 @@ For those of you following the tutorial verbatim, please read on...
 The PDK includes a data generator which can push some interesting fake data into
 Kafka at a configurable rate.
 
+Start `kafkagen`, and then start `kafkatest` to see if data is flowing properly.
+
 ```bash
-ssh ubuntu@$PDK_GEN_IP "pdk kafkagen $PDK_KAFKA_IP:9092"
+ssh ubuntu@$PDK_GEN_IP "source .profile; nohup pdk kafkagen -o $PDK_KAFKA_PRIV_IP:9092 2>&1 > gen.out &"
+# you can Ctrl-c now - it will continue running on the server
+
+ssh ubuntu@$PDK_GEN_IP "source .profile; pdk kafkatest -o $PDK_KAFKA_PRIV_IP:9092"
+# Ctrl-c once you see that it is working. 
 ```
 
+So now `kafkagen` is running on the generator host. It is putting 1 record per
+second into Kafka - later we'll restart it with a much faster rate, but for now,
+let's move on.
+
+## Start up Pilosa
+
+```bash
+ssh ubuntu@$PDK_PILOSA_IP "nohup ~/go/bin/pilosa server -b $PDK_PILOSA_PRIV_IP:10101 --log-path=./pilosa.log 2> pilosa.out &"
+```
+
+## Start PDK indexing
+
+```bash
+# background
+ssh ubuntu@$PDK_PDK_IP "nohup ~/go/bin/pdk kafka --pilosa-hosts=$PDK_PILOSA_PRIV_IP:10101 --hosts=$PDK_KAFKA_PRIV_IP:9092 -r '' 2> pdk.out"
+
+# or interactive
+ssh ubuntu@$PDK_PDK_IP "~/go/bin/pdk kafka --pilosa-hosts=$PDK_PILOSA_PRIV_IP:10101 --hosts=$PDK_KAFKA_PRIV_IP:9092 -r ''"
+```
+
+TODO: need to fix the kafka command - source appears to be broken, not parsing json, need to start proxy, need to be able to specify subject and ignores like pdk http.
