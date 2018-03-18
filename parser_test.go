@@ -38,7 +38,7 @@ func TestEntitySubjecter(t *testing.T) {
 		t.Fatalf("should not have found 'id', but got %v", val)
 	}
 
-	es = SubjectPath([]string{"geo", "time_zone"})
+	es = SubjectPath([]string{"geo", "timezone"})
 	subj, err = es.Subject(ent)
 	if err != nil {
 		t.Fatalf("getting subject: %v", err)
@@ -124,7 +124,7 @@ func TestGenericParserWithEvent(t *testing.T) {
 		t.Fatalf("unmarshalling event: %v", err)
 	}
 
-	_, err = gp.Parse(testRec)
+	_, err = gp.Parse(thing)
 	if err != nil {
 		t.Fatalf("parsing Event as unmarshalled json: %v", err)
 	}
