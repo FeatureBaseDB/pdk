@@ -37,3 +37,10 @@ type Indexer interface {
 	Close() error
 	Client() *gopilosa.Client
 }
+
+// Transformer is an interface for something which performs an in-place
+// transformation on an Entity. It might enrich the entity by adding new fields,
+// delete existing fields that don't need to be indexed, or change fields.
+type Transformer interface {
+	Transform(e *Entity) error
+}

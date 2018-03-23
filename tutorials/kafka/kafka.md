@@ -4,10 +4,10 @@ Strap in, you're about to learn how to automatically index your data from Kafka 
 
 Terraform is an infrastructure provisioning tool which is written in Go and very easy to use. We use it here because it makes following this tutorial very straightforward. First you must [install it](https://www.terraform.io/intro/getting-started/install.html), which is just a matter of downloading the appropriate binary and putting it on your `PATH` - see the linked instructions for more detail.
 
-Now that Terraform is installed, we need to tell it where to find our public ssh key so that we'll be able to log into our instances. Replace the file path in the following command with the path to your public key. If you don't know what I'm talking about, follow [these instructions](https://help.github.com/articles/generating-a-new-ssh-key-and-adding-it-to-the-ssh-agent/) to generate a key, and then you should be in good shape.
+Now that Terraform is installed, we need to tell it where to find our public ssh key so that we'll be able to log into our instances. Replace the file path in the following command with the path to your public key. If you don't know what I'm talking about, follow [these instructions](https://help.github.com/articles/generating-a-new-ssh-key-and-adding-it-to-the-ssh-agent/) to generate a key. You MUST add the key to your ssh agent which is also covered in those instructions.
 
 ```bash
-export TF_VAR_public_key_path=/Users/jaffee/.ssh/id_rsa_aws.pub
+export TF_VAR_public_key_path=$HOME/.ssh/id_rsa.pub
 ```
 
 Now, clone this repository, enter the directory for this tutorial, and start terraforming! 
@@ -71,4 +71,4 @@ ssh ubuntu@$PDK_PDK_IP "nohup ~/go/bin/pdk kafka --pilosa-hosts=$PDK_PILOSA_PRIV
 ssh ubuntu@$PDK_PDK_IP "~/go/bin/pdk kafka --pilosa-hosts=$PDK_PILOSA_PRIV_IP:10101 --hosts=$PDK_KAFKA_PRIV_IP:9092 -r ''"
 ```
 
-TODO: need to fix the kafka command - source appears to be broken, not parsing json, need to start proxy, need to be able to specify subject and ignores like pdk http.
+## Query

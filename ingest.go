@@ -22,6 +22,8 @@ type Ingester struct {
 	mapper  RecordMapper
 	indexer Indexer
 
+	Transformers []Transformer
+
 	Stats statter
 }
 
@@ -50,20 +52,34 @@ func (n *Ingester) Run() error {
 			defer pwg.Done()
 			var recordErr error
 			for {
+				// Source
 				var rec interface{}
 				rec, recordErr = n.src.Record()
 				if recordErr != nil {
 					break
 				}
 				n.Stats.Count("ingest.Record", 1, 1)
+
+				// Parse
 				val, err := n.parser.Parse(rec)
 				if err != nil {
 					log.Printf("couldn't parse record %s, err: %v", rec, err)
 					n.Stats.Count("ingest.ParseError", 1, 1)
 					continue
 				}
-
 				n.Stats.Count("ingest.Parse", 1, 1)
+
+				// Transform
+				for _, tr := range n.Transformers {
+					err := tr.Transform(val)
+					if err != nil {
+						log.Printf("Problem with tranformer %#v: %v", tr, err)
+						n.Stats.Count("ingest.TransformError", 1, 1)
+					}
+				}
+				n.Stats.Count("ingest.Transform", 1, 1)
+
+				// Map
 				pr, err := n.mapper.Map(val)
 				if err != nil {
 					log.Printf("couldn't map val: %s, err: %v", val, err)
@@ -71,6 +87,7 @@ func (n *Ingester) Run() error {
 					continue
 				}
 
+				// Index
 				n.Stats.Count("ingest.Map", 1, 1)
 				for _, row := range pr.Rows {
 					n.indexer.AddBit(row.Frame, pr.Col, row.ID)

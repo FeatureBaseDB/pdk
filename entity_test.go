@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/pilosa/pdk"
+	"github.com/pkg/errors"
 
 	"testing"
 )
@@ -61,6 +62,192 @@ func TestToAndFromBytes(t *testing.T) {
 			nl := pdk.FromBytes(bs)
 			if nl != tst {
 				t.Fatalf("expected: %#v, actual: %#v", tst, nl)
+			}
+		})
+	}
+}
+
+func TestSetString(t *testing.T) {
+	tests := []struct {
+		name   string
+		path   []string
+		entity *pdk.Entity
+		expErr error
+	}{
+		{
+			name:   "Empty Entity, 2 path",
+			path:   []string{"one", "two"},
+			entity: pdk.NewEntity(),
+		},
+		{
+			name:   "Empty Entity, 1 path",
+			path:   []string{"one"},
+			entity: pdk.NewEntity(),
+		},
+		{
+			name: "no path",
+			path: []string{"one", "two"},
+			entity: &pdk.Entity{
+				Objects: map[pdk.Property]pdk.Object{"one": pdk.S("VALUE")},
+			},
+			expErr: pdk.ErrPathNotFound,
+		},
+		{
+			name: "overwrite",
+			path: []string{"one"},
+			entity: &pdk.Entity{
+				Objects: map[pdk.Property]pdk.Object{"one": pdk.S("ZALUE")},
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			err := test.entity.SetString("VALUE", test.path...)
+			if errors.Cause(err) != test.expErr {
+				t.Fatalf("got err %v, expected %v", err, test.expErr)
+			}
+			if err != nil {
+				return
+			}
+			val, err := test.entity.Literal(test.path...)
+			if err != nil {
+				t.Fatalf("reading value from %#v: %v", test.entity, err)
+			}
+			valS, ok := val.(pdk.S)
+			if !ok {
+				t.Fatalf("set value is not a string")
+			}
+			if valS != pdk.S("VALUE") {
+				t.Fatalf("set value is not VALUE: %v", valS)
+			}
+		})
+	}
+}
+
+func TestGetLiteral(t *testing.T) {
+	tests := []struct {
+		name   string
+		path   []string
+		entity *pdk.Entity
+		expErr error
+		expLit pdk.Literal
+	}{
+		{
+			name: "single item path",
+			path: []string{"one"},
+			entity: &pdk.Entity{
+				Objects: map[pdk.Property]pdk.Object{"one": pdk.S("VALUE")},
+			},
+			expLit: pdk.S("VALUE"),
+		},
+		{
+			name: "two item path",
+			path: []string{"one", "two"},
+			entity: &pdk.Entity{
+				Objects: map[pdk.Property]pdk.Object{"one": &pdk.Entity{
+					Objects: map[pdk.Property]pdk.Object{"two": pdk.S("VALUE")},
+				}},
+			},
+			expLit: pdk.S("VALUE"),
+		},
+		{
+			name: "empty path",
+			path: []string{},
+			entity: &pdk.Entity{
+				Objects: map[pdk.Property]pdk.Object{"one": pdk.S("VALUE")},
+			},
+			expErr: pdk.ErrEmptyPath,
+		},
+		{
+			name: "non-entity in path",
+			path: []string{"one", "two"},
+			entity: &pdk.Entity{
+				Objects: map[pdk.Property]pdk.Object{"one": pdk.S("VALUE")},
+			},
+			expErr: pdk.ErrPathNotFound,
+		},
+		{
+			name: "non-existent path",
+			path: []string{"zip", "two"},
+			entity: &pdk.Entity{
+				Objects: map[pdk.Property]pdk.Object{"one": pdk.S("VALUE")},
+			},
+			expErr: pdk.ErrPathNotFound,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			lit, err := test.entity.Literal(test.path...)
+			if errors.Cause(err) != test.expErr {
+				t.Fatalf("got %v, expected %v", err, test.expErr)
+			}
+			if err != nil {
+				return
+			}
+			if test.expLit != lit {
+				t.Fatalf("got %v, expected %v", lit, test.expLit)
+			}
+		})
+	}
+}
+
+func TestGetF64(t *testing.T) {
+	tests := []struct {
+		name   string
+		path   []string
+		entity *pdk.Entity
+		expErr error
+		exp    pdk.F64
+	}{
+		{
+			name: "single item path",
+			path: []string{"one"},
+			entity: &pdk.Entity{
+				Objects: map[pdk.Property]pdk.Object{"one": pdk.F64(1.1)},
+			},
+			exp: pdk.F64(1.1),
+		},
+		{
+			name: "two item path",
+			path: []string{"one", "two"},
+			entity: &pdk.Entity{
+				Objects: map[pdk.Property]pdk.Object{"one": &pdk.Entity{
+					Objects: map[pdk.Property]pdk.Object{"two": pdk.F64(1.1)},
+				}},
+			},
+			exp: pdk.F64(1.1),
+		},
+		{
+			name: "empty path",
+			path: []string{},
+			entity: &pdk.Entity{
+				Objects: map[pdk.Property]pdk.Object{"one": pdk.F64(1.1)},
+			},
+			expErr: pdk.ErrEmptyPath,
+		},
+		{
+			name: "unexpected type",
+			path: []string{"one"},
+			entity: &pdk.Entity{
+				Objects: map[pdk.Property]pdk.Object{"one": pdk.S("blah")},
+			},
+			expErr: pdk.ErrUnexpectedType,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			f64, err := test.entity.F64(test.path...)
+			if errors.Cause(err) != test.expErr {
+				t.Fatalf("got %v, expected %v", err, test.expErr)
+			}
+			if err != nil {
+				return
+			}
+			if test.exp != f64 {
+				t.Fatalf("got %v, expected %v", f64, test.exp)
 			}
 		})
 	}
