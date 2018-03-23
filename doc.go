@@ -44,15 +44,21 @@
 //    ways to go about it and so it is possible that mutliple parsers may exist
 //    which operate on the same type of Source data.
 //
+// 2.5. Transformer
+//
+//    One may optional provide a number of Transformers which do in-place
+//    operations on the Entity before it is passed to the Mapper.
+//
 // 3. Mapper
 //
-//    The Mapper's job is to take instances of pdk.Entity and turn them into
+//    The Mapper's job is to take instances of pdk.Entity and create
 //    pdk.PilosaRecord objects. Because the pdk.Entity is fairly well-defined,
 //    it is possible to do this generically, and it may not be necessary to use
 //    a bespoke Mapper in many cases. However, as mentioned in the Parser
 //    description, there are performance and capability tradeoffs based on how
 //    one decides to map data into Pilosa. (TODO expand with more examples as
-//    mappers are implemented, also reference generic mapper and it's config options)
+//    mappers are implemented, also reference generic mapper and it's config
+//    options)
 //
 // 4. Indexer
 //

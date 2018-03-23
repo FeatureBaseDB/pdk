@@ -19,6 +19,13 @@ func TestCollapsingMapper(t *testing.T) {
 	if err != nil {
 		t.Fatalf("mapping entity: %v", err)
 	}
+	val, err := cm.Translator.Get("aa", 0)
+	if err != nil {
+		t.Fatalf("translator get: %v", err)
+	}
+	if val != pdk.S("hello") {
+		t.Fatalf("bad val from translator")
+	}
 
 	if len(pr.Rows) != 1 {
 		t.Fatalf("wrong rows: %v", pr.Rows)

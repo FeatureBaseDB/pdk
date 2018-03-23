@@ -92,6 +92,12 @@
   version = "v1.4.7"
 
 [[projects]]
+  branch = "master"
+  name = "github.com/gansidui/geohash"
+  packages = ["."]
+  revision = "ebe5ba447f344b681c3bd96d2ca3e1ef5b43b7a8"
+
+[[projects]]
   name = "github.com/go-ole/go-ole"
   packages = [
     ".",
@@ -442,6 +448,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "d85fd64496ccb9b70b066874dc1dd686c900df8a74f447ac75046c470fcbc95b"
+  inputs-digest = "c121febf616fa0d0264889766dbb47ad55cc9a264734e79e9b48d88dc32b62e9"
   solver-name = "gps-cdcl"
   solver-version = 1

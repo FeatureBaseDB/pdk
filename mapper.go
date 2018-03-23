@@ -31,17 +31,11 @@ func NewCollapsingMapper() *CollapsingMapper {
 func (m *CollapsingMapper) Map(e *Entity) (PilosaRecord, error) {
 	pr := PilosaRecord{}
 	col, err := m.ColTranslator.GetID(e.Subject)
-	pr.Col = col
 	if err != nil {
 		return pr, errors.Wrap(err, "getting column id from subject")
 	}
-	for prop, val := range e.Objects {
-		err := m.mapObj(val, &pr, []string{string(prop)})
-		if err != nil {
-			return pr, errors.Wrapf(err, "mapping %v", val)
-		}
-	}
-	return pr, nil
+	pr.Col = col
+	return pr, m.mapObj(e, &pr, []string{})
 }
 
 func (m *CollapsingMapper) mapObj(val Object, pr *PilosaRecord, path []string) error {

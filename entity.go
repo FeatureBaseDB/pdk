@@ -80,10 +80,89 @@ func equal(o, o2 Object) error {
 	return nil
 }
 
+var (
+	ErrPathNotFound   = errors.New("path not found in Entity")
+	ErrNotALiteral    = errors.New("value at path is not a Literal")
+	ErrEmptyPath      = errors.New("path is empty")
+	ErrUnexpectedType = errors.New("unexpected type")
+)
+
+// Literal gets the literal at the path in the Entity.
+func (e *Entity) Literal(path ...string) (Literal, error) {
+	var cur = e
+	var ok bool
+	var lit Literal
+	for i, prop := range path {
+		var val Object
+		val, ok = cur.Objects[Property(prop)]
+		if !ok {
+			return nil, ErrPathNotFound
+		}
+		if i == len(path)-1 {
+			lit, ok = val.(Literal)
+			if !ok {
+				return nil, errors.Wrapf(ErrNotALiteral, "%#v", cur)
+			}
+			return lit, nil
+		}
+		cur, ok = val.(*Entity)
+		if !ok {
+			return nil, ErrPathNotFound
+		}
+	}
+	return nil, ErrEmptyPath
+}
+
+// F64 tries to get a float64 at the given path in the Entity.
+func (e *Entity) F64(path ...string) (F64, error) {
+	lit, err := e.Literal(path...)
+	if err != nil {
+		return 0, errors.Wrap(err, "getting literal")
+	}
+	f64, ok := lit.(F64)
+	if !ok {
+		return 0, errors.Wrapf(ErrUnexpectedType, "%#v not a float64", lit)
+	}
+	return f64, nil
+}
+
+// NewEntity returns a newly allocated Entity.
 func NewEntity() *Entity {
 	return &Entity{
 		Objects: make(map[Property]Object),
 	}
+}
+
+// SetPath ensures that a path exists, creating Entities along the way if
+// necessary. If it encounters a non-Entity, it will return an error.
+func (e *Entity) SetPath(path ...string) (*Entity, error) {
+	var cur = e
+	for i, prop := range path {
+		val, ok := cur.Objects[Property(prop)]
+		if !ok {
+			cur.Objects[Property(prop)] = NewEntity()
+			cur = cur.Objects[Property(prop)].(*Entity)
+			continue
+		}
+		cur, ok = val.(*Entity)
+		if !ok {
+			return nil, errors.Wrapf(ErrPathNotFound, "depth %d property %v, not an entity %#v", i, prop, val)
+		}
+	}
+	return cur, nil
+}
+
+// SetString
+func (e *Entity) SetString(value string, path ...string) error {
+	if len(path) == 0 {
+		return ErrEmptyPath
+	}
+	ent, err := e.SetPath(path[:len(path)-1]...)
+	if err != nil {
+		return errors.Wrap(err, "setting path")
+	}
+	ent.Objects[Property(path[len(path)-1])] = S(value)
+	return nil
 }
 
 // EntityWithContext associates a Context
