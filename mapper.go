@@ -30,7 +30,7 @@ func NewCollapsingMapper() *CollapsingMapper {
 
 func (m *CollapsingMapper) Map(e *Entity) (PilosaRecord, error) {
 	pr := PilosaRecord{}
-	col, err := m.ColTranslator.GetID(e.Subject)
+	col, err := m.ColTranslator.GetID(string(e.Subject))
 	if err != nil {
 		return pr, errors.Wrap(err, "getting column id from subject")
 	}
