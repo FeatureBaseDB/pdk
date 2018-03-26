@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"math/rand"
-	"net"
 	"net/http"
 	"strconv"
 	"testing"
@@ -18,7 +17,7 @@ import (
 	gopilosa "github.com/pilosa/go-pilosa"
 	"github.com/pilosa/pdk"
 	"github.com/pilosa/pdk/kafka"
-	"github.com/pilosa/pilosa/server"
+	"github.com/pilosa/pilosa/test"
 )
 
 var kafkaTopic = "testtopic"
@@ -30,7 +29,7 @@ func TestSource(t *testing.T) {
 	}
 
 	src := kafka.NewConfluentSource()
-	src.KafkaHosts = []string{"localhost:9092"}
+	src.Hosts = []string{"localhost:9092"}
 	src.Group = kafkaGroup
 	src.Topics = []string{kafkaTopic}
 	src.RegistryURL = "localhost:8081"
@@ -74,7 +73,7 @@ func TestEverything(t *testing.T) {
 	}
 
 	src := kafka.NewConfluentSource()
-	src.KafkaHosts = []string{"localhost:9092"}
+	src.Hosts = []string{"localhost:9092"}
 	src.Group = kafkaGroup
 	src.Topics = []string{kafkaTopic}
 	src.RegistryURL = "localhost:8081"
@@ -86,8 +85,12 @@ func TestEverything(t *testing.T) {
 	parser := pdk.NewDefaultGenericParser()
 	mapper := pdk.NewCollapsingMapper()
 
-	s := MustNewRunningServer(t)
-	idxer, err := pdk.SetupPilosa([]string{s.Server.Addr().String()}, "kafkaavro", []pdk.FrameSpec{}, 10)
+	mains := test.MustRunMainWithCluster(t, 3)
+	var hosts []string
+	for _, m := range mains {
+		hosts = append(hosts, m.Server.Addr().String())
+	}
+	idxer, err := pdk.SetupPilosa([]string{hosts[0]}, "kafkaavro", []pdk.FrameSpec{}, 10)
 	if err != nil {
 		t.Fatalf("setting up pilosa: %v", err)
 	}
@@ -108,7 +111,7 @@ func TestEverything(t *testing.T) {
 	}
 	<-done
 
-	cli, err := gopilosa.NewClient([]string{s.Server.Addr().String()})
+	cli, err := gopilosa.NewClient([]string{hosts[0]})
 	if err != nil {
 		t.Fatalf("getting pilosa client: %v", err)
 	}
@@ -118,7 +121,7 @@ func TestEverything(t *testing.T) {
 		t.Fatalf("getting schema: %v", err)
 	}
 
-	idx, err := schema.Index("kafkaavro", nil)
+	idx, err := schema.Index("kafkaavro")
 	if err != nil {
 		t.Fatalf("getting index: %v", err)
 	}
@@ -129,13 +132,13 @@ func TestEverything(t *testing.T) {
 			if err != nil {
 				t.Fatalf("query for a field (%v): %v", fname, err)
 			}
-			fmt.Printf("%v: %v, Sum: %v\n", name, fname, resp.Result().Sum)
+			fmt.Printf("%v: %v, Sum: %v\n", name, fname, resp.Result().Sum())
 		}
 		resp, err := cli.Query(fram.TopN(10), nil)
 		if err != nil {
 			t.Fatalf("fram topn query (%v): %v", name, err)
 		}
-		fmt.Printf("%v: TopN: %v\n", name, resp.Result().CountItems)
+		fmt.Printf("%v: TopN: %v\n", name, resp.Result().CountItems())
 	}
 
 }
@@ -150,10 +153,11 @@ func postData(t *testing.T) (response map[string]interface{}) {
 		Schema:  schema,
 		Records: []Value{{Value: map[string]interface{}{"com.pi.Stuff": GenRecord()}}},
 	}
-	dataBytes, err := json.Marshal(data)
+	dataBytes, err := json.MarshalIndent(data, "", "  ")
 	if err != nil {
 		t.Fatalf("marshalling schema: %v", err)
 	}
+
 	resp, err := http.Post(postURL, "application/vnd.kafka.avro.v2+json", bytes.NewBuffer(dataBytes))
 	if err != nil {
 		t.Fatalf("posting schema: %v", err)
@@ -586,40 +590,3 @@ var schema = `[{
     "namespace": "com.pi",
     "type": "record"
 }]`
-
-func MustNewRunningServer(t *testing.T) *server.Command {
-	s := server.NewCommand(&bytes.Buffer{}, ioutil.Discard, ioutil.Discard)
-	s.Config.Bind = ":0"
-	port := strconv.Itoa(MustOpenPort(t))
-	s.Config.GossipPort = port
-	s.Config.GossipSeed = "localhost:" + port
-	td, err := ioutil.TempDir("", "")
-	if err != nil {
-		t.Fatalf("error creating temp data directory: %v", err)
-	}
-	s.Config.DataDir = td
-	err = s.Run()
-	if err != nil {
-		t.Fatalf("error running new pilosa server: %v", err)
-	}
-	return s
-}
-
-func MustOpenPort(t *testing.T) int {
-	addr, err := net.ResolveTCPAddr("tcp", ":0")
-	if err != nil {
-		t.Fatalf("resolving new port addr: %v", err)
-	}
-
-	l, err := net.ListenTCP("tcp", addr)
-	if err != nil {
-		t.Fatalf("listening to get new port: %v", err)
-	}
-	defer func() {
-		err := l.Close()
-		if err != nil {
-			t.Logf("error closing listener in MustOpenPort: %v", err)
-		}
-	}()
-	return l.Addr().(*net.TCPAddr).Port
-}
