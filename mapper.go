@@ -14,6 +14,7 @@ type CollapsingMapper struct {
 	Translator    Translator
 	ColTranslator FrameTranslator
 	Framer        Framer
+	Nexter        INexter
 }
 
 // NewCollapsingMapper returns a CollapsingMapper with basic implementations of
@@ -25,14 +26,22 @@ func NewCollapsingMapper() *CollapsingMapper {
 		Translator:    NewMapTranslator(),
 		ColTranslator: NewNexterFrameTranslator(),
 		Framer:        &DashFrame{},
+		Nexter:        NewNexter(),
 	}
 }
 
+// Map implements the RecordMapper interface.
 func (m *CollapsingMapper) Map(e *Entity) (PilosaRecord, error) {
 	pr := PilosaRecord{}
-	col, err := m.ColTranslator.GetID(string(e.Subject))
-	if err != nil {
-		return pr, errors.Wrap(err, "getting column id from subject")
+	var col uint64
+	var err error
+	if m.ColTranslator != nil {
+		col, err = m.ColTranslator.GetID(string(e.Subject))
+		if err != nil {
+			return pr, errors.Wrap(err, "getting column id from subject")
+		}
+	} else {
+		col = m.Nexter.Next()
 	}
 	pr.Col = col
 	return pr, m.mapObj(e, &pr, []string{})
