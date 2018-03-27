@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -17,10 +18,12 @@ import (
 
 // Source implements the pdk.Source interface using kafka as a data source.
 type Source struct {
-	Hosts  []string
-	Topics []string
-	Group  string
-	Type   string
+	Hosts   []string
+	Topics  []string
+	Group   string
+	Type    string
+	MaxMsgs int
+	numMsgs int
 
 	consumer *cluster.Consumer
 	messages <-chan *sarama.ConsumerMessage
@@ -38,6 +41,12 @@ func NewSource() *Source {
 
 // Record returns the value of the next kafka message.
 func (s *Source) Record() (interface{}, error) {
+	if s.MaxMsgs > 0 {
+		s.numMsgs++
+		if s.numMsgs > s.MaxMsgs {
+			return nil, io.EOF
+		}
+	}
 	msg, ok := <-s.consumer.Messages()
 	if ok {
 		var ret interface{}
@@ -63,6 +72,7 @@ func (s *Source) Record() (interface{}, error) {
 // Open initializes the kafka source.
 func (s *Source) Open() error {
 	// init (custom) config, enable errors and notifications
+	sarama.Logger = log.New(ioutil.Discard, "", 0)
 	config := cluster.NewConfig()
 	config.Config.Version = sarama.V0_10_0_0
 	config.Consumer.Return.Errors = true
