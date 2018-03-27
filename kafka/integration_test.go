@@ -30,7 +30,7 @@ func TestSource(t *testing.T) {
 	}
 
 	src := kafka.NewConfluentSource()
-	src.KafkaHosts = []string{"localhost:9092"}
+	src.Hosts = []string{"localhost:9092"}
 	src.Group = kafkaGroup
 	src.Topics = []string{kafkaTopic}
 	src.RegistryURL = "localhost:8081"
@@ -74,7 +74,7 @@ func TestEverything(t *testing.T) {
 	}
 
 	src := kafka.NewConfluentSource()
-	src.KafkaHosts = []string{"localhost:9092"}
+	src.Hosts = []string{"localhost:9092"}
 	src.Group = kafkaGroup
 	src.Topics = []string{kafkaTopic}
 	src.RegistryURL = "localhost:8081"
@@ -118,7 +118,7 @@ func TestEverything(t *testing.T) {
 		t.Fatalf("getting schema: %v", err)
 	}
 
-	idx, err := schema.Index("kafkaavro", nil)
+	idx, err := schema.Index("kafkaavro")
 	if err != nil {
 		t.Fatalf("getting index: %v", err)
 	}
@@ -129,13 +129,13 @@ func TestEverything(t *testing.T) {
 			if err != nil {
 				t.Fatalf("query for a field (%v): %v", fname, err)
 			}
-			fmt.Printf("%v: %v, Sum: %v\n", name, fname, resp.Result().Sum)
+			fmt.Printf("%v: %v, Sum: %v\n", name, fname, resp.Result().Sum())
 		}
 		resp, err := cli.Query(fram.TopN(10), nil)
 		if err != nil {
 			t.Fatalf("fram topn query (%v): %v", name, err)
 		}
-		fmt.Printf("%v: TopN: %v\n", name, resp.Result().CountItems)
+		fmt.Printf("%v: TopN: %v\n", name, resp.Result().CountItems())
 	}
 
 }
@@ -591,8 +591,7 @@ func MustNewRunningServer(t *testing.T) *server.Command {
 	s := server.NewCommand(&bytes.Buffer{}, ioutil.Discard, ioutil.Discard)
 	s.Config.Bind = ":0"
 	port := strconv.Itoa(MustOpenPort(t))
-	s.Config.GossipPort = port
-	s.Config.GossipSeed = "localhost:" + port
+	s.Config.Gossip.Port = port
 	td, err := ioutil.TempDir("", "")
 	if err != nil {
 		t.Fatalf("error creating temp data directory: %v", err)
