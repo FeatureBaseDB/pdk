@@ -73,7 +73,7 @@ func (n *Ingester) Run() error {
 				for _, tr := range n.Transformers {
 					err := tr.Transform(val)
 					if err != nil {
-						log.Printf("Problem with tranformer %#v: %v", tr, err)
+						log.Printf("Problem with transformer %#v: %v", tr, err)
 						n.Stats.Count("ingest.TransformError", 1, 1)
 					}
 				}
