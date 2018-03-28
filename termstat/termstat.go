@@ -15,6 +15,7 @@ type Collector struct {
 	indexes map[string]int
 	names   []string
 	stats   []int64
+	changed bool
 	out     io.Writer
 }
 
@@ -36,6 +37,7 @@ func NewCollector(out io.Writer) *Collector {
 // Count adds value to the named stat at the specified rate.
 func (t *Collector) Count(name string, value int64, rate float64) {
 	t.lock.Lock()
+	t.changed = true
 	defer t.lock.Unlock()
 
 	idx, ok := t.indexes[name]
@@ -56,9 +58,14 @@ func (t *Collector) Count(name string, value int64, rate float64) {
 func (t *Collector) write() {
 	sb := strings.Builder{}
 	t.lock.Lock()
+	if !t.changed {
+		t.lock.Unlock()
+		return
+	}
 	for i := 0; i < len(t.stats); i++ {
 		_, _ = sb.WriteString(fmt.Sprintf("%s: %d ", t.names[i], t.stats[i]))
 	}
+	t.changed = false
 	fmt.Fprintf(t.out, "\r"+sb.String())
 	t.lock.Unlock()
 }
