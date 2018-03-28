@@ -18,6 +18,10 @@ resource "aws_instance" "gen" {
   provisioner "remote-exec" {
     script = "setup-gen.sh"
   }
+
+  tags {
+    Name = "pdk-kafka-tutorial-generator"
+  }
 }
 
 # KAFKA
@@ -44,6 +48,10 @@ resource "aws_instance" "kafka" {
     "sleep 1", # strangely this seems to be necessary to get kafka to start properly
     ]
   }
+
+  tags {
+    Name = "pdk-kafka-tutorial-kafka"
+  }
 }
 
 # PDK
@@ -61,6 +69,10 @@ resource "aws_instance" "pdk" {
 
   provisioner "remote-exec" {
     script = "setup-pdk.sh"
+  }
+
+  tags {
+    Name = "pdk-kafka-tutorial-pdk"
   }
 }
 
@@ -80,6 +92,10 @@ resource "aws_instance" "pilosa" {
 
   provisioner "remote-exec" {
     script = "setup-pilosa.sh"
+  }
+
+  tags {
+    Name = "pdk-kafka-tutorial-pilosa"
   }
 }
 
@@ -111,6 +127,10 @@ output "pilosa_private_ip" {
 # Create a VPC to launch our instances into
 resource "aws_vpc" "default" {
   cidr_block = "10.0.0.0/16"
+
+  tags {
+    Name = "pdk-kafka-tutorial-vpc"
+  }
 }
 
 # Create an internet gateway to give our subnet access to the outside world
