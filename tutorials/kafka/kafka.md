@@ -15,6 +15,7 @@ Now, clone this repository, enter the directory for this tutorial, and start ter
 ```bash
 git clone https://github.com/pilosa/pdk.git
 cd ./pdk/tutorials/kafka
+terraform init
 terraform apply -auto-approve
 ```
 
