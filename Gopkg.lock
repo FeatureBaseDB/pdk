@@ -11,7 +11,7 @@
   branch = "master"
   name = "github.com/DataDog/datadog-go"
   packages = ["statsd"]
-  revision = "1db03a3cc56bf5b5b80de306274c7b8f8eb6abfa"
+  revision = "72108a55170ce37441a28f16e9cad917eec0aca4"
 
 [[projects]]
   name = "github.com/Shopify/sarama"
@@ -46,8 +46,8 @@
 [[projects]]
   name = "github.com/bsm/sarama-cluster"
   packages = ["."]
-  revision = "3001c2453136632aa3219a58ea3795bb584b83b5"
-  version = "v2.1.12"
+  revision = "cf455bc755fe41ac9bb2861e7a961833d9c2ecc3"
+  version = "v2.1.13"
 
 [[projects]]
   name = "github.com/cespare/xxhash"
@@ -64,8 +64,8 @@
 [[projects]]
   name = "github.com/eapache/go-resiliency"
   packages = ["breaker"]
-  revision = "6800482f2c813e689c88b7ed3282262385011890"
-  version = "v1.0.0"
+  revision = "ea41b0fad31007accc7f806884dcdf3da98b79ce"
+  version = "v1.1.0"
 
 [[projects]]
   branch = "master"
@@ -164,7 +164,7 @@
   branch = "master"
   name = "github.com/hashicorp/go-sockaddr"
   packages = ["."]
-  revision = "7165ee14aff120ee3642aa2bcf2dea8eebef29c3"
+  revision = "6d291a969b86c4b633730bfc6b8b9d64c3aafed9"
 
 [[projects]]
   branch = "master"
@@ -179,6 +179,7 @@
     ".",
     "hcl/ast",
     "hcl/parser",
+    "hcl/printer",
     "hcl/scanner",
     "hcl/strconv",
     "hcl/token",
@@ -186,7 +187,7 @@
     "json/scanner",
     "json/token"
   ]
-  revision = "23c074d0eceb2b8a5bfdbb271ab780cde70f05a8"
+  revision = "f40e974e75af4e271d97ce0fc917af5898ae7bda"
 
 [[projects]]
   name = "github.com/hashicorp/memberlist"
@@ -267,12 +268,13 @@
   revision = "c1785aab9248cfbf8a982bc1dbc1b32bfe904d9a"
 
 [[projects]]
-  branch = "cluster-resize"
+  branch = "master"
   name = "github.com/pilosa/pilosa"
   packages = [
     ".",
-    "diagnostics",
+    "boltdb",
     "gcnotify",
+    "gopsutil",
     "gossip",
     "internal",
     "pql",
@@ -282,7 +284,7 @@
     "statsd",
     "test"
   ]
-  revision = "97915cf5f9e3dfa31c61bc91df058180d894f16c"
+  revision = "fb3a2b8b03d853ae4e80327940e6fc84cf4bf7de"
 
 [[projects]]
   name = "github.com/pkg/errors"
@@ -317,27 +319,13 @@
 [[projects]]
   name = "github.com/shirou/gopsutil"
   packages = [
-    "cpu",
     "host",
     "internal/common",
     "mem",
-    "net",
     "process"
   ]
-  revision = "c432be29ccce470088d07eea25b3ea7e68a8afbb"
-  version = "v2.18.01"
-
-[[projects]]
-  branch = "master"
-  name = "github.com/shirou/w32"
-  packages = ["."]
-  revision = "bb4de0191aa41b5507caa14b0650cdbddcd9280b"
-
-[[projects]]
-  name = "github.com/sony/gobreaker"
-  packages = ["."]
-  revision = "e9556a45379ef1da12e54847edb2fb3d7d566f36"
-  version = "0.3.0"
+  revision = "5776ff9c7c5d063d574ef53d740f75c68b448e53"
+  version = "v2.18.02"
 
 [[projects]]
   name = "github.com/spf13/afero"
@@ -357,8 +345,8 @@
 [[projects]]
   name = "github.com/spf13/cobra"
   packages = ["."]
-  revision = "7b2c5ac9fc04fc5efafb60700713d4fa609b777b"
-  version = "v0.0.1"
+  revision = "a1f051bc3eba734da4772d60e2d677f47cf93ef4"
+  version = "v0.0.2"
 
 [[projects]]
   branch = "master"
@@ -375,8 +363,8 @@
 [[projects]]
   name = "github.com/spf13/viper"
   packages = ["."]
-  revision = "25b30aa063fc18e48662b86996252eabdcf2f0c7"
-  version = "v1.0.0"
+  revision = "b5e8006cbee93ec955a89ab31e0e3ce3204f3736"
+  version = "v1.0.2"
 
 [[projects]]
   branch = "master"
@@ -395,7 +383,7 @@
     "leveldb/table",
     "leveldb/util"
   ]
-  revision = "c7a14d4b00e222eab6111b4cd1af829c13f53ec2"
+  revision = "169b1b37be738edb2813dab48c97a549bcf99bb5"
 
 [[projects]]
   branch = "master"
@@ -404,7 +392,7 @@
     "ed25519",
     "ed25519/internal/edwards25519"
   ]
-  revision = "91a49db82a88618983a78a06c1cbd4e00ab749ab"
+  revision = "12892e8c234f4fe6f6803f052061de9057903bb2"
 
 [[projects]]
   branch = "master"
@@ -417,13 +405,13 @@
     "ipv4",
     "ipv6"
   ]
-  revision = "cbe0f9307d0156177f9dd5dc85da1a31abc5f2fb"
+  revision = "6078986fec03a1dcc236c34816c71b0e05018fda"
 
 [[projects]]
   branch = "master"
   name = "golang.org/x/sync"
   packages = ["errgroup"]
-  revision = "fd80eb99c8f653c847d294a001bdf2a3a6f768f5"
+  revision = "1d60e4601c6fd243af51cc01ddf169918a5407ca"
 
 [[projects]]
   branch = "master"
@@ -432,7 +420,7 @@
     "unix",
     "windows"
   ]
-  revision = "f6cff0780e542efa0c8e864dc8fa522808f6a598"
+  revision = "378d26f46672a356c46195c28f61bdb4c0a781dd"
 
 [[projects]]
   name = "golang.org/x/text"
@@ -450,12 +438,12 @@
 [[projects]]
   name = "gopkg.in/yaml.v2"
   packages = ["."]
-  revision = "7f97868eec74b32b0982dd158a51a446d1da7eb5"
-  version = "v2.1.1"
+  revision = "5420a8b6744d3b0345ab293f6fcba19c978f1183"
+  version = "v2.2.1"
 
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "53ea6c905d7ba60ceb31784986e60f06dfc0f9519f12ce2ff49949bbf1a9e1d7"
+  inputs-digest = "639452442d94f37ec29fd04644223e6d73c9d3bf95e627ca6173cea5ba033fde"
   solver-name = "gps-cdcl"
   solver-version = 1

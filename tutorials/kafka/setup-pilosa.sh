@@ -23,5 +23,4 @@ sudo apt-get -y install make git
 
 git clone https://github.com/pilosa/pilosa.git $GOPATH/src/github.com/pilosa/pilosa
 cd $GOPATH/src/github.com/pilosa/pilosa
-git checkout origin/cluster-resize
 make install
