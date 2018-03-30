@@ -74,6 +74,7 @@ func (g *Generator) Time(from time.Time, maxDelta time.Duration) time.Time {
 		g.times[from] = delta
 	} else {
 		delta += time.Duration(g.r.Uint64() % uint64(maxDelta))
+		g.times[from] = delta
 	}
 	return from.Add(delta)
 }
