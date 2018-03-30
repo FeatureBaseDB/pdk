@@ -118,6 +118,9 @@ func (p *pilosaForwarder) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		mappedResp.Results[i] = mappedResult
 	}
 
+	// Allow cross-domain requests
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+
 	// write the mapped response back to the client
 	enc := json.NewEncoder(w)
 	err = enc.Encode(mappedResp)
