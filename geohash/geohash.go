@@ -1,7 +1,7 @@
 package geohash
 
 import (
-	"github.com/gansidui/geohash"
+	"github.com/mmcloughlin/geohash"
 	"github.com/pilosa/pdk"
 	"github.com/pkg/errors"
 )
@@ -31,6 +31,6 @@ func (t *Transformer) Transform(e *pdk.Entity) error {
 }
 
 func geoHash(lat, lon float64, precision int) string {
-	hash, _ := geohash.Encode(lat, lon, precision)
+	hash := geohash.EncodeWithPrecision(lat, lon, uint(precision))
 	return hash[:precision]
 }

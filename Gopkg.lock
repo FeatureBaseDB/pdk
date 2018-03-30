@@ -92,12 +92,6 @@
   version = "v1.4.7"
 
 [[projects]]
-  branch = "master"
-  name = "github.com/gansidui/geohash"
-  packages = ["."]
-  revision = "ebe5ba447f344b681c3bd96d2ca3e1ef5b43b7a8"
-
-[[projects]]
   name = "github.com/go-ole/go-ole"
   packages = [
     ".",
@@ -240,6 +234,12 @@
   revision = "00c29f56e2386353d58c599509e8dc3801b0d716"
 
 [[projects]]
+  branch = "master"
+  name = "github.com/mmcloughlin/geohash"
+  packages = ["."]
+  revision = "e5eae5659af257f9cd8b7a51326734b9ad91fb8e"
+
+[[projects]]
   name = "github.com/pelletier/go-toml"
   packages = ["."]
   revision = "acdc4509485b587f5e675510c4f2c63e90ff68a8"
@@ -317,13 +317,21 @@
 [[projects]]
   name = "github.com/shirou/gopsutil"
   packages = [
+    "cpu",
     "host",
     "internal/common",
     "mem",
+    "net",
     "process"
   ]
   revision = "c432be29ccce470088d07eea25b3ea7e68a8afbb"
   version = "v2.18.01"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/shirou/w32"
+  packages = ["."]
+  revision = "bb4de0191aa41b5507caa14b0650cdbddcd9280b"
 
 [[projects]]
   name = "github.com/sony/gobreaker"
@@ -448,6 +456,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "c121febf616fa0d0264889766dbb47ad55cc9a264734e79e9b48d88dc32b62e9"
+  inputs-digest = "53ea6c905d7ba60ceb31784986e60f06dfc0f9519f12ce2ff49949bbf1a9e1d7"
   solver-name = "gps-cdcl"
   solver-version = 1
