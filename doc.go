@@ -41,7 +41,7 @@
 //    representation using a handful of supported basic values detailed in
 //    entity.go. Determining how to collapse (e.g.) arbitrary JSON data
 //    into this format is not a trivial task, and indeed there may be multiple
-//    ways to go about it and so it is possible that mutliple parsers may exist
+//    ways to go about it and so it is possible that multiple parsers may exist
 //    which operate on the same type of Source data.
 //
 // 2.5. Transformer
@@ -57,7 +57,7 @@
 //    a bespoke Mapper in many cases. However, as mentioned in the Parser
 //    description, there are performance and capability tradeoffs based on how
 //    one decides to map data into Pilosa. (TODO expand with more examples as
-//    mappers are implemented, also reference generic mapper and it's config
+//    mappers are implemented, also reference generic mapper and its config
 //    options)
 //
 // 4. Indexer

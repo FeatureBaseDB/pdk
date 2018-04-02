@@ -13,7 +13,6 @@ import (
 type GenericParser struct {
 	Subjecter       Subjecter
 	EntitySubjecter EntitySubjecter
-	Framer          Framer
 	SubjectAll      bool
 
 	// IncludeUnexportedFields controls whether unexported struct fields will be
@@ -83,7 +82,6 @@ func (b BlankSubjecter) Subject(d interface{}) (string, error) { return "", nil 
 func NewDefaultGenericParser() *GenericParser {
 	return &GenericParser{
 		Subjecter: BlankSubjecter{},
-		Framer:    &DashFrame{},
 	}
 }
 
