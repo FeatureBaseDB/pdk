@@ -54,7 +54,7 @@ type StdLogger struct {
 
 // Printf implements Logger interface.
 func (s StdLogger) Printf(format string, v ...interface{}) {
-	s.Printf(format, v)
+	s.Logger.Printf(format, v)
 }
 
 // Debugf implements Logger interface, but prints nothing.
@@ -67,10 +67,10 @@ type VerboseLogger struct {
 
 // Printf implements Logger interface.
 func (s VerboseLogger) Printf(format string, v ...interface{}) {
-	s.Printf(format, v)
+	s.Logger.Printf(format, v)
 }
 
 // Debugf implements Logger interface.
 func (s VerboseLogger) Debugf(format string, v ...interface{}) {
-	s.Printf(format, v)
+	s.Logger.Printf(format, v)
 }
