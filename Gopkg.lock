@@ -32,12 +32,6 @@
   revision = "783273d703149aaeb9897cf58613d5af48861c25"
 
 [[projects]]
-  name = "github.com/blang/semver"
-  packages = ["."]
-  revision = "2ee87856327ba09384cabd113bc6b5d174e9ec0f"
-  version = "v3.5.1"
-
-[[projects]]
   name = "github.com/boltdb/bolt"
   packages = ["."]
   revision = "2f1ce7a837dcb8da3ec595b1dac9d0632f0f99e8"
@@ -265,7 +259,7 @@
     ".",
     "gopilosa_pbuf"
   ]
-  revision = "c1785aab9248cfbf8a982bc1dbc1b32bfe904d9a"
+  revision = "4f5f402b2557d4425cc8df8a79a6055cdb5e703e"
 
 [[projects]]
   branch = "master"

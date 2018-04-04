@@ -27,7 +27,7 @@ func TestRunMain(t *testing.T) {
 	// 	}
 	// 	time.Sleep(time.Millisecond)
 	// }
-	client, err := gopilosa.NewClient([]string{cluster[0].Server.Addr().String(), cluster[1].Server.Addr().String(), cluster[2].Server.Addr().String()}, gopilosa.LegacyMode(false))
+	client, err := gopilosa.NewClient([]string{cluster[0].Server.Addr().String(), cluster[1].Server.Addr().String(), cluster[2].Server.Addr().String()})
 	if err != nil {
 		t.Fatalf("getting new client: %v", err)
 	}
