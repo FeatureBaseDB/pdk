@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/pilosa/pdk/fake"
+	"github.com/pilosa/pdk/mock"
 )
 
 func TestEntitySubjecter(t *testing.T) {
@@ -77,6 +78,28 @@ type Blaher interface {
 
 type Thing struct {
 	v interface{}
+}
+
+func TestParseWithNilVals(t *testing.T) {
+	rs := &mock.RecordingStatter{}
+	gp := NewDefaultGenericParser()
+	gp.Stats = rs
+	e, err := gp.Parse(map[string]interface{}{"hello": nil, "foo": "bar"})
+	if err != nil {
+		t.Fatalf("unexpected parse: %v", err)
+	}
+	if e.Objects["foo"] != S("bar") {
+		t.Fatalf("unexpected result: %#v", e)
+	}
+	if rs.Counts["parser.parseValue.invalid"] != 1 {
+		t.Fatalf("unexpected stats with invalid value")
+	}
+
+	gp.Strict = true
+	_, err = gp.Parse(map[string]interface{}{"hello": nil, "foo": "bar"})
+	if err == nil {
+		t.Fatalf("expected error, but is nil")
+	}
 }
 
 func TestAnyImplements(t *testing.T) {

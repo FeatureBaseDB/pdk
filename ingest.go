@@ -24,22 +24,23 @@ type Ingester struct {
 
 	Transformers []Transformer
 
-	Stats statter
-}
-
-type statter interface {
-	Count(name string, value int64, rate float64)
+	Stats Statter
+	Log   Logger
 }
 
 // NewIngester gets a new Ingester.
 func NewIngester(source Source, parser RecordParser, mapper RecordMapper, indexer Indexer) *Ingester {
 	return &Ingester{
 		ParseConcurrency: 1,
-		src:              source,
-		parser:           parser,
-		mapper:           mapper,
-		indexer:          indexer,
-		Stats:            termstat.NewCollector(os.Stdout),
+
+		src:     source,
+		parser:  parser,
+		mapper:  mapper,
+		indexer: indexer,
+
+		// Reasonable defaults for crosscutting dependencies.
+		Stats: termstat.NewCollector(os.Stdout),
+		Log:   StdLogger{log.New(os.Stderr, "Ingest", log.LstdFlags)},
 	}
 }
 
@@ -63,7 +64,7 @@ func (n *Ingester) Run() error {
 				// Parse
 				val, err := n.parser.Parse(rec)
 				if err != nil {
-					log.Printf("couldn't parse record %s, err: %v", rec, err)
+					n.Log.Printf("couldn't parse record %s, err: %v", rec, err)
 					n.Stats.Count("ingest.ParseError", 1, 1)
 					continue
 				}
@@ -73,7 +74,7 @@ func (n *Ingester) Run() error {
 				for _, tr := range n.Transformers {
 					err := tr.Transform(val)
 					if err != nil {
-						log.Printf("Problem with transformer %#v: %v", tr, err)
+						n.Log.Printf("Problem with transformer %#v: %v", tr, err)
 						n.Stats.Count("ingest.TransformError", 1, 1)
 					}
 				}
@@ -82,7 +83,7 @@ func (n *Ingester) Run() error {
 				// Map
 				pr, err := n.mapper.Map(val)
 				if err != nil {
-					log.Printf("couldn't map val: %s, err: %v", val, err)
+					n.Log.Printf("couldn't map val: %s, err: %v", val, err)
 					n.Stats.Count("ingest.MapError", 1, 1)
 					continue
 				}
@@ -99,7 +100,7 @@ func (n *Ingester) Run() error {
 				}
 			}
 			if recordErr != io.EOF && recordErr != nil {
-				log.Printf("error in ingest run loop: %v", recordErr)
+				n.Log.Printf("error in ingest run loop: %v", recordErr)
 			}
 		}()
 	}

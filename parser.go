@@ -2,8 +2,11 @@ package pdk
 
 import (
 	"fmt"
+	"log"
+	"os"
 	"reflect"
 
+	"github.com/pilosa/pdk/termstat"
 	"github.com/pkg/errors"
 )
 
@@ -18,6 +21,13 @@ type GenericParser struct {
 	// IncludeUnexportedFields controls whether unexported struct fields will be
 	// included when parsing.
 	IncludeUnexportedFields bool // TODO: I don't think this actually works
+
+	// Strict controls whether failure to parse a single value or key will cause
+	// the entire record to fail.
+	Strict bool
+
+	Stats Statter
+	Log   Logger
 }
 
 // EntitySubjecter is an alternate interface for getting the Subject of a
@@ -82,6 +92,10 @@ func (b BlankSubjecter) Subject(d interface{}) (string, error) { return "", nil 
 func NewDefaultGenericParser() *GenericParser {
 	return &GenericParser{
 		Subjecter: BlankSubjecter{},
+
+		// Reasonable defaults for crosscutting dependencies.
+		Stats: termstat.NewCollector(os.Stdout),
+		Log:   StdLogger{log.New(os.Stderr, "Ingest", log.LstdFlags)},
 	}
 }
 
@@ -141,7 +155,10 @@ func (m *GenericParser) parseMap(val reflect.Value) (*Entity, error) {
 	for _, kval := range val.MapKeys() {
 		prop, err := m.getProperty(kval)
 		if err != nil {
-			return nil, errors.Wrapf(err, "getting property from '%v'", kval)
+			if m.Strict {
+				return nil, errors.Wrapf(err, "getting property from '%v'", kval)
+			}
+			continue
 		}
 		vval := val.MapIndex(kval)
 		vval = deref(vval)
@@ -150,7 +167,10 @@ func (m *GenericParser) parseMap(val reflect.Value) (*Entity, error) {
 		}
 		obj, err := m.parseValue(vval)
 		if err != nil {
-			return ent, errors.Wrapf(err, "parsing value '%v' at '%v':", vval, kval)
+			if m.Strict {
+				return ent, errors.Wrapf(err, "parsing value '%v' at '%v':", vval, kval)
+			}
+			continue
 		}
 		ent.Objects[prop] = obj
 	}
@@ -174,7 +194,10 @@ func (m *GenericParser) parseStruct(val reflect.Value) (*Entity, error) {
 		fieldv = deref(fieldv)
 		obj, err := m.parseValue(fieldv)
 		if err != nil {
-			return nil, errors.Wrapf(err, "parsing field:%v value:%v", field, fieldv)
+			if m.Strict {
+				return nil, errors.Wrapf(err, "parsing field:%v value:%v", field, fieldv)
+			}
+			continue
 		}
 		if _, ok := ent.Objects[Property(field.Name)]; ok {
 			return nil, errors.Errorf("unexpected name collision with struct field '%v", field.Name)
@@ -185,7 +208,7 @@ func (m *GenericParser) parseStruct(val reflect.Value) (*Entity, error) {
 }
 
 func (m *GenericParser) parseValue(val reflect.Value) (Object, error) {
-	switch val.Kind() {
+	switch k := val.Kind(); k {
 	case reflect.Bool, reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Float32, reflect.Float64, reflect.Complex64, reflect.Complex128, reflect.String:
 		lit, err := m.parseLit(val)
 		if err != nil {
@@ -197,8 +220,10 @@ func (m *GenericParser) parseValue(val reflect.Value) (Object, error) {
 	case reflect.Array, reflect.Slice:
 		return m.parseContainer(val)
 	case reflect.Invalid, reflect.Chan, reflect.Func, reflect.UnsafePointer:
+		m.Stats.Count("parser.parseValue."+k.String(), 1, 1)
 		return nil, errors.Errorf("unsupported kind: %v", val.Kind())
 	case reflect.Ptr, reflect.Interface:
+		m.Stats.Count("parser.parseValue."+k.String(), 1, 1)
 		return nil, errors.Errorf("shouldn't be called with pointer or interface, got: %v of kind %v", val, val.Kind())
 	default:
 		panic("all kinds should have been covered in parseValue")
@@ -237,7 +262,7 @@ func (m *GenericParser) parseContainer(val reflect.Value) (Object, error) {
 
 // parseLit parses literal values (the leaves of the tree).
 func (m *GenericParser) parseLit(val reflect.Value) (Object, error) {
-	switch val.Kind() {
+	switch k := val.Kind(); k {
 	case reflect.Bool:
 		return B(val.Bool()), nil
 	case reflect.Int:
@@ -265,14 +290,18 @@ func (m *GenericParser) parseLit(val reflect.Value) (Object, error) {
 	case reflect.Float64:
 		return F64(val.Float()), nil
 	case reflect.Complex64:
+		m.Stats.Count("parser.parseLit."+k.String(), 1, 1)
 		return nil, errors.New("unsupported kind of literal Complex64")
 	case reflect.Complex128:
+		m.Stats.Count("parser.parseLit."+k.String(), 1, 1)
 		return nil, errors.New("unsupported kind of literal Complex128")
 	case reflect.Array, reflect.Slice:
+		m.Stats.Count("parser.parseLit."+k.String(), 1, 1)
 		return nil, errors.New("nested slices/arrays of literals are not supported - parseLit should not be called with these kinds of values")
 	case reflect.String:
 		return S(val.String()), nil
 	default:
+		m.Stats.Count("parser.parseLit."+k.String(), 1, 1)
 		return nil, errors.Errorf("kind %v is not supported", val.Kind())
 	}
 }
@@ -326,18 +355,23 @@ func (m *GenericParser) getProperty(mapKey reflect.Value) (Property, error) {
 
 	// Otherwise, handle all comparable types (see https://golang.org/ref/spec#Comparison_operators):
 	mapKey = deref(mapKey)
-	switch mapKey.Kind() {
+	switch k := mapKey.Kind(); k {
 	case reflect.Bool, reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Float32, reflect.Float64, reflect.String:
 		return Property(fmt.Sprintf("%v", mapKey)), nil
 	case reflect.Chan:
+		m.Stats.Count("parser.getProperty.Chan", 1, 1)
 		return "", errors.New("channel cannot be converted to property")
 	case reflect.Array:
+		m.Stats.Count("parser.getProperty."+k.String(), 1, 1)
 		return "", errors.New("array cannot be converted to property")
 	case reflect.Struct:
+		m.Stats.Count("parser.getProperty."+k.String(), 1, 1)
 		return "", errors.New("struct cannot be converted to property")
 	case reflect.Complex128, reflect.Complex64:
+		m.Stats.Count("parser.getProperty."+k.String(), 1, 1)
 		return "", errors.New("complex value cannot be converted to property")
 	default:
+		m.Stats.Count("parser.getProperty."+k.String(), 1, 1)
 		return "", errors.Errorf("unexpected kind: %v mapKey: %v", mapKey.Kind(), mapKey)
 	}
 }
