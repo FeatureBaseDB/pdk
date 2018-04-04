@@ -94,6 +94,12 @@ func TestParseWithNilVals(t *testing.T) {
 	if rs.Counts["parser.parseValue.invalid"] != 1 {
 		t.Fatalf("unexpected stats with invalid value")
 	}
+
+	gp.Strict = true
+	_, err = gp.Parse(map[string]interface{}{"hello": nil, "foo": "bar"})
+	if err == nil {
+		t.Fatalf("expected error, but is nil")
+	}
 }
 
 func TestAnyImplements(t *testing.T) {
