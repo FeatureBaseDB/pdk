@@ -1,6 +1,7 @@
 package pdk_test
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/pilosa/pdk"
@@ -248,6 +249,101 @@ func TestGetF64(t *testing.T) {
 			}
 			if test.exp != f64 {
 				t.Fatalf("got %v, expected %v", f64, test.exp)
+			}
+		})
+	}
+}
+
+func TestEntityMarshalJSON(t *testing.T) {
+	tests := []struct {
+		name string
+		val  pdk.Object
+		exp  string
+	}{
+		{
+			name: "b",
+			val:  pdk.B(true),
+			exp:  `{"@type":"xsd:boolean","@value":true}`,
+		},
+		{
+			name: "string",
+			val:  pdk.S("VALUE"),
+			exp:  `"VALUE"`,
+		},
+		{
+			name: "f32",
+			val:  pdk.F32(1.1),
+			exp:  `{"@type":"xsd:float","@value":1.1}`,
+		},
+		{
+			name: "f64",
+			val:  pdk.F64(1.1),
+			exp:  `{"@type":"xsd:double","@value":1.1}`,
+		},
+		{
+			name: "i",
+			val:  pdk.I(1),
+			exp:  `{"@type":"xsd:long","@value":1}`,
+		},
+		{
+			name: "i8",
+			val:  pdk.I8(1),
+			exp:  `{"@type":"xsd:byte","@value":1}`,
+		},
+		{
+			name: "i16",
+			val:  pdk.I16(1),
+			exp:  `{"@type":"xsd:short","@value":1}`,
+		},
+		{
+			name: "i32",
+			val:  pdk.I32(1),
+			exp:  `{"@type":"xsd:int","@value":1}`,
+		},
+		{
+			name: "i64",
+			val:  pdk.I64(1),
+			exp:  `{"@type":"xsd:long","@value":1}`,
+		},
+		{
+			name: "u",
+			val:  pdk.U(1),
+			exp:  `{"@type":"unsignedLong","@value":1}`,
+		},
+		{
+			name: "u8",
+			val:  pdk.U8(1),
+			exp:  `{"@type":"unsignedByte","@value":1}`,
+		},
+		{
+			name: "u16",
+			val:  pdk.U16(1),
+			exp:  `{"@type":"unsignedShort","@value":1}`,
+		},
+		{
+			name: "u32",
+			val:  pdk.U32(1),
+			exp:  `{"@type":"unsignedInt","@value":1}`,
+		},
+		{
+			name: "u64",
+			val:  pdk.U64(1),
+			exp:  `{"@type":"unsignedLong","@value":1}`,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			entity := &pdk.Entity{
+				Objects: map[pdk.Property]pdk.Object{"k": pdk.Object(test.val)},
+			}
+			b, err := json.Marshal(entity)
+			if err != nil {
+				return
+			}
+			exp := fmt.Sprintf(`{"k":%s}`, test.exp)
+			if string(b) != exp {
+				t.Fatalf("got %v, expected %v", string(b), exp)
 			}
 		})
 	}

@@ -200,12 +200,6 @@ func (e *Entity) MarshalJSON() ([]byte, error) {
 		}
 		ret[k] = v
 	}
-	for k, v := range e.Objects {
-		if val, exists := ret[k]; exists {
-			return nil, errors.Errorf("invalid entity for json: '%v' already exists at '%v', can't add '%v'", val, k, v)
-		}
-		ret[k] = v
-	}
 	return json.Marshal(ret)
 }
 
@@ -221,7 +215,7 @@ func (B) literal() {}
 func (B B) MarshalJSON() ([]byte, error) {
 	ret := map[string]interface{}{
 		"@type":  "xsd:boolean",
-		"@value": B,
+		"@value": bool(B),
 	}
 	return json.Marshal(ret)
 }
@@ -275,7 +269,7 @@ func (F32) literal() {}
 func (F F32) MarshalJSON() ([]byte, error) {
 	ret := map[string]interface{}{
 		"@type":  "xsd:float",
-		"@value": F,
+		"@value": float32(F),
 	}
 	return json.Marshal(ret)
 }
@@ -287,7 +281,7 @@ func (F64) literal() {}
 func (F F64) MarshalJSON() ([]byte, error) {
 	ret := map[string]interface{}{
 		"@type":  "xsd:double",
-		"@value": F,
+		"@value": float64(F),
 	}
 	return json.Marshal(ret)
 }
@@ -299,7 +293,7 @@ func (I) literal() {}
 func (I I) MarshalJSON() ([]byte, error) {
 	ret := map[string]interface{}{
 		"@type":  "xsd:long",
-		"@value": I,
+		"@value": int(I),
 	}
 	return json.Marshal(ret)
 }
@@ -311,7 +305,7 @@ func (I8) literal() {}
 func (I I8) MarshalJSON() ([]byte, error) {
 	ret := map[string]interface{}{
 		"@type":  "xsd:byte",
-		"@value": I,
+		"@value": int8(I),
 	}
 	return json.Marshal(ret)
 }
@@ -323,7 +317,7 @@ func (I16) literal() {}
 func (I I16) MarshalJSON() ([]byte, error) {
 	ret := map[string]interface{}{
 		"@type":  "xsd:short",
-		"@value": I,
+		"@value": int16(I),
 	}
 	return json.Marshal(ret)
 }
@@ -335,7 +329,7 @@ func (I32) literal() {}
 func (I I32) MarshalJSON() ([]byte, error) {
 	ret := map[string]interface{}{
 		"@type":  "xsd:int",
-		"@value": I,
+		"@value": int32(I),
 	}
 	return json.Marshal(ret)
 }
@@ -347,7 +341,7 @@ func (I64) literal() {}
 func (I I64) MarshalJSON() ([]byte, error) {
 	ret := map[string]interface{}{
 		"@type":  "xsd:long",
-		"@value": I,
+		"@value": int64(I),
 	}
 	return json.Marshal(ret)
 }
@@ -359,7 +353,7 @@ func (U) literal() {}
 func (U U) MarshalJSON() ([]byte, error) {
 	ret := map[string]interface{}{
 		"@type":  "unsignedLong",
-		"@value": U,
+		"@value": uint(U),
 	}
 	return json.Marshal(ret)
 }
@@ -371,7 +365,7 @@ func (U8) literal() {}
 func (U U8) MarshalJSON() ([]byte, error) {
 	ret := map[string]interface{}{
 		"@type":  "unsignedByte",
-		"@value": U,
+		"@value": uint8(U),
 	}
 	return json.Marshal(ret)
 }
@@ -383,7 +377,7 @@ func (U16) literal() {}
 func (U U16) MarshalJSON() ([]byte, error) {
 	ret := map[string]interface{}{
 		"@type":  "unsignedShort",
-		"@value": U,
+		"@value": uint16(U),
 	}
 	return json.Marshal(ret)
 }
@@ -395,7 +389,7 @@ func (U32) literal() {}
 func (U U32) MarshalJSON() ([]byte, error) {
 	ret := map[string]interface{}{
 		"@type":  "unsignedInt",
-		"@value": U,
+		"@value": uint32(U),
 	}
 	return json.Marshal(ret)
 }
@@ -407,7 +401,7 @@ func (U64) literal() {}
 func (U U64) MarshalJSON() ([]byte, error) {
 	ret := map[string]interface{}{
 		"@type":  "unsignedLong",
-		"@value": U,
+		"@value": uint64(U),
 	}
 	return json.Marshal(ret)
 }
