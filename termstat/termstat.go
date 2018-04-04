@@ -1,3 +1,8 @@
+// Package termstat provides a stats implementation which periodically logs the
+// statistics to the given writer. It is meant to be used for testing and
+// debugging at the terminal in lieu of an actual collector writing to an
+// external tool like graphite or datadog. It provides stub implementations for
+// some functionality.
 package termstat
 
 import (
@@ -35,7 +40,7 @@ func NewCollector(out io.Writer) *Collector {
 }
 
 // Count adds value to the named stat at the specified rate.
-func (t *Collector) Count(name string, value int64, rate float64) {
+func (t *Collector) Count(name string, value int64, rate float64, tags ...string) {
 	t.lock.Lock()
 	t.changed = true
 	defer t.lock.Unlock()
@@ -69,3 +74,15 @@ func (t *Collector) write() {
 	fmt.Fprintf(t.out, "\r"+sb.String())
 	t.lock.Unlock()
 }
+
+// Gauge does nothing.
+func (t *Collector) Gauge(name string, value float64, rate float64, tags ...string) {}
+
+// Histogram does nothing.
+func (t *Collector) Histogram(name string, value float64, rate float64, tags ...string) {}
+
+// Set does nothing.
+func (t *Collector) Set(name string, value string, rate float64, tags ...string) {}
+
+// Timing does nothing.
+func (t *Collector) Timing(name string, value time.Duration, rate float64, tags ...string) {}
