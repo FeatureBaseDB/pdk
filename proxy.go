@@ -234,12 +234,12 @@ func (p *PilosaKeyMapper) MapResult(frame string, res interface{}) (mappedRes in
 func (p *PilosaKeyMapper) MapRequest(body []byte) ([]byte, error) {
 	query, err := pql.ParseString(string(body))
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "parsing string")
 	}
 	for _, call := range query.Calls {
 		err := p.mapCall(call)
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "mapping call")
 		}
 	}
 	return []byte(query.String()), nil
@@ -249,14 +249,14 @@ func (p *PilosaKeyMapper) mapCall(call *pql.Call) error {
 	if call.Name == "Bitmap" {
 		id, err := p.t.GetID(call.Args["frame"].(string), call.Args["row"])
 		if err != nil {
-			return err
+			return errors.Wrap(err, "getting ID")
 		}
 		call.Args["row"] = id
 		return nil
 	}
 	for _, child := range call.Children {
 		if err := p.mapCall(child); err != nil {
-			return err
+			return errors.Wrap(err, "mapping call")
 		}
 	}
 	return nil
