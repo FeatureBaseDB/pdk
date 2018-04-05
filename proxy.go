@@ -247,11 +247,11 @@ func (p *PilosaKeyMapper) MapRequest(body []byte) ([]byte, error) {
 
 func (p *PilosaKeyMapper) mapCall(call *pql.Call) error {
 	if call.Name == "Bitmap" {
-		id, err := p.t.GetID(call.Args["frame"].(string), call.Args["rowID"])
+		id, err := p.t.GetID(call.Args["frame"].(string), call.Args["row"])
 		if err != nil {
 			return err
 		}
-		call.Args["rowID"] = id
+		call.Args["row"] = id
 		return nil
 	}
 	for _, child := range call.Children {
