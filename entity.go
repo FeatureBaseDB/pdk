@@ -298,12 +298,12 @@ func (I I) MarshalJSON() ([]byte, error) {
 	return json.Marshal(ret)
 }
 
-func (J *I) UnmarshalJSON(b []byte) error {
+func (i *I) UnmarshalJSON(b []byte) error {
 	var m map[string]interface{}
 	if err := json.Unmarshal(b, &m); err != nil {
 		return err
 	}
-	*J = I((m["@value"]).(float64))
+	*i = I((m["@value"]).(float64))
 	return nil
 }
 
@@ -319,12 +319,12 @@ func (I I8) MarshalJSON() ([]byte, error) {
 	return json.Marshal(ret)
 }
 
-func (I *I8) UnmarshalJSON(b []byte) error {
+func (i *I8) UnmarshalJSON(b []byte) error {
 	var m map[string]interface{}
 	if err := json.Unmarshal(b, &m); err != nil {
 		return err
 	}
-	*I = I8((m["@value"]).(float64))
+	*i = I8((m["@value"]).(float64))
 	return nil
 }
 
@@ -340,12 +340,12 @@ func (I I16) MarshalJSON() ([]byte, error) {
 	return json.Marshal(ret)
 }
 
-func (I *I16) UnmarshalJSON(b []byte) error {
+func (i *I16) UnmarshalJSON(b []byte) error {
 	var m map[string]interface{}
 	if err := json.Unmarshal(b, &m); err != nil {
 		return err
 	}
-	*I = I16((m["@value"]).(float64))
+	*i = I16((m["@value"]).(float64))
 	return nil
 }
 
@@ -361,12 +361,12 @@ func (I I32) MarshalJSON() ([]byte, error) {
 	return json.Marshal(ret)
 }
 
-func (I *I32) UnmarshalJSON(b []byte) error {
+func (i *I32) UnmarshalJSON(b []byte) error {
 	var m map[string]interface{}
 	if err := json.Unmarshal(b, &m); err != nil {
 		return err
 	}
-	*I = I32((m["@value"]).(float64))
+	*i = I32((m["@value"]).(float64))
 	return nil
 }
 
@@ -382,12 +382,12 @@ func (I I64) MarshalJSON() ([]byte, error) {
 	return json.Marshal(ret)
 }
 
-func (I *I64) UnmarshalJSON(b []byte) error {
+func (i *I64) UnmarshalJSON(b []byte) error {
 	var m map[string]interface{}
 	if err := json.Unmarshal(b, &m); err != nil {
 		return err
 	}
-	*I = I64((m["@value"]).(float64))
+	*i = I64((m["@value"]).(float64))
 	return nil
 }
 
