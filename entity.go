@@ -298,6 +298,15 @@ func (I I) MarshalJSON() ([]byte, error) {
 	return json.Marshal(ret)
 }
 
+func (i *I) UnmarshalJSON(b []byte) error {
+	var m map[string]interface{}
+	if err := json.Unmarshal(b, &m); err != nil {
+		return err
+	}
+	*i = I((m["@value"]).(float64))
+	return nil
+}
+
 type I8 int8
 
 func (I8) literal() {}
@@ -308,6 +317,15 @@ func (I I8) MarshalJSON() ([]byte, error) {
 		"@value": int8(I),
 	}
 	return json.Marshal(ret)
+}
+
+func (i *I8) UnmarshalJSON(b []byte) error {
+	var m map[string]interface{}
+	if err := json.Unmarshal(b, &m); err != nil {
+		return err
+	}
+	*i = I8((m["@value"]).(float64))
+	return nil
 }
 
 type I16 int16
@@ -322,6 +340,15 @@ func (I I16) MarshalJSON() ([]byte, error) {
 	return json.Marshal(ret)
 }
 
+func (i *I16) UnmarshalJSON(b []byte) error {
+	var m map[string]interface{}
+	if err := json.Unmarshal(b, &m); err != nil {
+		return err
+	}
+	*i = I16((m["@value"]).(float64))
+	return nil
+}
+
 type I32 int32
 
 func (I32) literal() {}
@@ -334,6 +361,15 @@ func (I I32) MarshalJSON() ([]byte, error) {
 	return json.Marshal(ret)
 }
 
+func (i *I32) UnmarshalJSON(b []byte) error {
+	var m map[string]interface{}
+	if err := json.Unmarshal(b, &m); err != nil {
+		return err
+	}
+	*i = I32((m["@value"]).(float64))
+	return nil
+}
+
 type I64 int64
 
 func (I64) literal() {}
@@ -344,6 +380,15 @@ func (I I64) MarshalJSON() ([]byte, error) {
 		"@value": int64(I),
 	}
 	return json.Marshal(ret)
+}
+
+func (i *I64) UnmarshalJSON(b []byte) error {
+	var m map[string]interface{}
+	if err := json.Unmarshal(b, &m); err != nil {
+		return err
+	}
+	*i = I64((m["@value"]).(float64))
+	return nil
 }
 
 type U uint
