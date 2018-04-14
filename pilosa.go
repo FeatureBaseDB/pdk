@@ -208,7 +208,7 @@ func (i *Index) setupFrame(frame FrameSpec) error {
 		i.fieldChans[frame.Name][field.Name] = newChanValIterator()
 		err := i.ensureField(fram, field)
 		if err != nil {
-			return errors.Wrapf(err, "creating field %#v", field)
+			return errors.Wrapf(err, "ensuring field %#v", field)
 		}
 		i.importWG.Add(1)
 		go func(fram *gopilosa.Frame, field FieldSpec, cvi chanValIterator) {
@@ -227,7 +227,7 @@ func (i *Index) ensureField(frame *gopilosa.Frame, fieldSpec FieldSpec) error {
 		return nil
 	}
 	err := i.client.CreateIntField(frame, fieldSpec.Name, fieldSpec.Min, fieldSpec.Max)
-	return errors.Wrapf(err, "creating field %#v", fieldSpec)
+	return errors.Wrap(err, "creating field")
 }
 
 // SetupPilosa returns a new Indexer after creating the given frames and starting importers.

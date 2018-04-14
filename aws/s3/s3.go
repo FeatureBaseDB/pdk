@@ -98,15 +98,15 @@ func (s *Source) populateRecords() {
 			continue
 		}
 		dec := json.NewDecoder(result.Body)
-		for i := 0; true; i++ {
+		for i := 0; err != io.EOF; i++ {
 			var res map[string]interface{}
-			err := dec.Decode(&res)
-			if err == io.EOF {
-				break
-			}
-			if err != nil {
+			err = dec.Decode(&res)
+			if err != nil && err != io.EOF {
 				s.errors <- errors.Wrapf(err, "decoding json from %s", *obj.Key)
 				break
+			}
+			if res == nil {
+				continue
 			}
 			if s.subjectAt != "" {
 				res[s.subjectAt] = fmt.Sprintf("%s.%s#%d", s.bucket, *obj.Key, i)
@@ -114,22 +114,33 @@ func (s *Source) populateRecords() {
 			s.records <- res
 		}
 	}
-	s.errors <- io.EOF
+	close(s.errors)
+	close(s.records)
 }
 
 // Record parses the next JSON object from the current file in the bucket, or
 // moves to the next file and parses and returns the first json object. A
 // map[string]interface{} will be returned unless there is an error.
-func (s *Source) Record() (interface{}, error) {
+func (s *Source) Record() (rec interface{}, err error) {
+	var ok bool
 	select {
-	case err := <-s.errors:
+	case rec, ok = <-s.records:
+		if ok {
+			return rec, nil
+		}
+		err, ok = <-s.errors
+		if !ok {
+			return nil, io.EOF
+		}
 		return nil, err
-	default:
-	}
-	select {
-	case err := <-s.errors:
-		return nil, err
-	case rec := <-s.records:
+	case err, ok = <-s.errors:
+		if ok {
+			return nil, err
+		}
+		rec, ok = <-s.records
+		if !ok {
+			return nil, io.EOF
+		}
 		return rec, nil
 	}
 }
