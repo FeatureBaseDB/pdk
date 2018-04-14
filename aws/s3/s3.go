@@ -2,6 +2,7 @@ package s3
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -35,10 +36,19 @@ func OptSrcBufSize(bufsize int) SrcOption {
 	}
 }
 
+// OptAddSubjectAt tells the source to add a new key to each record whose value
+// will be <S3 bucket>.<S3 object key>#<record number>.
+func OptSrcSubjectAt(key string) SrcOption {
+	return func(s *Source) {
+		s.subjectAt = key
+	}
+}
+
 // Source is a pdk.Source which reads data from S3.
 type Source struct {
-	bucket string
-	region string
+	bucket    string
+	region    string
+	subjectAt string
 
 	s3      *s3.S3
 	sess    *session.Session
@@ -88,12 +98,20 @@ func (s *Source) populateRecords() {
 			continue
 		}
 		dec := json.NewDecoder(result.Body)
-		var res map[string]interface{}
-		for err = dec.Decode(&res); err == nil; err = dec.Decode(&res) {
+		for i := 0; true; i++ {
+			var res map[string]interface{}
+			err := dec.Decode(&res)
+			if err == io.EOF {
+				break
+			}
+			if err != nil {
+				s.errors <- errors.Wrapf(err, "decoding json from %s", *obj.Key)
+				break
+			}
+			if s.subjectAt != "" {
+				res[s.subjectAt] = fmt.Sprintf("%s.%s#%d", s.bucket, *obj.Key, i)
+			}
 			s.records <- res
-		}
-		if err != io.EOF {
-			s.errors <- errors.Wrapf(err, "decoding json from %s", *obj.Key)
 		}
 	}
 	s.errors <- io.EOF
