@@ -1,0 +1,75 @@
+{"widget": {
+    "debug": "on",
+    "window": {
+        "title": "Sample Konfabulator Widgetz",
+        "name": "main_window",
+        "width": 3492,
+        "height": 500
+    },
+    "image": { 
+        "src": "Images/Sun.png",
+        "name": "sun1",
+        "hOffset": 250,
+        "vOffset": 250,
+        "alignment": "center"
+    },
+    "text": {
+        "data": "Click Here",
+        "size": 36,
+        "style": "bold",
+        "name": "text1",
+        "hOffset": 250,
+        "vOffset": 100,
+        "alignment": "center"
+    }
+}}
+{"widget": {
+    "debug": "on",
+    "window": {
+        "title": "A thing",
+        "name": "main_window",
+        "width": 999,
+        "height": 32
+    },
+    "image": { 
+        "src": "Images/Sun0.png",
+        "name": "sun0",
+        "hOffset": 111,
+        "vOffset": 10,
+        "alignment": "down"
+    },
+    "text": {
+        "data": "Click There",
+        "size": 36,
+        "style": "bold",
+        "name": "text1",
+        "hOffset": 250,
+        "vOffset": 100,
+        "alignment": "center"
+    }
+}}
+{"widget": {
+    "debug": "off",
+    "window": {
+        "title": "third in file2",
+        "name": "main_window",
+        "width": 4656,
+        "height": 73
+    },
+    "image": { 
+        "src": "Images/Vun.png",
+        "name": "sun2",
+        "hOffset": 111,
+        "vOffset": 111,
+        "alignment": "center"
+    },
+    "text": {
+        "data": "Click Here",
+        "size": 36,
+        "style": "bold",
+        "name": "text1",
+        "hOffset": 950,
+        "vOffset": 100,
+        "alignment": "center"
+    }
+}}
