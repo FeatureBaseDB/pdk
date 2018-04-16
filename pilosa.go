@@ -87,7 +87,7 @@ func (i *Index) AddValue(frame, field string, col uint64, val int64) {
 				{
 					Name: field,
 					Min:  0,
-					Max:  1 << 32,
+					Max:  1<<31 - 1,
 				},
 			}})
 		if err != nil {
