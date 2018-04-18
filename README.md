@@ -7,9 +7,7 @@ Documentation is here: https://www.pilosa.com/docs/pdk/
 
 * A running instance of Pilosa. See: https://www.pilosa.com/docs/getting-started/
 
-* A recent version of Go.
-
-* libpcap with development headers. On Ubuntu/Debian, you can install it using `sudo apt install libpcap-dev`.
+* A recent version of [Go](https://golang.org/doc/install).
 
 ## Installing
 

@@ -1,5 +1,5 @@
-// pdk is the Pilosa Development Kit! It contains various helper functions and
-// documentation to assist in using pilosa.
+// package pdk is the Pilosa Development Kit! It contains various helper
+// functions and documentation to assist in using pilosa.
 //
 // Of principal importance in the PDK is the ingest pipeline. Interfaces and
 // basic implementations of each stage listed below are included in the PDK, and
@@ -64,5 +64,4 @@
 //
 //    The Indexer is responsible for getting data into Pilosa. Primarily, there
 //    is a latency/throuput tradeoff depending on the batch size selected.
-
 package pdk
