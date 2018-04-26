@@ -1,4 +1,4 @@
-package genome
+package main
 
 import (
 	"bufio"
@@ -8,14 +8,6 @@ import (
 	"os"
 	"strings"
 )
-
-type Main struct {
-	ReferenceFile string
-}
-
-type NewMain() *Main {
-	m := 
-}
 
 // rounded up to the next 10M - fits both ref37 and ref38, and hopefully any other versions
 var chromosomeLengthsPadded = []int{250000000, 250000000, 200000000, 200000000, 190000000, 180000000, 160000000, 150000000, 150000000, 140000000, 140000000, 140000000, 120000000, 110000000, 110000000, 100000000, 90000000, 90000000, 60000000, 70000000, 50000000, 60000000, 160000000, 60000000, 10000000}
@@ -95,14 +87,15 @@ var fastaCharMap = map[string][]int{
 	*/
 }
 
+const ref37 = "/Users/abernstein/sync/downloads/GRCh37.primary_assembly.genome.fa"
 
-func (m *Main) Run() error {
+func main() {
 
 	gm := NewGenomeMapper(4, chromosomeLengthsPadded)
 
-	file, err := os.Open(m.referenceFilea)
+	file, err := os.Open(ref37)
 	if err != nil {
-		return err
+		log.Fatal(err)
 	}
 	defer file.Close()
 
@@ -139,8 +132,7 @@ func (m *Main) Run() error {
 	}
 
 	if err := scanner.Err(); err != nil {
-		return err
+		log.Fatal(err)
 	}
 
-	return nil
 }
