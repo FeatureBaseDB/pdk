@@ -7,6 +7,7 @@ import (
 	"math/rand"
 	"os"
 	"strings"
+	"time"
 )
 
 // rounded up to the next 10M - fits both ref37 and ref38, and hopefully any other versions
@@ -91,6 +92,15 @@ const ref37 = "/Users/abernstein/sync/downloads/GRCh37.primary_assembly.genome.f
 
 func main() {
 
+	// Mutator setup.
+	rand.Seed(time.Now().UTC().UnixNano())
+
+	mut, err := NewMutator(100, 500, 10000)
+	if err != nil {
+		fmt.Println("error:", err)
+		return
+	}
+
 	gm := NewGenomeMapper(4, chromosomeLengthsPadded)
 
 	file, err := os.Open(ref37)
@@ -104,6 +114,8 @@ func main() {
 	crNumber := 0
 	for scanner.Scan() {
 		line := scanner.Text()
+
+		// HEADER
 		if strings.HasPrefix(line, ">") {
 			// new section of file
 			parts := strings.Split(line, " ")
@@ -115,19 +127,23 @@ func main() {
 				// done with normal chromosome sections
 				break
 			}
-		} else {
-			for _, c := range line {
-				nucleotides := fastaCodeToNucleotides(string(c))
-				for _, nuc := range nucleotides {
-					col := gm.positionToColumn(crNumber, positionOnCr, nuc)
-					if false {
-						// random mutation
-						nuc = (nuc + 1 + rand.Intn(3)) % 4
-					}
-					fmt.Printf("%d %d %s %v\n", crNumber, positionOnCr, string(c), col)
-				}
-				positionOnCr++
+			continue
+		}
+
+		// LINE
+		for _, c := range line {
+			char := string(c)
+			// Random mutation.
+			if false {
+				char = mut.mutate(char)
 			}
+
+			nucleotides := fastaCodeToNucleotides(char)
+			for _, nuc := range nucleotides {
+				col := gm.positionToColumn(crNumber, positionOnCr, nuc)
+				fmt.Printf("%d %d %s %v\n", crNumber, positionOnCr, char, col)
+			}
+			positionOnCr++
 		}
 	}
 
