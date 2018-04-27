@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pilosa/pdk"
 	"github.com/pkg/errors"
 )
 
@@ -19,16 +20,22 @@ type SubjecterOpts struct {
 
 // Main holds the config for the http command.
 type Main struct {
-	File  string `help:"Path to FASTA file."`
-	Min   int    `help:"min"`
-	Max   int    `help:"max"`
-	Denom int    `help:"denom"`
-	Count int    `help:"count"`
+	File  string   `help:"Path to FASTA file."`
+	Hosts []string `help:"Pilosa hosts."`
+	Index string   `help:"Pilosa index."`
+	Min   int      `help:"Minimum number of random mutations per [denom]."`
+	Max   int      `help:"Maximum number of random mutations per [denom]."`
+	Denom int      `help:"Denominator to use for calculating random mutations."`
+	Count int      `help:"Number of mutated rows to create."`
+
+	index pdk.Indexer
 }
 
 // NewMain gets a new Main with default values.
 func NewMain() *Main {
 	return &Main{
+		Hosts: []string{":10101"},
+		Index: "genome",
 		Min:   10,
 		Max:   50,
 		Denom: 10000,
@@ -36,8 +43,23 @@ func NewMain() *Main {
 	}
 }
 
+var frame = "sequences"
+
+var frames = []pdk.FrameSpec{
+	pdk.NewRankedFrameSpec(frame, 0),
+}
+
 // Run runs the http command.
 func (m *Main) Run() error {
+
+	var err error
+
+	log.Println("setting up pilosa")
+	m.index, err = pdk.SetupPilosa(m.Hosts, m.Index, frames, 1000000)
+	if err != nil {
+		return errors.Wrap(err, "setting up Pilosa")
+	}
+
 	// Mutator setup.
 	rand.Seed(time.Now().UTC().UnixNano())
 
@@ -104,7 +126,10 @@ func (m *Main) importReferenceWithMutations(mutator *Mutator, row int) error {
 			nucleotides := fastaCodeToNucleotides(char)
 			for _, nuc := range nucleotides {
 				col := gm.positionToColumn(crNumber, positionOnCr, nuc)
-				fmt.Printf("%d %d %s %v\n", crNumber, positionOnCr, char, col)
+				if col%1000000 == 0 {
+					fmt.Printf("row: %d, col: %d\n", row, col)
+				}
+				m.index.AddBit(frame, uint64(col), uint64(row))
 			}
 			positionOnCr++
 		}
