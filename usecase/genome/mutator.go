@@ -55,7 +55,7 @@ type Mutator struct {
 	match int
 }
 
-// mutate will create a varience based on a probability range.
+// mutate will create a variant based on a probability range.
 func (m *Mutator) mutate(b string) string {
 
 	if m.match == 0 {

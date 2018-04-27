@@ -39,7 +39,7 @@ func NewGenomeMapper(columnsPerPosition int, chromosomeLengths []int) GenomeMapp
 }
 
 // positionToColumn maps a general (chromosome, position, nucleotide) tuple to
-// a single Piloas column. [a, c, g, t] -> [0, 1, 2, 3].
+// a single Pilosa column. [a, c, g, t] -> [0, 1, 2, 3].
 func (m GenomeMapper) positionToColumn(crNumber, position, nucleotideNum int) int {
 	crStart := m.chromosomeLengthsCumulative[crNumber-1] // chromosomes are 1-based
 	return m.columnsPerPosition*(crStart+position) + nucleotideNum
@@ -110,7 +110,7 @@ func main() {
 	defer file.Close()
 
 	scanner := bufio.NewScanner(file)
-	positionOnCr := 0
+	positionOnCr := -1
 	crNumber := 0
 	for scanner.Scan() {
 		line := scanner.Text()
@@ -121,7 +121,7 @@ func main() {
 			parts := strings.Split(line, " ")
 			name := parts[0][1:]
 			crNumber++
-			positionOnCr = 0
+			positionOnCr = -1
 			fmt.Println(name)
 			if strings.Contains(name, "_") {
 				// done with normal chromosome sections
@@ -132,7 +132,12 @@ func main() {
 
 		// LINE
 		for _, c := range line {
+			positionOnCr++
 			char := string(c)
+			if !strings.Contains("acgt", strings.ToLower(char)) {
+				// only handle common case of known single nucleotide
+				continue
+			}
 			// Random mutation.
 			if false {
 				char = mut.mutate(char)
@@ -143,7 +148,6 @@ func main() {
 				col := gm.positionToColumn(crNumber, positionOnCr, nuc)
 				fmt.Printf("%d %d %s %v\n", crNumber, positionOnCr, char, col)
 			}
-			positionOnCr++
 		}
 	}
 
