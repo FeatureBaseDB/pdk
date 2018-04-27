@@ -1,13 +1,7 @@
-package main
+package genome
 
 import (
-	"bufio"
-	"fmt"
-	"log"
-	"math/rand"
-	"os"
 	"strings"
-	"time"
 )
 
 // rounded up to the next 10M - fits both ref37 and ref38, and hopefully any other versions
@@ -86,73 +80,4 @@ var fastaCharMap = map[string][]int{
 		"n": []int{}, // N -> any nucleic acid = no information
 		"-": []int{}, // gap of indeterminate length = error
 	*/
-}
-
-const ref37 = "/Users/abernstein/sync/downloads/GRCh37.primary_assembly.genome.fa"
-
-func main() {
-
-	// Mutator setup.
-	rand.Seed(time.Now().UTC().UnixNano())
-
-	mut, err := NewMutator(100, 500, 10000)
-	if err != nil {
-		fmt.Println("error:", err)
-		return
-	}
-
-	gm := NewGenomeMapper(4, chromosomeLengthsPadded)
-
-	file, err := os.Open(ref37)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer file.Close()
-
-	scanner := bufio.NewScanner(file)
-	positionOnCr := -1
-	crNumber := 0
-	for scanner.Scan() {
-		line := scanner.Text()
-
-		// HEADER
-		if strings.HasPrefix(line, ">") {
-			// new section of file
-			parts := strings.Split(line, " ")
-			name := parts[0][1:]
-			crNumber++
-			positionOnCr = -1
-			fmt.Println(name)
-			if strings.Contains(name, "_") {
-				// done with normal chromosome sections
-				break
-			}
-			continue
-		}
-
-		// LINE
-		for _, c := range line {
-			positionOnCr++
-			char := string(c)
-			if !strings.Contains("acgt", strings.ToLower(char)) {
-				// only handle common case of known single nucleotide
-				continue
-			}
-			// Random mutation.
-			if false {
-				char = mut.mutate(char)
-			}
-
-			nucleotides := fastaCodeToNucleotides(char)
-			for _, nuc := range nucleotides {
-				col := gm.positionToColumn(crNumber, positionOnCr, nuc)
-				fmt.Printf("%d %d %s %v\n", crNumber, positionOnCr, char, col)
-			}
-		}
-	}
-
-	if err := scanner.Err(); err != nil {
-		log.Fatal(err)
-	}
-
 }
