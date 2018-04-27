@@ -29,6 +29,15 @@ To run unit and integration tests, first, install and start the Confluent stack:
 Now that's running, you can do
 `make test TESTFLAGS="-tags=integration"`
 
+## Genome usecase
+
+To import a reference genome from a FASTA file, along with 1000 mutated copies:
+
+`pdk genome -f GRCh37.primary_assembly.genome.fa -c 1000`
+
+This file can be downloaded from ftp://ftp.sanger.ac.uk/pub/gencode/Gencode_human/release_27/GRCh37_mapping/GRCh37.primary_assembly.genome.fa.gz
+
+
 ## Taxi usecase
 
 To get started immediately, run this:
