@@ -19,34 +19,53 @@ type SubjecterOpts struct {
 
 // Main holds the config for the http command.
 type Main struct {
-	File      string `help:"Path to FASTA file."`
-	Reference bool   `help:"import reference genome (no mutations)"`
-	Min       int    `help:"min"`
-	Max       int    `help:"max"`
-	Denom     int    `help:"denom"`
+	File  string `help:"Path to FASTA file."`
+	Min   int    `help:"min"`
+	Max   int    `help:"max"`
+	Denom int    `help:"denom"`
+	Count int    `help:"count"`
 }
 
 // NewMain gets a new Main with default values.
 func NewMain() *Main {
 	return &Main{
-		Reference: false,
-		Min:       1,
-		Max:       5,
-		Denom:     100,
+		Min:   10,
+		Max:   50,
+		Denom: 10000,
+		Count: 10,
 	}
 }
 
 // Run runs the http command.
 func (m *Main) Run() error {
-
 	// Mutator setup.
 	rand.Seed(time.Now().UTC().UnixNano())
 
+	nopmut, err := NewMutator(0, 1, 1)
+	if err != nil {
+		return err
+	}
 	mut, err := NewMutator(m.Min, m.Max, m.Denom)
 	if err != nil {
 		return err
 	}
 
+	err = m.importReferenceWithMutations(nopmut, 0)
+	if err != nil {
+		return errors.Wrap(err, "importing reference row")
+	}
+	for row := 1; row < m.Count; row++ {
+		mut.setRandomMatch()
+		err = m.importReferenceWithMutations(mut, row)
+		if err != nil {
+			return errors.Wrapf(err, "import row %d", row)
+		}
+	}
+
+	return nil
+}
+
+func (m *Main) importReferenceWithMutations(mutator *Mutator, row int) error {
 	gm := NewGenomeMapper(4, chromosomeLengthsPadded)
 
 	file, err := os.Open(m.File)
@@ -80,9 +99,7 @@ func (m *Main) Run() error {
 		for _, c := range line {
 			char := string(c)
 			// Random mutation.
-			if !m.Reference {
-				char = mut.mutate(char)
-			}
+			char = mutator.mutate(char)
 
 			nucleotides := fastaCodeToNucleotides(char)
 			for _, nuc := range nucleotides {

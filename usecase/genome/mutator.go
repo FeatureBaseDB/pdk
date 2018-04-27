@@ -55,6 +55,17 @@ type Mutator struct {
 	match int
 }
 
+func (m *Mutator) setRandomMatch() {
+	matchMin := m.min % m.denom
+	matchMax := ((m.max - 1) % m.denom) + 1
+
+	if m.min == m.max {
+		m.match = matchMin
+	} else {
+		m.match = rand.Intn(matchMax-matchMin) + matchMin
+	}
+}
+
 // mutate will create a variant based on a probability range.
 func (m *Mutator) mutate(b string) string {
 
