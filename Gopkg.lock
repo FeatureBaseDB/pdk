@@ -8,10 +8,10 @@
   revision = "39b0596a2da3c92787b3319c6b5425a474b4e0da"
 
 [[projects]]
-  branch = "master"
   name = "github.com/DataDog/datadog-go"
   packages = ["statsd"]
-  revision = "72108a55170ce37441a28f16e9cad917eec0aca4"
+  revision = "e67964b4021ad3a334e748e8811eb3cd6becbc6e"
+  version = "2.1.0"
 
 [[projects]]
   name = "github.com/Shopify/sarama"
@@ -181,7 +181,7 @@
     "json/scanner",
     "json/token"
   ]
-  revision = "f40e974e75af4e271d97ce0fc917af5898ae7bda"
+  revision = "ef8a98b0bbce4a65b5aa4c368430a80ddc533168"
 
 [[projects]]
   name = "github.com/hashicorp/memberlist"
@@ -207,8 +207,8 @@
 [[projects]]
   name = "github.com/linkedin/goavro"
   packages = ["."]
-  revision = "94a7a9db615f35a39dd2b82089398b92fabad2ba"
-  version = "v2.1.0"
+  revision = "fa8f6a30176ce945e115db0afad95ede93725eec"
+  version = "v2.3.0"
 
 [[projects]]
   name = "github.com/magiconair/properties"
@@ -219,8 +219,8 @@
 [[projects]]
   name = "github.com/miekg/dns"
   packages = ["."]
-  revision = "5364553f1ee9cddc7ac8b62dce148309c386695b"
-  version = "v1.0.4"
+  revision = "83c435cc65d2862736428b9b4d07d0ab10ad3e4d"
+  version = "v1.0.5"
 
 [[projects]]
   branch = "master"
@@ -253,13 +253,13 @@
   version = "v0.1.1"
 
 [[projects]]
-  branch = "master"
+  branch = "slicewidth-23"
   name = "github.com/pilosa/go-pilosa"
   packages = [
     ".",
     "gopilosa_pbuf"
   ]
-  revision = "4f5f402b2557d4425cc8df8a79a6055cdb5e703e"
+  revision = "770e96661b6192bd5a6ad9c779acb496e0d09d04"
 
 [[projects]]
   branch = "master"
@@ -276,9 +276,10 @@
     "server",
     "statik",
     "statsd",
-    "test"
+    "test",
+    "toml"
   ]
-  revision = "fb3a2b8b03d853ae4e80327940e6fc84cf4bf7de"
+  revision = "94f4015196bae1515a555bafc8dfdc103fdfa679"
 
 [[projects]]
   name = "github.com/pkg/errors"
@@ -296,7 +297,7 @@
   branch = "master"
   name = "github.com/rcrowley/go-metrics"
   packages = ["."]
-  revision = "8732c616f52954686704c8645fe1a9d59e9df7c1"
+  revision = "d932a24a8ccb8fcadc993e5c6c58f93dac168294"
 
 [[projects]]
   name = "github.com/satori/go.uuid"
@@ -313,13 +314,21 @@
 [[projects]]
   name = "github.com/shirou/gopsutil"
   packages = [
+    "cpu",
     "host",
     "internal/common",
     "mem",
+    "net",
     "process"
   ]
-  revision = "5776ff9c7c5d063d574ef53d740f75c68b448e53"
-  version = "v2.18.02"
+  revision = "c95755e4bcd7a62bb8bd33f3a597a7c7f35e2cf3"
+  version = "v2.18.04"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/shirou/w32"
+  packages = ["."]
+  revision = "bb4de0191aa41b5507caa14b0650cdbddcd9280b"
 
 [[projects]]
   name = "github.com/spf13/afero"
@@ -327,8 +336,8 @@
     ".",
     "mem"
   ]
-  revision = "bb8f1927f2a9d3ab41c9340aa034f6b803f4359c"
-  version = "v1.0.2"
+  revision = "63644898a8da0bc22138abf860edaf5277b6102e"
+  version = "v1.1.0"
 
 [[projects]]
   name = "github.com/spf13/cast"
@@ -351,8 +360,8 @@
 [[projects]]
   name = "github.com/spf13/pflag"
   packages = ["."]
-  revision = "e57e3eeb33f795204c1ca35f56c44f83227c6e66"
-  version = "v1.0.0"
+  revision = "583c0c0531f06d5278b7d917446061adc344b5cd"
+  version = "v1.0.1"
 
 [[projects]]
   name = "github.com/spf13/viper"
@@ -377,7 +386,7 @@
     "leveldb/table",
     "leveldb/util"
   ]
-  revision = "169b1b37be738edb2813dab48c97a549bcf99bb5"
+  revision = "714f901b98fdb3aa954b4193d8cbd64a28d80cad"
 
 [[projects]]
   branch = "master"
@@ -386,7 +395,7 @@
     "ed25519",
     "ed25519/internal/edwards25519"
   ]
-  revision = "12892e8c234f4fe6f6803f052061de9057903bb2"
+  revision = "b49d69b5da943f7ef3c9cf91c8777c1f78a0cc3c"
 
 [[projects]]
   branch = "master"
@@ -399,7 +408,7 @@
     "ipv4",
     "ipv6"
   ]
-  revision = "6078986fec03a1dcc236c34816c71b0e05018fda"
+  revision = "5f9ae10d9af5b1c89ae6904293b14b064d4ada23"
 
 [[projects]]
   branch = "master"
@@ -414,7 +423,7 @@
     "unix",
     "windows"
   ]
-  revision = "378d26f46672a356c46195c28f61bdb4c0a781dd"
+  revision = "cbbc999da32df943dac6cd71eb3ee39e1d7838b9"
 
 [[projects]]
   name = "golang.org/x/text"
@@ -438,6 +447,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "639452442d94f37ec29fd04644223e6d73c9d3bf95e627ca6173cea5ba033fde"
+  inputs-digest = "10492fb6e3866ddfea8cdc3c29081083261b7faac68d941c77f54d418a156a34"
   solver-name = "gps-cdcl"
   solver-version = 1
