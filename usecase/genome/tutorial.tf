@@ -58,7 +58,9 @@ resource "aws_instance" "pilosa" {
       "chmod +x /tmp/setup-pilosa.sh",
       "/tmp/setup-pilosa.sh ${count.index} ${self.private_ip} ${aws_instance.pilosa.0.private_ip} ${count.index == "0" ? true : false}",
       "sleep 2",
-      "nohup pilosa server --config=/home/ubuntu/pilosa.cfg &>> /home/ubuntu/pilosa.out &",
+      "nohup /home/ubuntu/go/bin/pilosa server --config=/home/ubuntu/pilosa.cfg &>> /home/ubuntu/pilosa.out &",
+      "sleep 1",
+      "echo done sleeping, pilosa should be running",
     ]
   }
 
@@ -113,6 +115,10 @@ DESCRIPTION
 
 output "pilosa_ips" {
   value = "${aws_instance.pilosa.*.public_ip}"
+}
+
+output "pilosa_private_ips" {
+  value = "${aws_instance.pilosa.*.private_ip}"
 }
 
 output "agent_ips" {

@@ -259,7 +259,7 @@
     ".",
     "gopilosa_pbuf"
   ]
-  revision = "770e96661b6192bd5a6ad9c779acb496e0d09d04"
+  revision = "cd14c75d4de0337fd3cc5507ab956b763942c0c5"
 
 [[projects]]
   branch = "master"
@@ -279,7 +279,7 @@
     "test",
     "toml"
   ]
-  revision = "94f4015196bae1515a555bafc8dfdc103fdfa679"
+  revision = "fdd552bf30809680622d5eec99091a46949c5451"
 
 [[projects]]
   name = "github.com/pkg/errors"
@@ -314,21 +314,13 @@
 [[projects]]
   name = "github.com/shirou/gopsutil"
   packages = [
-    "cpu",
     "host",
     "internal/common",
     "mem",
-    "net",
     "process"
   ]
   revision = "c95755e4bcd7a62bb8bd33f3a597a7c7f35e2cf3"
   version = "v2.18.04"
-
-[[projects]]
-  branch = "master"
-  name = "github.com/shirou/w32"
-  packages = ["."]
-  revision = "bb4de0191aa41b5507caa14b0650cdbddcd9280b"
 
 [[projects]]
   name = "github.com/spf13/afero"
