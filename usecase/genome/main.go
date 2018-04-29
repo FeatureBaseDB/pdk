@@ -1,6 +1,7 @@
 package genome
 
 import (
+	"sort"
 	"strings"
 )
 
@@ -80,4 +81,51 @@ var fastaCharMap = map[string][]int{
 		"n": []int{}, // N -> any nucleic acid = no information
 		"-": []int{}, // gap of indeterminate length = error
 	*/
+}
+
+type rangeSlice [][]uint64
+
+func (r rangeSlice) Len() int      { return len(r) }
+func (r rangeSlice) Swap(i, j int) { r[i], r[j] = r[j], r[i] }
+
+// Compare ranges by first key of the sub-slice
+func (r rangeSlice) Less(i, j int) bool { return r[i][0] < r[j][0] }
+
+func getGenomeSlice(slice uint64, chroms []*Chromosome) string {
+
+	// make a slice of chromosome position ranges
+	var r [][]uint64
+	for i, chr := range chroms {
+		r = append(r, []uint64{chr.offset, chr.offset + uint64(len(chr.data)) - 1, uint64(i)})
+	}
+	sort.Sort(rangeSlice(r))
+
+	posStart := slice * SLICEWIDTH
+	posEnd := posStart + SLICEWIDTH - 1
+
+	var s string
+	var chrCount int
+	for _, rng := range r {
+		if len(s) > 0 {
+			if posEnd <= rng[1] {
+				return s + chroms[rng[2]].data[:posEnd-rng[0]+1]
+			} else {
+				s += chroms[rng[2]].data
+				chrCount++
+				continue
+			}
+		}
+		if posStart >= rng[0] && posStart <= rng[1] {
+			// slice is contained in a single chromosome
+			if posEnd <= rng[1] {
+				return chroms[rng[2]].data[posStart-rng[0] : posEnd-rng[0]+1]
+			}
+			if len(s) == 0 {
+				s = chroms[rng[2]].data[posStart-rng[0]:]
+				chrCount++
+				continue
+			}
+		}
+	}
+	return s
 }
