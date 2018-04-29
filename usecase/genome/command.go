@@ -10,6 +10,9 @@ import (
 	"strings"
 	"time"
 
+	"net/http"
+	_ "net/http/pprof"
+
 	"github.com/pilosa/pdk"
 	"github.com/pkg/errors"
 )
@@ -52,6 +55,9 @@ var frames = []pdk.FrameSpec{
 
 // Run runs the http command.
 func (m *Main) Run() error {
+	go func() {
+		log.Println(http.ListenAndServe("localhost:6060", nil))
+	}()
 
 	var err error
 

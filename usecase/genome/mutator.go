@@ -13,7 +13,7 @@ func NewMutator(min, max, denom int) (*Mutator, error) {
 	if min >= denom {
 		return nil, errors.New("min must be less than denom")
 	}
-	if max == 0 || max > denom {
+	if max < 1 || max > denom {
 		return nil, errors.New("max must be in the range [1,denom]")
 	}
 

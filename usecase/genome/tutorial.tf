@@ -23,10 +23,16 @@ resource "aws_instance" "agent" {
     destination = "/tmp/setup-agent.sh"
   }
 
+  provisioner "file" {
+    source = "GRCh37.primary_assembly.genome.fa.gz"
+    destination = "/home/ubuntu/GRCh37.fa.gz"
+  }
+
   provisioner "remote-exec" {
     inline = [
       "chmod +x /tmp/setup-agent.sh",
       "/tmp/setup-agent.sh ${count.index}",
+      "gunzip GRCh37.fa.gz",
     ]
   }
 
@@ -58,11 +64,10 @@ resource "aws_instance" "pilosa" {
       "chmod +x /tmp/setup-pilosa.sh",
       "/tmp/setup-pilosa.sh ${count.index} ${self.private_ip} ${aws_instance.pilosa.0.private_ip} ${count.index == "0" ? true : false}",
       "sleep 2",
-      "nohup /home/ubuntu/go/bin/pilosa server --config=/home/ubuntu/pilosa.cfg &>> /home/ubuntu/pilosa.out &",
-      "sleep 1",
-      "echo done sleeping, pilosa should be running",
+      "nohup /home/ubuntu/go/bin/pilosa server --config=/home/ubuntu/pilosa.cfg &",
     ]
   }
+
 
   tags {
     Name = "${var.name}-pilosa${count.index}"
