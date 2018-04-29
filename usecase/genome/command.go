@@ -6,6 +6,7 @@ import (
 	"log"
 	"math/rand"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -99,21 +100,33 @@ func (m *Main) importReferenceWithMutations(mutator *Mutator, row int) error {
 	scanner := bufio.NewScanner(file)
 	positionOnCr := 0
 	crNumber := 0
+	colCount := 0
 	for scanner.Scan() {
 		line := scanner.Text()
 
 		// HEADER
 		if strings.HasPrefix(line, ">") {
-			// new section of file
 			parts := strings.Split(line, " ")
 			name := parts[0][1:]
-			crNumber++
-			positionOnCr = 0
-			fmt.Println(name)
-			if strings.Contains(name, "_") {
-				// done with normal chromosome sections
+			if !strings.Contains(name, "chr") {
+				log.Printf("end of useful info (%v)\n", line)
 				break
 			}
+			crID := name[3:]
+			if crID == "X" {
+				crNumber = 23
+			} else if crID == "Y" {
+				crNumber = 24
+			} else if crID == "M" {
+				crNumber = 25
+			} else {
+				crNumber, err = strconv.Atoi(crID)
+				if err != nil {
+					return err
+				}
+			}
+			positionOnCr = 0
+			fmt.Printf("'%v' %v %v %v\n", line, name, crID, crNumber)
 			continue
 		}
 
@@ -130,6 +143,7 @@ func (m *Main) importReferenceWithMutations(mutator *Mutator, row int) error {
 					fmt.Printf("row: %d, col: %d\n", row, col)
 				}
 				m.index.AddBit(frame, uint64(col), uint64(row))
+				colCount++
 			}
 			positionOnCr++
 		}

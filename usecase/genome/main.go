@@ -20,7 +20,7 @@ type GenomeMapper struct {
 
 // NewGenomeMapper creates a new GenomeMapper based on a provided list of chromosome lengths.
 func NewGenomeMapper(columnsPerPosition int, chromosomeLengths []int) GenomeMapper {
-	a := make([]int, 0, 25)
+	a := make([]int, 0, len(chromosomeLengthsPadded))
 	accum := 0
 	for _, l := range chromosomeLengths {
 		a = append(a, accum)
