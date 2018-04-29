@@ -22,6 +22,12 @@ type SubjecterOpts struct {
 	Path []string `help:"Path to subject."`
 }
 
+type Chromosome struct {
+	data   string
+	number int
+	offset uint64
+}
+
 // Main holds the config for the http command.
 type Main struct {
 	File  string   `help:"Path to FASTA file."`
@@ -33,6 +39,8 @@ type Main struct {
 	Count int      `help:"Number of mutated rows to create."`
 
 	index pdk.Indexer
+
+	chromosomes []*Chromosome
 }
 
 // NewMain gets a new Main with default values.
@@ -53,7 +61,7 @@ var frames = []pdk.FrameSpec{
 	pdk.NewRankedFrameSpec(frame, 0),
 }
 
-// Run runs the http command.
+// Run runs the genome command.
 func (m *Main) Run() error {
 	go func() {
 		log.Println(http.ListenAndServe("localhost:6060", nil))
@@ -79,6 +87,12 @@ func (m *Main) Run() error {
 		return err
 	}
 
+	// Load FASTA file.
+	err = m.loadFile(m.File)
+	if err != nil {
+		return errors.Wrap(err, "loading file")
+	}
+
 	err = m.importReferenceWithMutations(nopmut, 0)
 	if err != nil {
 		return errors.Wrap(err, "importing reference row")
@@ -92,6 +106,69 @@ func (m *Main) Run() error {
 	}
 
 	return nil
+}
+
+// loadFile loads the data from file into m.chromosomes.
+func (m *Main) loadFile(f string) error {
+	file, err := os.Open(f)
+	if err != nil {
+		return errors.Wrap(err, "opening FASTA file")
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	crNumber := 0
+	colCount := uint64(0)
+
+	var chr *Chromosome
+
+	for scanner.Scan() {
+		line := scanner.Text()
+
+		// HEADER
+		if strings.HasPrefix(line, ">") {
+			parts := strings.Split(line, " ")
+			name := parts[0][1:]
+			if !strings.Contains(name, "chr") {
+				log.Printf("end of useful info (%v)\n", line)
+				break
+			}
+			crID := name[3:]
+			if crID == "X" {
+				crNumber = 23
+			} else if crID == "Y" {
+				crNumber = 24
+			} else if crID == "M" {
+				crNumber = 25
+			} else {
+				crNumber, err = strconv.Atoi(crID)
+				if err != nil {
+					return err
+				}
+			}
+			fmt.Printf("'%v' %v %v %v\n", line, name, crID, crNumber)
+
+			chr = &Chromosome{
+				number: crNumber,
+				offset: colCount,
+			}
+			m.chromosomes = append(m.chromosomes, chr)
+
+			continue
+		}
+
+		// LINE
+		chr.data += line
+		colCount += uint64(len(line))
+
+	}
+
+	if err := scanner.Err(); err != nil {
+		log.Fatal(err)
+	}
+
+	return nil
+
 }
 
 func (m *Main) importReferenceWithMutations(mutator *Mutator, row int) error {
