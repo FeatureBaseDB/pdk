@@ -95,29 +95,28 @@ func (m *Main) Run() error {
 	// Mutator setup.
 	rand.Seed(time.Now().UTC().UnixNano())
 
-	nopmut, err := NewMutator(0, 1, 1)
+	nopmut, err := NewNopMutator()
 	if err != nil {
 		return errors.Wrap(err, "making no-op mutator")
-	}
-	mut, err := NewMutator(m.Min, m.Max, m.Denom)
-	if err != nil {
-		return errors.Wrap(err, "making mutator")
 	}
 
 	for row := uint64(0); row < m.Count; row++ {
 		start = time.Now()
 		log.Printf("Start row %d at %v", row, start)
-		mutator := mut
-		if row == 0 {
-			mutator = nopmut
-		} else {
-			mutator.setRandomMatch()
-		}
 		sliceChan := make(chan uint64, 1000)
 		eg := &errgroup.Group{}
 		for i := 0; i < m.Concurrency; i++ {
+			var mut Mutator
+			if row == 0 {
+				mut = nopmut
+			} else {
+				mut, err = NewDeltaMutator(m.Min, m.Max, m.Denom)
+				if err != nil {
+					return errors.Wrap(err, "making mutator")
+				}
+			}
 			eg.Go(func() error {
-				return m.importSlices(row, sliceChan, mutator)
+				return m.importSlices(row, sliceChan, mut)
 			})
 		}
 		for s := uint64(0); s < m.maxSlice(); s++ {
@@ -141,6 +140,13 @@ func (m *Main) maxSlice() uint64 {
 }
 
 // loadFile loads the data from file into m.chromosomes.
+// m.chromosomes = {
+//   {
+//     data:   long string like "ATGC...",
+//     number: int in [1-25],
+//     offset: int,
+//   }
+// }
 func (m *Main) loadFile(f string) error {
 	file, err := os.Open(f)
 	if err != nil {
@@ -258,7 +264,7 @@ func (m *Main) getGenomeSlice(slice uint64) string {
 	return s
 }
 
-func (m *Main) importSlices(row uint64, sliceChan chan uint64, mutator *Mutator) error {
+func (m *Main) importSlices(row uint64, sliceChan chan uint64, mutator Mutator) error {
 	client := m.index.Client()
 
 	for slice := range sliceChan {
