@@ -95,11 +95,6 @@ func (m *Main) Run() error {
 	// Mutator setup.
 	rand.Seed(time.Now().UTC().UnixNano())
 
-	nopmut, err := NewNopMutator()
-	if err != nil {
-		return errors.Wrap(err, "making no-op mutator")
-	}
-
 	for row := uint64(0); row < m.Count; row++ {
 		start = time.Now()
 		log.Printf("Start row %d at %v", row, start)
@@ -108,7 +103,7 @@ func (m *Main) Run() error {
 		for i := 0; i < m.Concurrency; i++ {
 			var mut Mutator
 			if row == 0 {
-				mut = nopmut
+				mut = NewNopMutator()
 			} else {
 				mut, err = NewDeltaMutator(m.Min, m.Max, m.Denom)
 				if err != nil {
