@@ -67,7 +67,7 @@ func NewMain() *Main {
 var frame = "sequences"
 
 var frames = []pdk.FrameSpec{
-	pdk.NewRankedFrameSpec(frame, 0),
+	pdk.NewRankedFrameSpec(frame, 100000),
 }
 
 // Run runs the genome command.
