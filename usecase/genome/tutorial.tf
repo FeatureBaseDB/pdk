@@ -65,6 +65,7 @@ resource "aws_instance" "pilosa" {
       "/tmp/setup-pilosa.sh ${count.index} ${self.private_ip} ${aws_instance.pilosa.0.private_ip} ${count.index == "0" ? true : false}",
       "sleep 2",
       "nohup /home/ubuntu/go/bin/pilosa server --config=/home/ubuntu/pilosa.cfg &",
+      "sleep 1",
     ]
   }
 

@@ -259,7 +259,7 @@
     ".",
     "gopilosa_pbuf"
   ]
-  revision = "cd14c75d4de0337fd3cc5507ab956b763942c0c5"
+  revision = "a05a8ec5802dfbe9d2ab624cef462df86c0f2173"
 
 [[projects]]
   branch = "master"
@@ -439,6 +439,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "10492fb6e3866ddfea8cdc3c29081083261b7faac68d941c77f54d418a156a34"
+  inputs-digest = "f332a9d2eff5301c15f079b86ae224159be1624ca2718ccab58614a0b4a0e9b1"
   solver-name = "gps-cdcl"
   solver-version = 1
