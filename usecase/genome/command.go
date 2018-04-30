@@ -153,12 +153,16 @@ func (m *Main) loadFile(f string) error {
 	colCount := uint64(0)
 
 	var chr *Chromosome
+	var builder strings.Builder
 
 	for scanner.Scan() {
 		line := scanner.Text()
 
 		// HEADER
 		if strings.HasPrefix(line, ">") {
+			if chr != nil {
+				chr.data = builder.String()
+			}
 			parts := strings.Split(line, " ")
 			name := parts[0][1:]
 			if !strings.Contains(name, "chr") {
@@ -185,15 +189,17 @@ func (m *Main) loadFile(f string) error {
 				offset: colCount,
 			}
 			m.chromosomes = append(m.chromosomes, chr)
+			builder = strings.Builder{}
 
 			continue
 		}
 
 		// LINE
-		chr.data += line
+		builder.WriteString(line)
 		colCount += uint64(len(line))
-
 	}
+
+	chr.data = builder.String()
 
 	if err := scanner.Err(); err != nil {
 		log.Fatal(err)
