@@ -1,7 +1,6 @@
 package genome
 
 import (
-	"errors"
 	"math/rand"
 )
 
@@ -29,21 +28,9 @@ type DeltaMutator struct {
 	optMap  map[string]int
 }
 
-// NewDeltaMutator returns a Mutator with mutation rate randomly
-// chosen in the range [min/denom, max/denom). This rate controls
-// the exponential spacing distribution used in mutate().
-func NewDeltaMutator(min, max, denom int) (*DeltaMutator, error) {
-	// validate min/max
-	if min > max {
-		return nil, errors.New("max can't be less than min")
-	}
-	if min >= denom {
-		return nil, errors.New("min must be less than denom")
-	}
-	if max < 1 || max > denom {
-		return nil, errors.New("max must be in the range [1,denom]")
-	}
-
+// NewDeltaMutator returns a Mutator with specified mutation rate.
+// This rate controls the exponential spacing distribution used in mutate().
+func NewDeltaMutator(rate float64) *DeltaMutator {
 	opts := []string{"A", "C", "G", "T"}
 	optMap := make(map[string]int, len(opts))
 
@@ -51,23 +38,23 @@ func NewDeltaMutator(min, max, denom int) (*DeltaMutator, error) {
 		optMap[opt] = i
 	}
 
-	rate := float64(rand.Intn(max-min)+min) / float64(denom)
+	rng := rand.New(rand.NewSource(rand.Int63()))
 
 	return &DeltaMutator{
 		rate:    rate,
-		counter: int(rand.ExpFloat64() / rate),
-		rng:     rand.New(rand.NewSource(rand.Int63())),
+		counter: int(rng.ExpFloat64() / rate),
+		rng:     rng,
 		opts:    opts,
 		optMap:  optMap,
-	}, nil
+	}
 }
 
 func (m *DeltaMutator) mutate(b string) string {
 	m.counter--
-	if m.counter == 0 {
+	if m.counter <= 0 {
 		// Only mutate when counter hits zero.
-		// Reset counter with sample from exponential distribution
-		// with the desired rate.
+		// Reset counter with rounded sample from exponential
+		// distribution with the desired rate.
 		m.counter = int(m.rng.ExpFloat64() / m.rate)
 
 		rn := rand.Intn(len(m.opts)-1) + 1

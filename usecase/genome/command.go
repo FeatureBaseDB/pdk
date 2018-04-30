@@ -40,9 +40,8 @@ type Main struct {
 	File        string   `help:"Path to FASTA file."`
 	Hosts       []string `help:"Pilosa hosts."`
 	Index       string   `help:"Pilosa index."`
-	Min         int      `help:"Minimum number of random mutations per [denom]."`
-	Max         int      `help:"Maximum number of random mutations per [denom]."`
-	Denom       int      `help:"Denominator to use for calculating random mutations."`
+	Min         float64  `help:"Minimum fraction of random mutations."`
+	Max         float64  `help:"Maximum fraction of random mutations."`
 	Count       uint64   `help:"Number of mutated rows to create."`
 	Concurrency int      `help:"Number of slice importers to run simultaneously."`
 
@@ -56,9 +55,8 @@ func NewMain() *Main {
 	return &Main{
 		Hosts:       []string{":10101"},
 		Index:       "genome",
-		Min:         10,
-		Max:         50,
-		Denom:       10000,
+		Min:         0.001,
+		Max:         0.005,
 		Count:       10,
 		Concurrency: 8,
 	}
@@ -96,8 +94,9 @@ func (m *Main) Run() error {
 	rand.Seed(time.Now().UTC().UnixNano())
 
 	for row := uint64(0); row < m.Count; row++ {
+		mutationRate := rand.Float64()*(m.Max-m.Min) + m.Min
 		start = time.Now()
-		log.Printf("Start row %d at %v", row, start)
+		log.Printf("Start row %d, mutation rate %f", row, mutationRate)
 		sliceChan := make(chan uint64, 1000)
 		eg := &errgroup.Group{}
 		for i := 0; i < m.Concurrency; i++ {
@@ -105,10 +104,7 @@ func (m *Main) Run() error {
 			if row == 0 {
 				mut = NewNopMutator()
 			} else {
-				mut, err = NewDeltaMutator(m.Min, m.Max, m.Denom)
-				if err != nil {
-					return errors.Wrap(err, "making mutator")
-				}
+				mut = NewDeltaMutator(mutationRate)
 			}
 			eg.Go(func() error {
 				return m.importSlices(row, sliceChan, mut)
@@ -265,8 +261,8 @@ func (m *Main) importSlices(row uint64, sliceChan chan uint64, mutator Mutator) 
 	for slice := range sliceChan {
 		startCol := slice * SLICEWIDTH
 		bases := m.getGenomeSlice(slice)
-		rows := make([]uint64, 0, 1048576)
-		cols := make([]uint64, 0, 1048576)
+		rows := make([]uint64, 0, 2097152)
+		cols := make([]uint64, 0, 2097152)
 		for i, letter := range bases {
 			chr := mutator.mutate(string(letter))
 			colz := fastaCodeToNucleotides(chr)
