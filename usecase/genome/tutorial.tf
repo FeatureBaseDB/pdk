@@ -7,7 +7,7 @@ provider "aws" {
 #################
 
 resource "aws_instance" "agent" {
-  ami           = "ami-e3c3b8f4"
+  ami           = "ami-6dfe5010"
   instance_type = "${var.agent_instance_type}"
 
   connection {
@@ -32,7 +32,11 @@ resource "aws_instance" "agent" {
     inline = [
       "chmod +x /tmp/setup-agent.sh",
       "/tmp/setup-agent.sh ${count.index}",
-      "gunzip GRCh37.fa.gz",
+      "wget https://s3.amazonaws.com/pilosa-sample-data/GRCh37.primary_assembly.genome.fa.gz",
+      "gunzip GRCh37.primary_assembly.genome.fa.gz",
+      "mv GRCh37.primary_assembly.genome.fa GRCh37.fa",
+      "nohup pdk genome -f GRCh37.fa -o join(',', formatlist('%s:10101', aws_instance.pilosa.*.private_ip)) --concurrency 192 &",
+      "sleep 1",
     ]
   }
 
@@ -43,7 +47,7 @@ resource "aws_instance" "agent" {
 }
 
 resource "aws_instance" "pilosa" {
-  ami           = "ami-e3c3b8f4"
+  ami           = "ami-6dfe5010"
   instance_type = "${var.pilosa_instance_type}"
 
   connection {
@@ -113,6 +117,7 @@ Ensure this keypair is added to your local SSH agent so provisioners can
 connect.
 Example: ~/.ssh/terraform.pub
 DESCRIPTION
+  default = "~/.ssh/id_rsa.pub"
 }
 
 #################
