@@ -57,8 +57,14 @@ func (m *DeltaMutator) mutate(b string) string {
 		// distribution with the desired rate.
 		m.counter = int(m.rng.ExpFloat64() / m.rate)
 
+		// If b isn't in opts, just return b with no mutation.
+		optPos, ok := m.optMap[b]
+		if !ok {
+			return b
+		}
+
 		rn := rand.Intn(len(m.opts)-1) + 1
-		pos := (rn + m.optMap[b]) % len(m.opts)
+		pos := (rn + optPos) % len(m.opts)
 		return m.opts[pos]
 	}
 	return b
