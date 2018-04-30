@@ -119,8 +119,7 @@ func (m *Main) Run() error {
 				return m.importSlices(row, sliceChan, mutator)
 			})
 		}
-		for s := uint64(0); s < m.maxSlice(); s++ {
-			s++
+		for s := uint64(0); s < 4*m.maxSlice(); s++ {
 			sliceChan <- s
 		}
 		close(sliceChan)
@@ -219,6 +218,9 @@ func (r rangeSlice) Swap(i, j int) { r[i], r[j] = r[j], r[i] }
 func (r rangeSlice) Less(i, j int) bool { return r[i][0] < r[j][0] }
 
 func (m *Main) getGenomeSlice(slice uint64) string {
+
+	sw := uint64(SLICEWIDTH / 4)
+
 	// make a slice of chromosome position ranges
 	var r [][]uint64
 	for i, chr := range m.chromosomes {
@@ -226,8 +228,8 @@ func (m *Main) getGenomeSlice(slice uint64) string {
 	}
 	sort.Sort(rangeSlice(r))
 
-	posStart := slice * SLICEWIDTH
-	posEnd := posStart + SLICEWIDTH - 1
+	posStart := slice * sw
+	posEnd := posStart + sw - 1
 
 	var s string
 	var chrCount int
