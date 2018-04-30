@@ -24,10 +24,14 @@ func (m *NopMutator) mutate(b string) string {
 type DeltaMutator struct {
 	rate    float64
 	counter int
+	rng     *rand.Rand
 	opts    []string
 	optMap  map[string]int
 }
 
+// NewDeltaMutator returns a Mutator with mutation rate randomly
+// chosen in the range [min/denom, max/denom). This rate controls
+// the exponential spacing distribution used in mutate().
 func NewDeltaMutator(min, max, denom int) (*DeltaMutator, error) {
 	// validate min/max
 	if min > max {
@@ -52,6 +56,7 @@ func NewDeltaMutator(min, max, denom int) (*DeltaMutator, error) {
 	return &DeltaMutator{
 		rate:    rate,
 		counter: int(rand.ExpFloat64() / rate),
+		rng:     rand.New(rand.NewSource(rand.Int63())),
 		opts:    opts,
 		optMap:  optMap,
 	}, nil
@@ -63,7 +68,7 @@ func (m *DeltaMutator) mutate(b string) string {
 		// Only mutate when counter hits zero.
 		// Reset counter with sample from exponential distribution
 		// with the desired rate.
-		m.counter = int(rand.ExpFloat64() / m.rate)
+		m.counter = int(m.rng.ExpFloat64() / m.rate)
 
 		rn := rand.Intn(len(m.opts)-1) + 1
 		pos := (rn + m.optMap[b]) % len(m.opts)
