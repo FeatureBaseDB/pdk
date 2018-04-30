@@ -21,6 +21,7 @@ import (
 )
 
 const SLICEWIDTH = 8388608
+const BASECOUNT = 4
 
 // SubjecterOpts are options for the Subjecter.
 type SubjecterOpts struct {
@@ -120,7 +121,6 @@ func (m *Main) Run() error {
 			})
 		}
 		for s := uint64(0); s < m.maxSlice(); s++ {
-			s++
 			sliceChan <- s
 		}
 		close(sliceChan)
@@ -137,7 +137,7 @@ func (m *Main) Run() error {
 func (m *Main) maxSlice() uint64 {
 	lastChrom := m.chromosomes[len(m.chromosomes)-1]
 	maxCol := lastChrom.offset + uint64(len(lastChrom.data)) - 1
-	return maxCol / SLICEWIDTH
+	return BASECOUNT * maxCol / SLICEWIDTH
 }
 
 // loadFile loads the data from file into m.chromosomes.
@@ -219,6 +219,9 @@ func (r rangeSlice) Swap(i, j int) { r[i], r[j] = r[j], r[i] }
 func (r rangeSlice) Less(i, j int) bool { return r[i][0] < r[j][0] }
 
 func (m *Main) getGenomeSlice(slice uint64) string {
+
+	sw := uint64(SLICEWIDTH / BASECOUNT)
+
 	// make a slice of chromosome position ranges
 	var r [][]uint64
 	for i, chr := range m.chromosomes {
@@ -226,8 +229,8 @@ func (m *Main) getGenomeSlice(slice uint64) string {
 	}
 	sort.Sort(rangeSlice(r))
 
-	posStart := slice * SLICEWIDTH
-	posEnd := posStart + SLICEWIDTH - 1
+	posStart := slice * sw
+	posEnd := posStart + sw - 1
 
 	var s string
 	var chrCount int
@@ -268,7 +271,7 @@ func (m *Main) importSlices(row uint64, sliceChan chan uint64, mutator *Mutator)
 			colz := fastaCodeToNucleotides(chr)
 			for _, col := range colz {
 				rows = append(rows, row)
-				cols = append(cols, startCol+uint64(i)*4+uint64(col))
+				cols = append(cols, startCol+uint64(i)*BASECOUNT+uint64(col))
 			}
 		}
 		err := errSentinel
