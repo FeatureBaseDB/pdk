@@ -35,7 +35,7 @@ resource "aws_instance" "agent" {
       "wget https://s3.amazonaws.com/pilosa-sample-data/GRCh37.primary_assembly.genome.fa.gz",
       "gunzip GRCh37.primary_assembly.genome.fa.gz",
       "mv GRCh37.primary_assembly.genome.fa GRCh37.fa",
-      "nohup pdk genome -f GRCh37.fa -o join(',', formatlist('%s:10101', aws_instance.pilosa.*.private_ip)) --concurrency 192 &",
+      "nohup ./go/bin/pdk genome -f GRCh37.fa -o ${join(",", formatlist("%s:10101", aws_instance.pilosa.*.private_ip))} --concurrency 192 &",
       "sleep 1",
     ]
   }
@@ -63,6 +63,12 @@ resource "aws_instance" "pilosa" {
     destination = "/tmp/setup-pilosa.sh"
   }
 
+  root_block_device {
+    volume_type = "gp2"
+    volume_size = 200
+    iops = 10000
+  }
+
   provisioner "remote-exec" {
     inline = [
       "chmod +x /tmp/setup-pilosa.sh",
@@ -73,13 +79,13 @@ resource "aws_instance" "pilosa" {
     ]
   }
 
-
   tags {
     Name = "${var.name}-pilosa${count.index}"
   }
 
   count = "${var.nodes}"
 }
+
 
 #################
 ### VARIABLES ###
@@ -136,6 +142,9 @@ output "agent_ips" {
   value = "${aws_instance.agent.*.public_ip}"
 }
 
+output "pilosaips" {
+  value = "${join(",", formatlist("%s:10101", aws_instance.pilosa.*.private_ip))}"
+}
 
 #################
 # NETWORKING ####

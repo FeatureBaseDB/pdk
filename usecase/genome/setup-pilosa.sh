@@ -24,7 +24,8 @@ echo "export PATH=$PATH:/usr/local/go/bin:$GOPATH/bin" >> .profile
 
 curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
 
-sudo apt-get -y install make git
+sudo apt-get update
+sudo apt-get -y install make git htop
 
 git clone https://github.com/pilosa/pilosa.git $GOPATH/src/github.com/pilosa/pilosa
 cd $GOPATH/src/github.com/pilosa/pilosa
