@@ -35,6 +35,23 @@ type Chromosome struct {
 	offset uint64
 }
 
+type Gene struct {
+	chromosome uint64
+	start      uint64
+	end        uint64
+	name       string
+}
+
+var genes = []Gene{
+	{chromosome: 1, start: 156052369, end: 156109880, name: "LMNA"},
+	{chromosome: 23, start: 31097677, end: 33339441, name: "DMD"},
+	{chromosome: 7, start: 146116002, end: 148420998, name: "CNTNAP2"},
+	{chromosome: 9, start: 8314246, end: 10612723, name: "PTPRD"},
+	{chromosome: 2, start: 178525989, end: 178807423, name: "TTN"},
+	{chromosome: 2, start: 151485334, end: 151734487, name: "NEB"},
+	{chromosome: 6, start: 152121684, end: 152637399, name: "SYNE1"},
+}
+
 // Main holds the config for the http command.
 type Main struct {
 	File        string   `help:"Path to FASTA file."`
@@ -66,6 +83,8 @@ var frame = "sequences"
 
 var frames = []pdk.FrameSpec{
 	pdk.NewRankedFrameSpec(frame, 100000),
+	pdk.NewRankedFrameSpec("chromosomes", 100000),
+	pdk.NewRankedFrameSpec("genes", 100000),
 }
 
 // Run runs the genome command.
@@ -89,6 +108,31 @@ func (m *Main) Run() error {
 	if err != nil {
 		return errors.Wrap(err, "setting up Pilosa")
 	}
+
+	err = m.importGeneMasks(genes)
+	if err != nil {
+		return errors.Wrap(err, "importing genes")
+	}
+	log.Printf("Imported %d genes", len(genes))
+
+	start = time.Now()
+	log.Printf("Start chromosomes")
+	sliceChan := make(chan uint64, 1000)
+	eg := &errgroup.Group{}
+	for i := 0; i < m.Concurrency; i++ {
+		eg.Go(func() error {
+			return m.importChromosomeMasks(sliceChan)
+		})
+	}
+	for s := uint64(0); s < m.maxSlice(); s++ {
+		sliceChan <- s
+	}
+	close(sliceChan)
+	err = eg.Wait()
+	if err != nil {
+		return errors.Wrapf(err, "importing chromosomes")
+	}
+	log.Printf("Done chromosomes in %v", time.Since(start))
 
 	// Mutator setup.
 	rand.Seed(time.Now().UTC().UnixNano())
@@ -253,6 +297,76 @@ func (m *Main) getGenomeSlice(slice uint64) string {
 		}
 	}
 	return s
+}
+
+func (m *Main) importGeneMasks(genes []Gene) error {
+	for n, gene := range genes {
+		for _, cr := range m.chromosomes {
+			if uint64(cr.number) == gene.chromosome {
+				for pos := cr.offset + gene.start; pos < cr.offset+gene.end; pos++ {
+					m.index.AddBit("genes", BASECOUNT*pos, uint64(n))
+					m.index.AddBit("genes", BASECOUNT*pos+1, uint64(n))
+					m.index.AddBit("genes", BASECOUNT*pos+2, uint64(n))
+					m.index.AddBit("genes", BASECOUNT*pos+3, uint64(n))
+				}
+				break
+			}
+		}
+		log.Printf("imported gene %+v\n", gene)
+	}
+	return nil
+}
+
+func (m *Main) chromosomeAtColumn(col uint64) (crNumber, length uint64) {
+	var r [][]uint64
+	for i, chr := range m.chromosomes {
+		r = append(r, []uint64{chr.offset, chr.offset + uint64(len(chr.data)) - 1, uint64(i)})
+	}
+	sort.Sort(rangeSlice(r))
+
+	for i, rr := range r {
+		if BASECOUNT*rr[0] < col && col < BASECOUNT*rr[1] {
+			crNumber = uint64(i)
+			length = BASECOUNT * (rr[1] - col)
+		}
+	}
+
+	return crNumber, length
+}
+
+func (m *Main) importChromosomeMasks(sliceChan chan uint64) error {
+	client := m.index.Client()
+
+	for slice := range sliceChan {
+		startCol := slice * SLICEWIDTH
+		crNumber, length := m.chromosomeAtColumn(startCol)
+		next := startCol + length
+		rows := make([]uint64, 0, 2097152)
+		cols := make([]uint64, 0, 2097152)
+		for col := startCol; col < startCol+SLICEWIDTH; col++ {
+			rows = append(rows, crNumber)
+			cols = append(cols, col)
+			if col == next {
+				crNumber, length = m.chromosomeAtColumn(col)
+				next = col + length
+			}
+		}
+
+		err := errSentinel
+		tries := 0
+		for err != nil {
+			tries++
+			if tries > 10 {
+				return err
+			}
+			err = client.SliceImport(m.Index, "chromosomes", slice, rows, cols)
+			if err != nil {
+				log.Printf("Error importing slice %d, retrying: %v", slice, err)
+			}
+		}
+		log.Printf("imported chromosome mask for slice %d (%d)", slice, crNumber)
+	}
+	return nil
 }
 
 func (m *Main) importSlices(row uint64, sliceChan chan uint64, mutator Mutator) error {
