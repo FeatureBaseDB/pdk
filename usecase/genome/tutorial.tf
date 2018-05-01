@@ -9,6 +9,7 @@ provider "aws" {
 resource "aws_instance" "agent" {
   ami           = "ami-6dfe5010"
   instance_type = "${var.agent_instance_type}"
+  placement_group = "pilosa-pg"
 
   connection {
     user = "ubuntu"
