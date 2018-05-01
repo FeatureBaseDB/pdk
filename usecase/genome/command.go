@@ -54,13 +54,16 @@ var genes = []Gene{
 
 // Main holds the config for the http command.
 type Main struct {
-	File        string   `help:"Path to FASTA file."`
-	Hosts       []string `help:"Pilosa hosts."`
-	Index       string   `help:"Pilosa index."`
-	Min         float64  `help:"Minimum fraction of random mutations."`
-	Max         float64  `help:"Maximum fraction of random mutations."`
-	Count       uint64   `help:"Number of mutated rows to create."`
-	Concurrency int      `help:"Number of slice importers to run simultaneously."`
+	File              string   `help:"Path to FASTA file."`
+	Hosts             []string `help:"Pilosa hosts."`
+	Index             string   `help:"Pilosa index."`
+	Min               float64  `help:"Minimum fraction of random mutations."`
+	Max               float64  `help:"Maximum fraction of random mutations."`
+	Count             uint64   `help:"Number of mutated rows to create."`
+	Concurrency       int      `help:"Number of slice importers to run simultaneously."`
+	ImportGenes       bool     `help:"Import gene masks."`
+	ImportChromosomes bool     `help:"Import chromosome masks."`
+	ImportSequences   bool     `help:"Import reference and mutated sequences."`
 
 	index pdk.Indexer
 
@@ -109,49 +112,22 @@ func (m *Main) Run() error {
 		return errors.Wrap(err, "setting up Pilosa")
 	}
 
-	err = m.importGeneMasks(genes)
-	if err != nil {
-		return errors.Wrap(err, "importing genes")
+	if m.ImportGenes {
+		err = m.importGeneMasks(genes)
+		if err != nil {
+			return errors.Wrap(err, "importing genes")
+		}
+		log.Printf("Imported %d genes", len(genes))
 	}
-	log.Printf("Imported %d genes", len(genes))
 
-	start = time.Now()
-	log.Printf("Start chromosomes")
-	sliceChan := make(chan uint64, 1000)
-	eg := &errgroup.Group{}
-	for i := 0; i < m.Concurrency; i++ {
-		eg.Go(func() error {
-			return m.importChromosomeMasks(sliceChan)
-		})
-	}
-	for s := uint64(0); s < m.maxSlice(); s++ {
-		sliceChan <- s
-	}
-	close(sliceChan)
-	err = eg.Wait()
-	if err != nil {
-		return errors.Wrapf(err, "importing chromosomes")
-	}
-	log.Printf("Done chromosomes in %v", time.Since(start))
-
-	// Mutator setup.
-	rand.Seed(time.Now().UTC().UnixNano())
-
-	for row := uint64(0); row < m.Count; row++ {
-		mutationRate := rand.Float64()*(m.Max-m.Min) + m.Min
+	if m.ImportChromosomes {
 		start = time.Now()
-		log.Printf("Start row %d, mutation rate %f", row, mutationRate)
+		log.Printf("Start chromosomes")
 		sliceChan := make(chan uint64, 1000)
 		eg := &errgroup.Group{}
 		for i := 0; i < m.Concurrency; i++ {
-			var mut Mutator
-			if row == 0 {
-				mut = NewNopMutator()
-			} else {
-				mut = NewDeltaMutator(mutationRate)
-			}
 			eg.Go(func() error {
-				return m.importSlices(row, sliceChan, mut)
+				return m.importChromosomeMasks(sliceChan)
 			})
 		}
 		for s := uint64(0); s < m.maxSlice(); s++ {
@@ -160,9 +136,42 @@ func (m *Main) Run() error {
 		close(sliceChan)
 		err = eg.Wait()
 		if err != nil {
-			return errors.Wrapf(err, "importing row %d", row)
+			return errors.Wrapf(err, "importing chromosomes")
 		}
-		log.Printf("Done row %d in %v", row, time.Since(start))
+		log.Printf("Done chromosomes in %v", time.Since(start))
+	}
+
+	if m.ImportSequences {
+		// Mutator setup.
+		rand.Seed(time.Now().UTC().UnixNano())
+
+		for row := uint64(0); row < m.Count; row++ {
+			mutationRate := rand.Float64()*(m.Max-m.Min) + m.Min
+			start = time.Now()
+			log.Printf("Start row %d, mutation rate %f", row, mutationRate)
+			sliceChan := make(chan uint64, 1000)
+			eg := &errgroup.Group{}
+			for i := 0; i < m.Concurrency; i++ {
+				var mut Mutator
+				if row == 0 {
+					mut = NewNopMutator()
+				} else {
+					mut = NewDeltaMutator(mutationRate)
+				}
+				eg.Go(func() error {
+					return m.importSlices(row, sliceChan, mut)
+				})
+			}
+			for s := uint64(0); s < m.maxSlice(); s++ {
+				sliceChan <- s
+			}
+			close(sliceChan)
+			err = eg.Wait()
+			if err != nil {
+				return errors.Wrapf(err, "importing row %d", row)
+			}
+			log.Printf("Done row %d in %v", row, time.Since(start))
+		}
 	}
 
 	return nil
