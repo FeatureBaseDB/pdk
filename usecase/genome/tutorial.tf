@@ -46,9 +46,16 @@ resource "aws_instance" "agent" {
   count = "${var.agents}"
 }
 
+resource "aws_placement_group" "pilosa-pg" {
+  name     = "pilosa-pg"
+  strategy = "cluster"
+}
+
 resource "aws_instance" "pilosa" {
   ami           = "ami-6dfe5010"
   instance_type = "${var.pilosa_instance_type}"
+  ebs_optimized = true
+  placement_group = "pilosa-pg"
 
   connection {
     user = "ubuntu"
