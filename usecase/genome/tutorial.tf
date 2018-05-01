@@ -9,6 +9,7 @@ provider "aws" {
 resource "aws_instance" "agent" {
   ami           = "ami-6dfe5010"
   instance_type = "${var.agent_instance_type}"
+  placement_group = "pilosa-pg"
 
   connection {
     user = "ubuntu"
@@ -46,9 +47,16 @@ resource "aws_instance" "agent" {
   count = "${var.agents}"
 }
 
+resource "aws_placement_group" "pilosa-pg" {
+  name     = "pilosa-pg"
+  strategy = "cluster"
+}
+
 resource "aws_instance" "pilosa" {
   ami           = "ami-6dfe5010"
   instance_type = "${var.pilosa_instance_type}"
+  ebs_optimized = true
+  placement_group = "pilosa-pg"
 
   connection {
     user = "ubuntu"
@@ -64,7 +72,7 @@ resource "aws_instance" "pilosa" {
   }
 
   root_block_device {
-    volume_type = "gp2"
+    volume_type = "io1"
     volume_size = 200
     iops = 10000
   }
