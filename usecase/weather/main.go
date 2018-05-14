@@ -129,7 +129,10 @@ func (m *Main) Run() (err error) {
 	if err != nil {
 		return fmt.Errorf("interpreting pilosaHost '%v': %v", m.PilosaHost, err)
 	}
-	setupClient := gopilosa.NewClientWithURI(pilosaURI)
+	setupClient, err := gopilosa.NewClient(pilosaURI)
+	if err != nil {
+		return fmt.Errorf("setting up client: %v", err)
+	}
 	m.client = setupClient
 	index, err := gopilosa.NewIndex(m.Index)
 	m.index = index

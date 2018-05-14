@@ -65,6 +65,9 @@ func TestRunMain(t *testing.T) {
 		t.Fatalf("cab_type 0 should have 87793, but got %d", resp.Result().Count())
 	}
 
+	// The cache needs to be refreshed before querying TopN.
+	client.HttpRequest("POST", "/recalculate-caches", nil, nil)
+
 	resp, err = client.Query(cabTypeFrame.TopN(5))
 	if err != nil {
 		t.Fatalf("topn query: %v", err)

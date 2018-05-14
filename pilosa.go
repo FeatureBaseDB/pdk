@@ -186,7 +186,7 @@ func (i *Index) setupFrame(frame FrameSpec) error {
 		i.importWG.Add(1)
 		go func(fram *gopilosa.Frame, cbi chanBitIterator) {
 			defer i.importWG.Done()
-			err := i.client.ImportFrame(fram, cbi, i.batchSize)
+			err := i.client.ImportFrame(fram, cbi, gopilosa.OptImportBatchSize(int(i.batchSize)))
 			if err != nil {
 				log.Println(errors.Wrapf(err, "starting frame import for %v", frame.Name))
 			}
@@ -213,7 +213,7 @@ func (i *Index) setupFrame(frame FrameSpec) error {
 		i.importWG.Add(1)
 		go func(fram *gopilosa.Frame, field FieldSpec, cvi chanValIterator) {
 			defer i.importWG.Done()
-			err := i.client.ImportValueFrame(fram, field.Name, cvi, i.batchSize)
+			err := i.client.ImportValueFrame(fram, field.Name, cvi, gopilosa.OptImportBatchSize(int(i.batchSize)))
 			if err != nil {
 				log.Println(errors.Wrapf(err, "starting field import for %v", field))
 			}
@@ -273,7 +273,7 @@ func newChanBitIterator() chanBitIterator {
 
 type chanBitIterator chan gopilosa.Bit
 
-func (c chanBitIterator) NextBit() (gopilosa.Bit, error) {
+func (c chanBitIterator) NextRecord() (gopilosa.Record, error) {
 	b, ok := <-c
 	if !ok {
 		return b, io.EOF
@@ -287,7 +287,7 @@ func newChanValIterator() chanValIterator {
 
 type chanValIterator chan gopilosa.FieldValue
 
-func (c chanValIterator) NextValue() (gopilosa.FieldValue, error) {
+func (c chanValIterator) NextRecord() (gopilosa.Record, error) {
 	b, ok := <-c
 	if !ok {
 		return b, io.EOF
