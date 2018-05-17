@@ -8,6 +8,8 @@ import (
 	"github.com/pilosa/pdk/fake/gen"
 )
 
+var globalGen = NewEventGenerator(0)
+
 // Event is an example event that includes a variety of types.
 type Event struct {
 	// ID is a unique event identifier
@@ -70,35 +72,55 @@ type Item struct {
 	Value int    `json:"value"`
 }
 
-// GenEvent builds a random Event.
-func GenEvent() *Event {
-	active := false
-	if rand.Intn(2) > 0 {
-		active = true
-	}
-	return &Event{
-		ID:         fmt.Sprintf("%d", rand.Uint64()),
-		Station:    gen.String(6, 2000),
-		UserID:     int(gen.Uint64(100000000)) + 1,
-		Timestamp:  gen.Time(time.Date(2017, time.January, 1, 0, 0, 0, 0, time.UTC), time.Second*3).Format(time.RFC3339),
-		Favorites:  genFavorites(),
-		Items:      genItems(),
-		Ranking:    genItems(),
-		IfaceThing: String(gen.String(5, 5)),
-		Velocity:   rand.Intn(1000) + 2500,
-		Active:     active,
-		Geo:        genGeo(),
+// EventGenerator generates random events.
+type EventGenerator struct {
+	r *rand.Rand
+	g *gen.Generator
+}
+
+// NewEventGenerator gets a new EventGenerator.
+func NewEventGenerator(seed int64) *EventGenerator {
+	return &EventGenerator{
+		r: rand.New(rand.NewSource(seed)),
+		g: gen.NewGenerator(seed + 1),
 	}
 }
 
-func genFavorites() []string {
-	n := rand.Intn(7)
+// Event generates a random event.
+func (g *EventGenerator) Event() *Event {
+	active := false
+	if g.r.Intn(2) > 0 {
+		active = true
+	}
+	return &Event{
+		ID:         fmt.Sprintf("%d", g.r.Uint64()),
+		Station:    g.g.String(6, 2000),
+		UserID:     int(g.g.Uint64(100000000)) + 1,
+		Timestamp:  g.g.Time(time.Date(2017, time.January, 1, 0, 0, 0, 0, time.UTC), time.Second*3).Format(time.RFC3339),
+		Favorites:  g.genFavorites(),
+		Items:      g.genItems(),
+		Ranking:    g.genItems(),
+		IfaceThing: String(g.g.String(5, 5)),
+		Velocity:   g.r.Intn(1000) + 2500,
+		Active:     active,
+		Geo:        g.genGeo(),
+	}
+
+}
+
+// GenEvent builds a random Event.
+func GenEvent() *Event {
+	return globalGen.Event()
+}
+
+func (g *EventGenerator) genFavorites() []string {
+	n := g.r.Intn(7)
 	favs := make([]string, n)
 	for i := 0; i < n; i++ {
 		done := false
 		for !done {
 			done = true
-			favs[i] = gen.String(8, 1000)
+			favs[i] = g.g.String(8, 1000)
 			for j := 0; j < i; j++ {
 				if favs[i] == favs[j] {
 					done = false
@@ -130,26 +152,26 @@ var timezones = []string{
 	"WEST", "WET", "WIT", "WST", "YAKT", "YEKT",
 }
 
-func genGeo() Geo {
+func (g *EventGenerator) genGeo() Geo {
 	return Geo{
 		TimeZone:  timezones[gen.Uint64(len(timezones))],
-		Longitude: float64(gen.Uint64(360000)) / 1000.0,
-		Latitude:  (float64(gen.Uint64(180000)) / 1000.0) - 90.0,
+		Longitude: float64(g.g.Uint64(360000)) / 1000.0,
+		Latitude:  (float64(g.g.Uint64(180000)) / 1000.0) - 90.0,
 	}
 }
 
-func genItems() []Item {
-	n := rand.Intn(5)
+func (g *EventGenerator) genItems() []Item {
+	n := g.r.Intn(5)
 	items := make([]Item, n)
 	for i := 0; i < n; i++ {
-		items[i] = genItem()
+		items[i] = g.genItem()
 	}
 	return items
 }
 
-func genItem() Item {
+func (g *EventGenerator) genItem() Item {
 	return Item{
-		Name:  gen.String(8, 1000),
-		Value: int(rand.Int31()),
+		Name:  g.g.String(8, 1000),
+		Value: int(g.r.Int31()),
 	}
 }

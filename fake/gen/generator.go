@@ -40,7 +40,7 @@ func (g *Generator) String(length, cardinality int) string {
 
 	b := make([]byte, 8)
 	binary.BigEndian.PutUint64(b, val)
-	g.hsh.Write(b) // no need to check err
+	_, _ = g.hsh.Write(b) // no need to check err
 	hashed := g.hsh.Sum(nil)
 	g.hsh.Reset()
 	return base32.StdEncoding.EncodeToString(hashed)[:length]
