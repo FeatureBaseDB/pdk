@@ -186,7 +186,7 @@ func (i *Index) setupFrame(frame FrameSpec) error {
 		i.importWG.Add(1)
 		go func(fram *gopilosa.Frame, cbi chanBitIterator) {
 			defer i.importWG.Done()
-			err := i.client.ImportFrame(fram, cbi, gopilosa.OptImportBatchSize(int(i.batchSize)))
+			err := i.client.ImportFrame(fram, cbi, gopilosa.OptImportStrategy(gopilosa.BatchImport), gopilosa.OptImportBatchSize(int(i.batchSize)))
 			if err != nil {
 				log.Println(errors.Wrapf(err, "starting frame import for %v", frame.Name))
 			}
@@ -213,7 +213,7 @@ func (i *Index) setupFrame(frame FrameSpec) error {
 		i.importWG.Add(1)
 		go func(fram *gopilosa.Frame, field FieldSpec, cvi chanValIterator) {
 			defer i.importWG.Done()
-			err := i.client.ImportValueFrame(fram, field.Name, cvi, gopilosa.OptImportBatchSize(int(i.batchSize)))
+			err := i.client.ImportValueFrame(fram, field.Name, cvi, gopilosa.OptImportStrategy(gopilosa.BatchImport), gopilosa.OptImportBatchSize(int(i.batchSize)))
 			if err != nil {
 				log.Println(errors.Wrapf(err, "starting field import for %v", field))
 			}
