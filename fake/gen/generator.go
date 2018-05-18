@@ -6,6 +6,7 @@ import (
 	"encoding/binary"
 	"hash"
 	"math/rand"
+	"sync"
 	"time"
 )
 
@@ -15,6 +16,29 @@ type Generator struct {
 	zs    map[int]*rand.Zipf
 	times map[time.Time]time.Duration
 	hsh   hash.Hash
+}
+
+type lockedGenerator struct {
+	*Generator
+	lk sync.Mutex
+}
+
+func (g *lockedGenerator) String(length, cardinality int) string {
+	g.lk.Lock()
+	defer g.lk.Unlock()
+	return g.Generator.String(length, cardinality)
+}
+
+func (g *lockedGenerator) Uint64(cardinality int) uint64 {
+	g.lk.Lock()
+	defer g.lk.Unlock()
+	return g.Generator.Uint64(cardinality)
+}
+
+func (g *lockedGenerator) Time(from time.Time, maxDelta time.Duration) time.Time {
+	g.lk.Lock()
+	defer g.lk.Unlock()
+	return g.Generator.Time(from, maxDelta)
 }
 
 // NewGenerator gets a new Generator
@@ -28,6 +52,9 @@ func NewGenerator(seed int64) *Generator {
 	}
 }
 
+// var globalGen = &lockedGenerator{
+// 	Generator: NewGenerator(0),
+// }
 var globalGen = NewGenerator(0)
 
 // String gets a zipfian random string from a set with the given cardinality.
