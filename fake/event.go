@@ -154,7 +154,7 @@ var timezones = []string{
 
 func (g *EventGenerator) genGeo() Geo {
 	return Geo{
-		TimeZone:  timezones[gen.Uint64(len(timezones))],
+		TimeZone:  timezones[g.g.Uint64(len(timezones))],
 		Longitude: float64(g.g.Uint64(360000)) / 1000.0,
 		Latitude:  (float64(g.g.Uint64(180000)) / 1000.0) - 90.0,
 	}

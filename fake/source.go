@@ -1,19 +1,58 @@
 package fake
 
+import (
+	"io"
+	"math"
+	"sync"
+	"sync/atomic"
+)
+
 // Source is a pdk.Source which generates fake Event data.
 type Source struct {
-	g *EventGenerator
+	max    uint64
+	events chan *Event
+	wg     sync.WaitGroup
+	closed chan struct{}
+	n      *uint64
 }
 
 // NewSource creates a new Source with the given random seed. Using the same
 // seed should give the same series of events on a given version of Go.
-func NewSource(seed int64) *Source {
-	return &Source{
-		g: NewEventGenerator(seed),
+func NewSource(seed int64, concurrency int, max uint64) *Source {
+	if max == 0 {
+		max = math.MaxUint64
 	}
+	var n uint64
+	s := &Source{
+		events: make(chan *Event, 1000),
+		closed: make(chan struct{}),
+		n:      &n,
+		max:    max,
+	}
+	for i := 0; i < concurrency; i++ {
+		s.wg.Add(1)
+		go func(i int) {
+			defer s.wg.Done()
+			g := NewEventGenerator(seed * 10 * int64(i))
+			for {
+				select {
+				case s.events <- g.Event():
+				case <-s.closed:
+					return
+				}
+			}
+		}(i)
+	}
+	return s
 }
 
 // Record implements pdk.Source and returns a randomly generated fake.Event.
 func (s *Source) Record() (interface{}, error) {
-	return s.g.Event(), nil
+	next := atomic.AddUint64(s.n, 1)
+	if next > s.max {
+		close(s.closed)
+		s.wg.Wait()
+		return nil, io.EOF
+	}
+	return <-s.events, nil
 }
