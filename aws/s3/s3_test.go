@@ -1,3 +1,5 @@
+// +build aws
+
 package s3
 
 import (
