@@ -20,9 +20,9 @@ type Main struct {
 	PilosaHosts    []string `help:"List of host:port pairs for Pilosa cluster."`
 	Index          string   `help:"Pilosa index to write to."`
 	BatchSize      uint     `help:"Batch size for Pilosa imports. Default: 100000"`
-	ImportStrategy string   `help:"Import strategy. One of 'batch' or 'timeout'. Default: batch`
-	ThreadCount    uint     `help:"Number of import workers. Default: 1`
-	ImportTimeout  uint     `help:"Timeout in milliseconds for the import strategy. Default: 100`
+	ImportStrategy string   `help:"Import strategy. One of 'batch' or 'timeout'. Default: batch"`
+	ThreadCount    uint     `help:"Number of import workers. Default: 1"`
+	ImportTimeout  uint     `help:"Timeout in milliseconds for the import strategy. Default: 100"`
 	Framer         pdk.DashFrame
 	Subjecter      SubjecterOpts
 	Proxy          string `help:"Bind to this address to proxy and translate requests to Pilosa"`
