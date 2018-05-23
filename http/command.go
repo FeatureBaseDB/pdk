@@ -2,7 +2,9 @@ package http
 
 import (
 	"log"
+	"time"
 
+	gopilosa "github.com/pilosa/go-pilosa"
 	"github.com/pilosa/pdk"
 	"github.com/pkg/errors"
 )
@@ -14,25 +16,31 @@ type SubjecterOpts struct {
 
 // Main holds the config for the http command.
 type Main struct {
-	Bind        string   `help:"Listen for post requests on this address."`
-	PilosaHosts []string `help:"List of host:port pairs for Pilosa cluster."`
-	Index       string   `help:"Pilosa index to write to."`
-	BatchSize   uint     `help:"Batch size for Pilosa imports."`
-	Framer      pdk.DashFrame
-	Subjecter   SubjecterOpts
-	Proxy       string `help:"Bind to this address to proxy and translate requests to Pilosa"`
+	Bind           string   `help:"Listen for post requests on this address."`
+	PilosaHosts    []string `help:"List of host:port pairs for Pilosa cluster."`
+	Index          string   `help:"Pilosa index to write to."`
+	BatchSize      uint     `help:"Batch size for Pilosa imports. Default: 100000"`
+	ImportStrategy string   `help:"Import strategy. One of 'batch' or 'timeout'. Default: batch`
+	ThreadCount    uint     `help:"Number of import workers. Default: 1`
+	ImportTimeout  uint     `help:"Timeout in milliseconds for the import strategy. Default: 100`
+	Framer         pdk.DashFrame
+	Subjecter      SubjecterOpts
+	Proxy          string `help:"Bind to this address to proxy and translate requests to Pilosa"`
 }
 
 // NewMain gets a new Main with default values.
 func NewMain() *Main {
 	return &Main{
-		Bind:        ":12121",
-		PilosaHosts: []string{"localhost:10101"},
-		Index:       "jsonhttp",
-		BatchSize:   10,
-		Framer:      pdk.DashFrame{},
-		Subjecter:   SubjecterOpts{},
-		Proxy:       ":13131",
+		Bind:           ":12121",
+		PilosaHosts:    []string{"localhost:10101"},
+		Index:          "jsonhttp",
+		BatchSize:      100000,
+		ImportStrategy: "batch",
+		ThreadCount:    1,
+		ImportTimeout:  200,
+		Framer:         pdk.DashFrame{},
+		Subjecter:      SubjecterOpts{},
+		Proxy:          ":13131",
 	}
 }
 
@@ -79,7 +87,33 @@ func (m *Main) Run() error {
 	mapper := pdk.NewCollapsingMapper()
 	mapper.Framer = &m.Framer
 
-	indexer, err := pdk.SetupPilosa(m.PilosaHosts, m.Index, []pdk.FrameSpec{}, m.BatchSize)
+	importOptions := []gopilosa.ImportOption{}
+
+	if m.BatchSize < 1 {
+		return errors.New("Batch size should be greater than 0")
+	}
+	importOptions = append(importOptions, gopilosa.OptImportBatchSize(int(m.BatchSize)))
+
+	if m.ImportTimeout < 1 {
+		return errors.New("Import timeout should be greater than 0")
+	}
+	importOptions = append(importOptions, gopilosa.OptImportTimeout(time.Duration(m.ImportTimeout)*time.Millisecond))
+
+	if m.ThreadCount < 1 {
+		return errors.New("Number of import workers should be greater than 0")
+	}
+	importOptions = append(importOptions, gopilosa.OptImportThreadCount(int(m.ThreadCount)))
+
+	switch m.ImportStrategy {
+	case "batch":
+		importOptions = append(importOptions, gopilosa.OptImportStrategy(gopilosa.BatchImport))
+	case "timeout":
+		importOptions = append(importOptions, gopilosa.OptImportStrategy(gopilosa.TimeoutImport))
+	default:
+		return errors.New("Import strategy should be one of: batch, timeout")
+	}
+
+	indexer, err := pdk.SetupPilosa(m.PilosaHosts, m.Index, []pdk.FrameSpec{}, importOptions...)
 	if err != nil {
 		return errors.Wrap(err, "setting up Pilosa")
 	}

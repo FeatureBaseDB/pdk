@@ -17,6 +17,7 @@ import (
 	// for profiling
 	_ "net/http/pprof"
 
+	gopilosa "github.com/pilosa/go-pilosa"
 	"github.com/pilosa/pdk"
 	"github.com/pkg/errors"
 )
@@ -111,7 +112,9 @@ func (m *Main) Run() error {
 		pdk.NewRankedFrameSpec("pickup_elevation", 10000), pdk.NewRankedFrameSpec("drop_elevation", 10000),
 	}
 
-	m.indexer, err = pdk.SetupPilosa([]string{m.PilosaHost}, m.Index, frames, uint(m.BufferSize))
+	m.indexer, err = pdk.SetupPilosa([]string{m.PilosaHost}, m.Index, frames,
+		gopilosa.OptImportStrategy(gopilosa.BatchImport),
+		gopilosa.OptImportBatchSize(m.BufferSize))
 	if err != nil {
 		return errors.Wrap(err, "setting up indexer")
 	}

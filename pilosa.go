@@ -11,8 +11,8 @@ import (
 )
 
 type Index struct {
-	client    *gopilosa.Client
-	batchSize uint
+	client        *gopilosa.Client
+	importOptions []gopilosa.ImportOption
 
 	lock       sync.RWMutex
 	index      *gopilosa.Index
@@ -186,7 +186,7 @@ func (i *Index) setupFrame(frame FrameSpec) error {
 		i.importWG.Add(1)
 		go func(fram *gopilosa.Frame, cbi chanBitIterator) {
 			defer i.importWG.Done()
-			err := i.client.ImportFrame(fram, cbi, gopilosa.OptImportStrategy(gopilosa.BatchImport), gopilosa.OptImportBatchSize(int(i.batchSize)))
+			err := i.client.ImportFrame(fram, cbi, i.importOptions...)
 			if err != nil {
 				log.Println(errors.Wrapf(err, "starting frame import for %v", frame.Name))
 			}
@@ -213,7 +213,7 @@ func (i *Index) setupFrame(frame FrameSpec) error {
 		i.importWG.Add(1)
 		go func(fram *gopilosa.Frame, field FieldSpec, cvi chanValIterator) {
 			defer i.importWG.Done()
-			err := i.client.ImportValueFrame(fram, field.Name, cvi, gopilosa.OptImportStrategy(gopilosa.BatchImport), gopilosa.OptImportBatchSize(int(i.batchSize)))
+			err := i.client.ImportValueFrame(fram, field.Name, cvi, i.importOptions...)
 			if err != nil {
 				log.Println(errors.Wrapf(err, "starting field import for %v", field))
 			}
@@ -231,9 +231,9 @@ func (i *Index) ensureField(frame *gopilosa.Frame, fieldSpec FieldSpec) error {
 }
 
 // SetupPilosa returns a new Indexer after creating the given frames and starting importers.
-func SetupPilosa(hosts []string, index string, frames []FrameSpec, batchsize uint) (Indexer, error) {
+func SetupPilosa(hosts []string, index string, frames []FrameSpec, importOptions ...gopilosa.ImportOption) (Indexer, error) {
 	indexer := newIndex()
-	indexer.batchSize = batchsize
+	indexer.importOptions = importOptions
 	client, err := gopilosa.NewClient(hosts,
 		gopilosa.SocketTimeout(time.Minute*60),
 		gopilosa.ConnectTimeout(time.Second*60))
