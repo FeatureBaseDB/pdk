@@ -9,7 +9,7 @@ provider "aws" {
 resource "aws_instance" "agent" {
   ami           = "ami-6dfe5010"
   instance_type = "${var.agent_instance_type}"
-  placement_group = "pilosa-pg"
+  placement_group = "${var.name}-genomics-pg"
 
   connection {
     user = "ubuntu"
@@ -48,7 +48,7 @@ resource "aws_instance" "agent" {
 }
 
 resource "aws_placement_group" "pilosa-pg" {
-  name     = "pilosa-pg"
+  name     = "${var.name}-genomics-pg"
   strategy = "cluster"
 }
 
@@ -56,7 +56,7 @@ resource "aws_instance" "pilosa" {
   ami           = "ami-6dfe5010"
   instance_type = "${var.pilosa_instance_type}"
   ebs_optimized = true
-  placement_group = "pilosa-pg"
+  placement_group = "${var.name}-genomics-pg"
 
   connection {
     user = "ubuntu"
