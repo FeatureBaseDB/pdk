@@ -1,5 +1,3 @@
-// +build integration
-
 // Copyright 2017 Pilosa Corp.
 //
 // Redistribution and use in source and binary forms, with or without
@@ -32,7 +30,8 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH
 // DAMAGE.
 
-// package kafka_test
+// +build integration
+
 package kafka_test
 
 import (
