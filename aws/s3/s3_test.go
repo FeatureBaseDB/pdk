@@ -1,3 +1,5 @@
+// +build aws
+
 // Copyright 2017 Pilosa Corp.
 //
 // Redistribution and use in source and binary forms, with or without
