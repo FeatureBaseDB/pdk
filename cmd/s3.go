@@ -19,7 +19,7 @@ func NewS3Command(stdin io.Reader, stdout, stderr io.Writer) *cobra.Command {
 	S3Main = s3.NewMain()
 	s3Command := &cobra.Command{
 		Use:   "s3",
-		Short: "s3 - index line separated json from objects in an S3 bucket",
+		Short: "index line separated json from objects in an S3 bucket",
 		Long:  `TODO`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			start := time.Now()

@@ -15,7 +15,7 @@ func NewHTTPCommand(stdin io.Reader, stdout, stderr io.Writer) *cobra.Command {
 		panic(err)
 	}
 	com.Use = `http`
-	com.Short = `pdk http listens for and indexes arbitrary JSON data in Pilosa`
+	com.Short = `listens for and indexes arbitrary JSON data in Pilosa`
 	com.Long = `
 pdk http listens for and indexes arbitrary JSON data in Pilosa.
 

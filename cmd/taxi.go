@@ -17,7 +17,7 @@ func NewTaxiCommand(stdin io.Reader, stdout, stderr io.Writer) *cobra.Command {
 	TaxiMain = taxi.NewMain()
 	taxiCommand := &cobra.Command{
 		Use:   "taxi",
-		Short: "taxi - import taxi data to pilosa",
+		Short: "import taxi data to pilosa",
 		Long:  `TODO`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			start := time.Now()
