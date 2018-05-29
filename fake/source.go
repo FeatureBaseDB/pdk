@@ -33,6 +33,9 @@ func NewSource(seed int64, concurrency int, max uint64) *Source {
 		s.wg.Add(1)
 		go func(i int) {
 			defer s.wg.Done()
+			// seed is multiplied by 10 because NewEventGenerator uses several
+			// seeds internally (incrementing it by 1) and we'd prefer to avoid
+			// re-using seeds between different generators.
 			g := NewEventGenerator(seed * 10 * int64(i))
 			for {
 				select {
