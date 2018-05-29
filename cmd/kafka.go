@@ -20,7 +20,7 @@ func NewKafkaCommand(stdin io.Reader, stdout, stderr io.Writer) *cobra.Command {
 	KafkaMain = kafka.NewMain()
 	kafkaCommand := &cobra.Command{
 		Use:   "kafka",
-		Short: "kafka - index data from kafka in Pilosa",
+		Short: "index data from kafka in Pilosa",
 		Long:  `TODO`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			start := time.Now()

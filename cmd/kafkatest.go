@@ -20,7 +20,7 @@ func NewKafkaTestCommand(stdin io.Reader, stdout, stderr io.Writer) *cobra.Comma
 	KafkaSource = kafka.NewSource()
 	kafkaCommand := &cobra.Command{
 		Use:   "kafkatest",
-		Short: "kafkatest - read from kafka using the PDK kafka.Source.",
+		Short: "read from kafka using the PDK kafka.Source",
 		Long: `The kakfatest subcommand essentially exists to allow one to test the PDK's Kafka
 functionality. The PDK contains an implementation of its Source interface which
 reads records from Kafka. This command uses that and prints the records to

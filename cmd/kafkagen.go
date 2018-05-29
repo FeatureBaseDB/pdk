@@ -20,7 +20,7 @@ func NewKafkagenCommand(stdin io.Reader, stdout, stderr io.Writer) *cobra.Comman
 		panic(err)
 	}
 	command.Use = "kafkagen"
-	command.Short = "kafkagen - put fake data into kafka"
+	command.Short = "put fake data into kafka"
 	command.Long = `TODO`
 	return command
 }

@@ -19,7 +19,7 @@ func NewGenCommand(stdin io.Reader, stdout, stderr io.Writer) *cobra.Command {
 	GenMain = gen.NewMain()
 	genCommand := &cobra.Command{
 		Use:   "gen",
-		Short: "gen - generate and index fake event data.",
+		Short: "generate and index fake event data",
 		Long:  `TODO`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			start := time.Now()
