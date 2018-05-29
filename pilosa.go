@@ -118,21 +118,18 @@ func (i *Index) Close() error {
 
 // FrameSpec holds a frame name and options.
 type FrameSpec struct {
-	Name           string
-	CacheType      gopilosa.CacheType
-	CacheSize      uint
-	InverseEnabled bool
-	TimeQuantum    gopilosa.TimeQuantum
-	Fields         []FieldSpec
+	Name        string
+	CacheType   gopilosa.CacheType
+	CacheSize   uint
+	TimeQuantum gopilosa.TimeQuantum
+	Fields      []FieldSpec
 }
 
 func (f FrameSpec) toOptions() *gopilosa.FrameOptions {
 	return &gopilosa.FrameOptions{
-		TimeQuantum:    f.TimeQuantum,
-		CacheType:      f.CacheType,
-		CacheSize:      f.CacheSize,
-		InverseEnabled: f.InverseEnabled,
-		RangeEnabled:   len(f.Fields) > 0,
+		TimeQuantum: f.TimeQuantum,
+		CacheType:   f.CacheType,
+		CacheSize:   f.CacheSize,
 	}
 }
 

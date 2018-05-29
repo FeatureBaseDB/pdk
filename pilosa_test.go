@@ -18,16 +18,14 @@ func TestSetupPilosa(t *testing.T) {
 
 	frames := []pdk.FrameSpec{
 		{
-			Name:           "frame1",
-			CacheType:      gopilosa.CacheTypeRanked,
-			CacheSize:      17,
-			InverseEnabled: true,
+			Name:      "frame1",
+			CacheType: gopilosa.CacheTypeRanked,
+			CacheSize: 17,
 		},
 		{
-			Name:           "frame2",
-			CacheType:      gopilosa.CacheTypeLRU,
-			CacheSize:      19,
-			InverseEnabled: false,
+			Name:      "frame2",
+			CacheType: gopilosa.CacheTypeLRU,
+			CacheSize: 19,
 		},
 		{
 			Name: "frame3",
