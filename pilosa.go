@@ -11,20 +11,21 @@ import (
 )
 
 type Index struct {
-	client    *gopilosa.Client
-	batchSize uint
+	client *gopilosa.Client
 
 	lock       sync.RWMutex
 	index      *gopilosa.Index
 	importWG   sync.WaitGroup
 	bitChans   map[string]chanBitIterator
 	fieldChans map[string]map[string]chanValIterator
+	frames     map[string]struct{} // frames tracks which frames have been setup
 }
 
 func newIndex() *Index {
 	return &Index{
 		bitChans:   make(map[string]chanBitIterator),
 		fieldChans: make(map[string]map[string]chanValIterator),
+		frames:     make(map[string]struct{}),
 	}
 }
 
@@ -124,6 +125,8 @@ type FrameSpec struct {
 	InverseEnabled bool
 	TimeQuantum    gopilosa.TimeQuantum
 	Fields         []FieldSpec
+
+	importOptions []gopilosa.ImportOption
 }
 
 func (f FrameSpec) toOptions() *gopilosa.FrameOptions {
@@ -145,23 +148,27 @@ type FieldSpec struct {
 
 // NewRankedFrameSpec returns a new FrameSpec with the cache type ranked and the
 // given name and size.
-func NewRankedFrameSpec(name string, size int) FrameSpec {
+func NewRankedFrameSpec(name string, size int, importOptions ...gopilosa.ImportOption) FrameSpec {
 	fs := FrameSpec{
 		Name:      name,
 		CacheType: gopilosa.CacheTypeRanked,
 		CacheSize: uint(size),
+
+		importOptions: importOptions,
 	}
 	return fs
 }
 
 // NewFieldFrameSpec creates a frame which is dedicated to a single BSI field
 // which will have the same name as the frame
-func NewFieldFrameSpec(name string, min int, max int) FrameSpec {
+func NewFieldFrameSpec(name string, min int, max int, importOptions ...gopilosa.ImportOption) FrameSpec {
 	fs := FrameSpec{
 		Name:      name,
 		CacheType: gopilosa.CacheType(""),
 		CacheSize: 0,
 		Fields:    []FieldSpec{{Name: name, Min: min, Max: max}},
+
+		importOptions: importOptions,
 	}
 	return fs
 }
@@ -171,6 +178,12 @@ func NewFieldFrameSpec(name string, min int, max int) FrameSpec {
 // threadsafe - callers must hold i.lock.Lock() or guarantee that they have
 // exclusive access to Index before calling.
 func (i *Index) setupFrame(frame FrameSpec) error {
+	// If this frame has already been set up, don't set it up again.
+	if _, ok := i.frames[frame.Name]; ok {
+		return nil
+	}
+	i.frames[frame.Name] = struct{}{}
+
 	var fram *gopilosa.Frame
 	var err error
 	if _, ok := i.bitChans[frame.Name]; !ok {
@@ -182,19 +195,26 @@ func (i *Index) setupFrame(frame FrameSpec) error {
 		if err != nil {
 			return errors.Wrapf(err, "creating frame '%v'", frame)
 		}
-		i.bitChans[frame.Name] = newChanBitIterator()
-		i.importWG.Add(1)
-		go func(fram *gopilosa.Frame, cbi chanBitIterator) {
-			defer i.importWG.Done()
-			err := i.client.ImportFrame(fram, cbi, gopilosa.OptImportStrategy(gopilosa.BatchImport), gopilosa.OptImportBatchSize(int(i.batchSize)))
-			if err != nil {
-				log.Println(errors.Wrapf(err, "starting frame import for %v", frame.Name))
-			}
-		}(fram, i.bitChans[frame.Name])
+
+		// Don't handle bits for a frame with fields.
+		if len(frame.Fields) == 0 {
+			i.bitChans[frame.Name] = newChanBitIterator()
+			i.importWG.Add(1)
+			go func(fram *gopilosa.Frame, cbi chanBitIterator) {
+				defer i.importWG.Done()
+				err := i.client.ImportFrame(fram, cbi, frame.importOptions...)
+				if err != nil {
+					log.Println(errors.Wrapf(err, "starting frame import for %v", frame.Name))
+				}
+			}(fram, i.bitChans[frame.Name])
+		}
 	} else {
+		// TODO: Currently this is assuming that the frame already exists.
+		// Should options be passed just in case? It seems odd that there
+		// is effectively only a getOrCreateFrame in the client.
 		fram, err = i.index.Frame(frame.Name, nil)
 		if err != nil {
-			return errors.Wrap(err, "making frame: %v")
+			return errors.Wrap(err, "getting frame: %v")
 		}
 	}
 	if _, ok := i.fieldChans[frame.Name]; !ok {
@@ -213,7 +233,7 @@ func (i *Index) setupFrame(frame FrameSpec) error {
 		i.importWG.Add(1)
 		go func(fram *gopilosa.Frame, field FieldSpec, cvi chanValIterator) {
 			defer i.importWG.Done()
-			err := i.client.ImportValueFrame(fram, field.Name, cvi, gopilosa.OptImportStrategy(gopilosa.BatchImport), gopilosa.OptImportBatchSize(int(i.batchSize)))
+			err := i.client.ImportValueFrame(fram, field.Name, cvi, frame.importOptions...)
 			if err != nil {
 				log.Println(errors.Wrapf(err, "starting field import for %v", field))
 			}
@@ -231,9 +251,8 @@ func (i *Index) ensureField(frame *gopilosa.Frame, fieldSpec FieldSpec) error {
 }
 
 // SetupPilosa returns a new Indexer after creating the given frames and starting importers.
-func SetupPilosa(hosts []string, index string, frames []FrameSpec, batchsize uint) (Indexer, error) {
+func SetupPilosa(hosts []string, index string, frames []FrameSpec) (Indexer, error) {
 	indexer := newIndex()
-	indexer.batchSize = batchsize
 	client, err := gopilosa.NewClient(hosts,
 		gopilosa.OptClientSocketTimeout(time.Minute*60),
 		gopilosa.OptClientConnectTimeout(time.Second*60))

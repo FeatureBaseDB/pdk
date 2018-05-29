@@ -52,7 +52,9 @@ func TestSetupPilosa(t *testing.T) {
 		},
 	}
 
-	indexer, err := pdk.SetupPilosa(hosts, "newindex", frames, 2)
+	indexer, err := pdk.SetupPilosa(hosts, "newindex", frames,
+		gopilosa.OptImportStrategy(gopilosa.BatchImport),
+		gopilosa.OptImportBatchSize(2))
 	if err != nil {
 		t.Fatalf("SetupPilosa: %v", err)
 	}

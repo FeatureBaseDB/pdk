@@ -120,7 +120,9 @@ func (m *Main) Run() (err error) {
 		pdk.NewRankedFrameSpec("pressure_i", 0),
 		pdk.NewRankedFrameSpec("humidity", 0),
 	}
-	m.importer, err = pdk.SetupPilosa([]string{m.PilosaHost}, m.Index, writeFrames, uint(m.BufferSize))
+	m.importer, err = pdk.SetupPilosa([]string{m.PilosaHost}, m.Index, writeFrames,
+		gopilosa.OptImportStrategy(gopilosa.BatchImport),
+		gopilosa.OptImportBatchSize(m.BufferSize))
 	if err != nil {
 		return errors.Wrap(err, "setting up pilosa")
 	}

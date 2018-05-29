@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	gopilosa "github.com/pilosa/go-pilosa"
 	"github.com/pilosa/pdk"
 	"github.com/pkg/errors"
 )
@@ -49,7 +50,9 @@ func (m *Main) Run() (err error) {
 		return errors.Wrap(err, "getting new translator")
 	}
 	log.Println("setting up pilosa")
-	m.index, err = pdk.SetupPilosa(m.Hosts, m.Index, frames, 1000000)
+	m.index, err = pdk.SetupPilosa(m.Hosts, m.Index, frames,
+		gopilosa.OptImportStrategy(gopilosa.BatchImport),
+		gopilosa.OptImportBatchSize(1000000))
 	if err != nil {
 		return errors.Wrap(err, "setting up Pilosa")
 	}
