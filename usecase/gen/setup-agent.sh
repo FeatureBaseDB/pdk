@@ -25,7 +25,8 @@ sudo apt-get -y install make git htop
 git clone https://github.com/pilosa/pdk.git $GOPATH/src/github.com/pilosa/pdk
 git clone https://github.com/pilosa/pilosa.git $GOPATH/src/github.com/pilosa/pilosa
 cd $GOPATH/src/github.com/pilosa/pdk
-git remote add jaffee https://github.com/jaffee/pdk.git
-git fetch jaffee
-git checkout jaffee/add-terraform-taxi
+# # uncomment the following and replace "someone" and "yourbranch" as necessary to test changes.
+# git remote add someone https://github.com/someone/pdk.git
+# git fetch someone
+# git checkout someone/yourbranch
 make install
