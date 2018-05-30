@@ -24,11 +24,6 @@ resource "aws_instance" "agent" {
     destination = "/tmp/setup-agent.sh"
   }
 
-  provisioner "file" {
-    source = "GRCh37.primary_assembly.genome.fa.gz"
-    destination = "/home/ubuntu/GRCh37.fa.gz"
-  }
-
   provisioner "remote-exec" {
     inline = [
       "chmod +x /tmp/setup-agent.sh",
