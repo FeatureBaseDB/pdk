@@ -33,13 +33,13 @@
 package http
 
 import (
-	"encoding/json"
 	"io"
 	"log"
 	"net"
 	"net/http"
 	"time"
 
+	"github.com/pilosa/pdk/json"
 	"github.com/pkg/errors"
 )
 
@@ -147,10 +147,9 @@ func (j *JSONSource) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusMethodNotAllowed)
 		return
 	}
-	dec := json.NewDecoder(r.Body)
+	jsource := json.NewSource(r.Body)
 	for {
-		stuff := make(map[string]interface{})
-		err := dec.Decode(&stuff)
+		stuff, err := jsource.Record()
 		if err == io.EOF {
 			return
 		}

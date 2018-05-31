@@ -33,13 +33,13 @@
 package s3
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/pilosa/pdk/json"
 	"github.com/pkg/errors"
 )
 
@@ -137,17 +137,18 @@ func (s *Source) populateRecords() {
 			s.errors <- errors.Wrapf(err, "fetching %v", *obj.Key)
 			continue
 		}
-		dec := json.NewDecoder(result.Body)
+		jsource := json.NewSource(result.Body)
+		var resi interface{}
 		for i := 0; err != io.EOF; i++ {
-			var res map[string]interface{}
-			err = dec.Decode(&res)
+			resi, err = jsource.Record()
 			if err != nil && err != io.EOF {
 				s.errors <- errors.Wrapf(err, "decoding json from %s", *obj.Key)
 				break
 			}
-			if res == nil {
+			if resi == nil {
 				continue
 			}
+			res := resi.(map[string]interface{})
 			if s.subjectAt != "" {
 				res[s.subjectAt] = fmt.Sprintf("%s.%s#%d", s.bucket, *obj.Key, i)
 			}
