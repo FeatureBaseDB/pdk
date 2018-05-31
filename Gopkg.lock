@@ -16,8 +16,8 @@
 [[projects]]
   name = "github.com/Shopify/sarama"
   packages = ["."]
-  revision = "f7be6aa2bc7b2e38edf816b08b582782194a1c02"
-  version = "v1.16.0"
+  revision = "35324cf48e33d8260e1c7c18854465a904ade249"
+  version = "v1.17.0"
 
 [[projects]]
   name = "github.com/StackExchange/wmi"
@@ -62,8 +62,8 @@
     "service/s3",
     "service/sts"
   ]
-  revision = "cf00d544fc3c02f31e05e8d02444a1325d3a840b"
-  version = "v1.13.53"
+  revision = "398d14696895d68a3409bb3ccb1cfe8abc2d4376"
+  version = "v1.13.57"
 
 [[projects]]
   name = "github.com/boltdb/bolt"
@@ -122,8 +122,8 @@
 [[projects]]
   name = "github.com/go-ini/ini"
   packages = ["."]
-  revision = "6529cf7c58879c08d927016dde4477f18a0634cb"
-  version = "v1.36.0"
+  revision = "06f5f3d67269ccec1fe5fe4134ba6e982984f7f5"
+  version = "v1.37.0"
 
 [[projects]]
   name = "github.com/go-ole/go-ole"
@@ -277,7 +277,7 @@
   branch = "master"
   name = "github.com/mmcloughlin/geohash"
   packages = ["."]
-  revision = "ed078506daaeeca0af46537db6763151a70538d9"
+  revision = "5e66c96e7880a0a689d5dec564b000c2c89331dd"
 
 [[projects]]
   name = "github.com/pelletier/go-toml"
@@ -304,7 +304,7 @@
     ".",
     "gopilosa_pbuf"
   ]
-  revision = "6f1b7c4f96f516c5513610bc600f1897998d943a"
+  revision = "a7ac58f0673f523c06e4771082cef66f1cb6ba40"
 
 [[projects]]
   branch = "master"
@@ -327,7 +327,7 @@
     "test",
     "toml"
   ]
-  revision = "22d48deebed1c1f522558da2add5921972137002"
+  revision = "a04e5c8a9bccb662d88613d5bc8cc279a6190158"
 
 [[projects]]
   name = "github.com/pkg/errors"
@@ -362,21 +362,13 @@
 [[projects]]
   name = "github.com/shirou/gopsutil"
   packages = [
-    "cpu",
     "host",
     "internal/common",
     "mem",
-    "net",
     "process"
   ]
   revision = "c95755e4bcd7a62bb8bd33f3a597a7c7f35e2cf3"
   version = "v2.18.04"
-
-[[projects]]
-  branch = "master"
-  name = "github.com/shirou/w32"
-  packages = ["."]
-  revision = "bb4de0191aa41b5507caa14b0650cdbddcd9280b"
 
 [[projects]]
   name = "github.com/spf13/afero"
@@ -443,7 +435,7 @@
     "ed25519",
     "ed25519/internal/edwards25519"
   ]
-  revision = "1a580b3eff7814fc9b40602fd35256c63b50f491"
+  revision = "ab813273cd59e1333f7ae7bff5d027d4aadf528c"
 
 [[projects]]
   branch = "master"
@@ -456,7 +448,7 @@
     "ipv4",
     "ipv6"
   ]
-  revision = "8e0cdda24ed423affc8f35c241e5e9b16180338e"
+  revision = "75944861c7512f64725d687546cfbc757626151f"
 
 [[projects]]
   branch = "master"
@@ -471,7 +463,7 @@
     "unix",
     "windows"
   ]
-  revision = "7f59abf37be6a6007f075af1bc7f16f137bc176b"
+  revision = "c11f84a56e43e20a78cee75a7c034031ecf57d1f"
 
 [[projects]]
   name = "golang.org/x/text"
