@@ -13,6 +13,7 @@ func TestNewSource(t *testing.T) {
 		OptSrcRegion("us-east-1"),
 		OptSrcBufSize(9191),
 		OptSrcSubjectAt("#@!pdksubj"),
+		OptSrcPrefix("myfile"),
 	)
 	if err != nil {
 		t.Fatalf("getting new source: %v", err)
