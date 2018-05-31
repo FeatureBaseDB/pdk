@@ -116,15 +116,20 @@ func (j *JSONSource) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	dec := json.NewDecoder(r.Body)
-	stuff := make(map[string]interface{})
-	err := dec.Decode(&stuff)
-	if err != nil {
-		err := errors.Wrap(err, "decoding json")
-		log.Println(err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
+	for {
+		stuff := make(map[string]interface{})
+		err := dec.Decode(&stuff)
+		if err == io.EOF {
+			return
+		}
+		if err != nil {
+			err := errors.Wrap(err, "decoding json")
+			log.Println(err)
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		j.records <- record{data: stuff}
 	}
-	j.records <- record{data: stuff}
 }
 
 // tcpKeepAliveListener is copied from net/http
