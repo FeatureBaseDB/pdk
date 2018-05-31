@@ -36,7 +36,7 @@ func OptSrcBufSize(bufsize int) SrcOption {
 	}
 }
 
-// OptAddSubjectAt tells the source to add a new key to each record whose value
+// OptSrcSubjectAt tells the source to add a new key to each record whose value
 // will be <S3 bucket>.<S3 object key>#<record number>.
 func OptSrcSubjectAt(key string) SrcOption {
 	return func(s *Source) {
@@ -44,9 +44,18 @@ func OptSrcSubjectAt(key string) SrcOption {
 	}
 }
 
+// OptSrcPrefix tells the source to list only the objects in the bucket that
+// match the specified prefix.
+func OptSrcPrefix(prefix string) SrcOption {
+	return func(s *Source) {
+		s.prefix = prefix
+	}
+}
+
 // Source is a pdk.Source which reads data from S3.
 type Source struct {
 	bucket    string
+	prefix    string
 	region    string
 	subjectAt string
 
@@ -75,8 +84,7 @@ func NewSource(opts ...SrcOption) (*Source, error) {
 		return nil, errors.Wrap(err, "getting new source")
 	}
 	s.s3 = s3.New(s.sess)
-
-	resp, err := s.s3.ListObjects(&s3.ListObjectsInput{Bucket: aws.String(s.bucket)})
+	resp, err := s.s3.ListObjects(&s3.ListObjectsInput{Bucket: aws.String(s.bucket), Prefix: aws.String(s.prefix)})
 	if err != nil {
 		return nil, errors.Wrap(err, "listing objects")
 	}

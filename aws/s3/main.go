@@ -10,6 +10,7 @@ import (
 // Main contains the configuration for an ingester with an S3 Source.
 type Main struct {
 	Bucket      string   `help:"S3 bucket name from which to read objects."`
+	Prefix      string   `help:"Only objects in the bucket matching this prefix will be used."`
 	Region      string   `help:"AWS region to use."`
 	PilosaHosts []string `help:"Comma separated list of Pilosa hosts and ports."`
 	Index       string   `help:"Pilosa index."`
@@ -38,6 +39,7 @@ func NewMain() *Main {
 func (m *Main) Run() error {
 	src, err := NewSource(
 		OptSrcBucket(m.Bucket),
+		OptSrcPrefix(m.Prefix),
 		OptSrcRegion(m.Region),
 		OptSrcBufSize(1000),
 		OptSrcSubjectAt(m.SubjectAt),
