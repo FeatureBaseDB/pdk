@@ -2,6 +2,7 @@ package genome
 
 import (
 	"math/rand"
+	"time"
 )
 
 type Mutator interface {
@@ -38,7 +39,7 @@ func NewDeltaMutator(rate float64) *DeltaMutator {
 		optMap[opt] = i
 	}
 
-	rng := rand.New(rand.NewSource(rand.Int63()))
+	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 
 	return &DeltaMutator{
 		rate:    rate,

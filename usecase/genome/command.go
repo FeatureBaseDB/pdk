@@ -60,6 +60,7 @@ type Main struct {
 	Min               float64  `help:"Minimum fraction of random mutations."`
 	Max               float64  `help:"Maximum fraction of random mutations."`
 	Count             uint64   `help:"Number of mutated rows to create."`
+	Start             uint64   `help:"Start at this row number for generated sequences."`
 	Concurrency       int      `help:"Number of slice importers to run simultaneously."`
 	ImportGenes       bool     `help:"Import gene masks."`
 	ImportChromosomes bool     `help:"Import chromosome masks."`
@@ -145,7 +146,7 @@ func (m *Main) Run() error {
 		// Mutator setup.
 		rand.Seed(time.Now().UTC().UnixNano())
 
-		for row := uint64(0); row < m.Count; row++ {
+		for row := m.Start; row < m.Count; row++ {
 			mutationRate := rand.Float64()*(m.Max-m.Min) + m.Min
 			start = time.Now()
 			log.Printf("Start row %d, mutation rate %f", row, mutationRate)
