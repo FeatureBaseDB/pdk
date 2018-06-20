@@ -52,7 +52,7 @@ func (m *Main) Run() error {
 	mapper := pdk.NewCollapsingMapper()
 	mapper.Framer = &m.Framer
 
-	indexer, err := pdk.SetupPilosa(m.PilosaHosts, m.Index, []pdk.FrameSpec{}, m.BatchSize)
+	indexer, err := pdk.SetupPilosa(m.PilosaHosts, m.Index, nil, m.BatchSize)
 	if err != nil {
 		return errors.Wrap(err, "setting up Pilosa")
 	}

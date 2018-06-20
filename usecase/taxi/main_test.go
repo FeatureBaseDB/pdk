@@ -49,7 +49,7 @@ func TestRunMain(t *testing.T) {
 	// query pilosa to ensure consistent results
 	index, cabTypeFrame := GetFrame(t, client, "taxi", "cab_type")
 
-	resp, err := client.Query(index.Count(cabTypeFrame.Bitmap(0)))
+	resp, err := client.Query(index.Count(cabTypeFrame.Row(0)))
 	if err != nil {
 		t.Fatalf("count querying: %v", err)
 	}
@@ -57,7 +57,7 @@ func TestRunMain(t *testing.T) {
 		t.Fatalf("cab_type 0 should have 34221, but got %d", resp.Result().Count())
 	}
 
-	resp, err = client.Query(index.Count(cabTypeFrame.Bitmap(1)))
+	resp, err = client.Query(index.Count(cabTypeFrame.Row(1)))
 	if err != nil {
 		t.Fatalf("count querying: %v", err)
 	}
@@ -86,7 +86,7 @@ func TestRunMain(t *testing.T) {
 
 }
 
-func GetFrame(t *testing.T, c *gopilosa.Client, index, frame string) (*gopilosa.Index, *gopilosa.Frame) {
+func GetFrame(t *testing.T, c *gopilosa.Client, index, frame string) (*gopilosa.Index, *gopilosa.Field) {
 	schema, err := c.Schema()
 	if err != nil {
 		t.Fatalf("getting schema: %v", err)
@@ -96,7 +96,7 @@ func GetFrame(t *testing.T, c *gopilosa.Client, index, frame string) (*gopilosa.
 		t.Fatalf("getting index: %v", err)
 	}
 
-	fram, err := idx.Frame(frame)
+	fram, err := idx.Field(frame)
 	if err != nil {
 		t.Fatalf("getting frame: %v", err)
 	}

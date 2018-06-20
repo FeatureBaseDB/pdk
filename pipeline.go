@@ -31,7 +31,7 @@ type RecordMapper interface {
 type Indexer interface {
 	AddBit(frame string, col, row uint64)
 	AddBitTimestamp(frame string, col, row uint64, ts time.Time)
-	AddValue(frame, field string, col uint64, val int64)
+	AddValue(field string, col uint64, val int64)
 	// AddRowAttr(frame string, row uint64, key string, value AttrVal)
 	// AddColAttr(col uint64, key string, value AttrVal)
 	Close() error

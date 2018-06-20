@@ -95,7 +95,7 @@ func (n *Ingester) Run() error {
 					n.Stats.Count("ingest.AddBit", 1, 1)
 				}
 				for _, val := range pr.Vals {
-					n.indexer.AddValue(val.Frame, val.Field, pr.Col, val.Value)
+					n.indexer.AddValue(val.Frame, pr.Col, val.Value)
 					n.Stats.Count("ingest.AddValue", 1, 1)
 				}
 			}

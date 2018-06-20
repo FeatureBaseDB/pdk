@@ -17,6 +17,7 @@ import (
 	// for profiling
 	_ "net/http/pprof"
 
+	gopilosa "github.com/pilosa/go-pilosa"
 	"github.com/pilosa/pdk"
 	"github.com/pkg/errors"
 )
@@ -98,20 +99,34 @@ func (m *Main) Run() error {
 		return err
 	}
 
-	frames := []pdk.FrameSpec{
-		pdk.NewRankedFrameSpec("cab_type", 10), pdk.NewRankedFrameSpec("passenger_count", 1000),
-		pdk.NewRankedFrameSpec("total_amount_dollars", 10000), pdk.NewRankedFrameSpec("pickup_time", 10000),
-		pdk.NewRankedFrameSpec("pickup_day", 10000), pdk.NewRankedFrameSpec("pickup_mday", 10000),
-		pdk.NewRankedFrameSpec("pickup_month", 13), pdk.NewRankedFrameSpec("pickup_year", 100),
-		pdk.NewRankedFrameSpec("drop_time", 10000), pdk.NewRankedFrameSpec("drop_day", 10000),
-		pdk.NewRankedFrameSpec("drop_mday", 10000), pdk.NewRankedFrameSpec("drop_month", 13),
-		pdk.NewRankedFrameSpec("drop_year", 1000), pdk.NewRankedFrameSpec("dist_miles", 1000),
-		pdk.NewRankedFrameSpec("duration_minutes", 10000), pdk.NewRankedFrameSpec("speed_mph", 10000),
-		pdk.NewRankedFrameSpec("pickup_grid_id", 10000), pdk.NewRankedFrameSpec("drop_grid_id", 10000),
-		pdk.NewRankedFrameSpec("pickup_elevation", 10000), pdk.NewRankedFrameSpec("drop_elevation", 10000),
+	schema := gopilosa.NewSchema()
+	index, err := schema.Index(m.Index)
+	if err != nil {
+		return errors.Wrap(err, "describing index")
 	}
 
-	m.indexer, err = pdk.SetupPilosa([]string{m.PilosaHost}, m.Index, frames, uint(m.BufferSize))
+	pdk.NewRankedField(index, "cab_type", 10)
+	pdk.NewRankedField(index, "passenger_count", 1000)
+	pdk.NewRankedField(index, "total_amount_dollars", 10000)
+	pdk.NewRankedField(index, "pickup_time", 10000)
+	pdk.NewRankedField(index, "pickup_day", 10000)
+	pdk.NewRankedField(index, "pickup_mday", 10000)
+	pdk.NewRankedField(index, "pickup_month", 13)
+	pdk.NewRankedField(index, "pickup_year", 100)
+	pdk.NewRankedField(index, "drop_time", 10000)
+	pdk.NewRankedField(index, "drop_day", 10000)
+	pdk.NewRankedField(index, "drop_mday", 10000)
+	pdk.NewRankedField(index, "drop_month", 13)
+	pdk.NewRankedField(index, "drop_year", 1000)
+	pdk.NewRankedField(index, "dist_miles", 1000)
+	pdk.NewRankedField(index, "duration_minutes", 10000)
+	pdk.NewRankedField(index, "speed_mph", 10000)
+	pdk.NewRankedField(index, "pickup_grid_id", 10000)
+	pdk.NewRankedField(index, "drop_grid_id", 10000)
+	pdk.NewRankedField(index, "pickup_elevation", 10000)
+	pdk.NewRankedField(index, "drop_elevation", 10000)
+
+	m.indexer, err = pdk.SetupPilosa([]string{m.PilosaHost}, m.Index, schema, uint(m.BufferSize))
 	if err != nil {
 		return errors.Wrap(err, "setting up indexer")
 	}

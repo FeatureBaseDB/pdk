@@ -20,7 +20,6 @@ type Main struct {
 
 	importer pdk.Indexer
 	client   *gopilosa.Client
-	frames   map[string]*gopilosa.Frame
 	index    *gopilosa.Index
 
 	WeatherCache *weatherCache
@@ -30,7 +29,6 @@ type Main struct {
 func NewMain() *Main {
 	m := &Main{
 		Concurrency:  1,
-		frames:       make(map[string]*gopilosa.Frame),
 		WeatherCache: newWeatherCache(),
 	}
 	return m
@@ -52,19 +50,23 @@ func (m *Main) appendWeatherData() {
 	precipMapper := pdk.LinearFloatMapper{Min: 0, Max: 5, Res: 100}
 
 	startTime := time.Date(2009, 2, 1, 0, 0, 0, 0, time.UTC)
-	// endTime := time.Date(2009, 2, 28, 0, 0, 0, 0, time.UTC)
 	endTime := time.Date(2015, 12, 31, 0, 0, 0, 0, time.UTC)
+
+	pickup_year, _ := m.index.Field("pickup_year")
+	pickup_month, _ := m.index.Field("pickup_month")
+	pickup_mday, _ := m.index.Field("pickup_mday")
+	pickup_time, _ := m.index.Field("pickup_time")
 
 	for t := startTime; endTime.After(t); t = t.Add(time.Hour) {
 		timeBucket, _ := timeMapper.ID(t)
 		q := m.index.Intersect(
-			m.frames["pickup_year"].Bitmap(uint64(t.Year())),
-			m.frames["pickup_month"].Bitmap(uint64(t.Month())),
-			m.frames["pickup_mday"].Bitmap(uint64(t.Day())),
-			m.frames["pickup_time"].Bitmap(uint64(timeBucket[0])),
+			pickup_year.Row(uint64(t.Year())),
+			pickup_month.Row(uint64(t.Month())),
+			pickup_mday.Row(uint64(t.Day())),
+			pickup_time.Row(uint64(timeBucket[0])),
 		)
 		response, _ := m.client.Query(q, nil)
-		numBits := len(response.Result().Bitmap().Bits)
+		numBits := len(response.Result().Row().Columns)
 		if numBits == 0 {
 			continue
 		}
@@ -84,7 +86,7 @@ func (m *Main) appendWeatherData() {
 		humid, err4 := humidityMapper.ID(float64(weather.Humidity))
 		humidID := uint64(humid[0])
 
-		for _, ID := range response.Result().Bitmap().Bits {
+		for _, ID := range response.Result().Row().Columns {
 			// SetBit(weather.precip_code, ID, "precipitation_type")  // not implemented in weatherCache
 			m.importer.AddBit("weather_condition", ID, condID)
 
@@ -111,16 +113,19 @@ func (m *Main) Run() (err error) {
 		fmt.Println(http.ListenAndServe("localhost:6060", nil))
 	}()
 
-	readFrames := []string{"cab_type", "passenger_count", "total_amount_dollars", "pickup_time", "pickup_day", "pickup_mday", "pickup_month", "pickup_year", "drop_time", "drop_day", "drop_mday", "drop_month", "drop_year", "dist_miles", "duration_minutes", "speed_mph", "pickup_grid_id", "drop_grid_id"}
-	writeFrames := []pdk.FrameSpec{
-		pdk.NewRankedFrameSpec("weather_condition", 0),
-		pdk.NewRankedFrameSpec("precipitation_type", 0),
-		pdk.NewRankedFrameSpec("precipitation_inches", 0),
-		pdk.NewRankedFrameSpec("temp_f", 0),
-		pdk.NewRankedFrameSpec("pressure_i", 0),
-		pdk.NewRankedFrameSpec("humidity", 0),
+	schema := gopilosa.NewSchema()
+	m.index, err = schema.Index(m.Index)
+	if err != nil {
+		return errors.Wrap(err, fmt.Sprintf("describing index: %s", m.Index))
 	}
-	m.importer, err = pdk.SetupPilosa([]string{m.PilosaHost}, m.Index, writeFrames, uint(m.BufferSize))
+	pdk.NewRankedField(m.index, "weather_condition", 0)
+	pdk.NewRankedField(m.index, "precipitation_type", 0)
+	pdk.NewRankedField(m.index, "precipitation_inches", 0)
+	pdk.NewRankedField(m.index, "temp_f", 0)
+	pdk.NewRankedField(m.index, "pressure_i", 0)
+	pdk.NewRankedField(m.index, "humidity", 0)
+
+	m.importer, err = pdk.SetupPilosa([]string{m.PilosaHost}, m.Index, schema, uint(m.BufferSize))
 	if err != nil {
 		return errors.Wrap(err, "setting up pilosa")
 	}
@@ -134,25 +139,18 @@ func (m *Main) Run() (err error) {
 		return fmt.Errorf("setting up client: %v", err)
 	}
 	m.client = setupClient
-	index, err := gopilosa.NewIndex(m.Index)
-	m.index = index
-	if err != nil {
-		return fmt.Errorf("making index: %v", err)
-	}
-	err = setupClient.EnsureIndex(index)
-	if err != nil {
-		return fmt.Errorf("ensuring index existence: %v", err)
-	}
-	for _, frame := range readFrames {
-		fram, err := index.Frame(frame, &gopilosa.FrameOptions{})
-		m.frames[frame] = fram
+
+	readFieldNames := []string{"cab_type", "passenger_count", "total_amount_dollars", "pickup_time", "pickup_day", "pickup_mday", "pickup_month", "pickup_year", "drop_time", "drop_day", "drop_mday", "drop_month", "drop_year", "dist_miles", "duration_minutes", "speed_mph", "pickup_grid_id", "drop_grid_id"}
+
+	for _, fieldName := range readFieldNames {
+		_, err := m.index.Field(fieldName)
 		if err != nil {
-			return fmt.Errorf("making frame: %v", err)
+			return errors.Wrap(err, fmt.Sprintf("describing frame: %s", fieldName))
 		}
-		err = setupClient.EnsureFrame(fram)
-		if err != nil {
-			return fmt.Errorf("creating frame '%v': %v", frame, err)
-		}
+	}
+	err = setupClient.SyncSchema(schema)
+	if err != nil {
+		return errors.Wrap(err, "synchronizing schema")
 	}
 
 	err = m.WeatherCache.ReadAll()
