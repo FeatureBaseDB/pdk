@@ -44,7 +44,7 @@ type Main struct {
 	Hosts       []string `help:"Comma separated list of Kafka hosts and ports"`
 	Topics      []string `help:"Comma separated list of Kafka topics"`
 	Group       string   `help:"Kafka group"`
-	RegistryURL string   `help:"URL of the confluent schema registry. Not required."`
+	RegistryURL string   `help:"URL of the confluent schema registry. Pass an empty string to use JSON instead of Avro."`
 	Framer      pdk.DashFrame
 	PilosaHosts []string `help:"Comma separated list of Pilosa hosts and ports."`
 	Index       string   `help:"Pilosa index."`
