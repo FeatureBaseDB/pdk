@@ -34,7 +34,6 @@ package leveldb
 
 import (
 	"encoding/binary"
-	"fmt"
 	"hash/fnv"
 	"strings"
 	"sync"
@@ -215,7 +214,6 @@ func (lft *FrameTranslator) GetID(val interface{}) (id uint64, err error) {
 		}
 	}
 	valBytes := pdk.ToBytes(vall)
-	fmt.Printf("val: %#v, valBytes: %#v", val, valBytes)
 	var data []byte
 
 	// if you're expecting most of the mapping to already be done, this would be faster

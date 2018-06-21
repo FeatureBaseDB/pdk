@@ -1,7 +1,6 @@
 package file
 
 import (
-	"fmt"
 	"log"
 
 	"github.com/pilosa/pdk"
@@ -59,7 +58,6 @@ func (m *Main) Run() error {
 	mapper := pdk.NewCollapsingMapper()
 	mapper.Framer = &m.Framer
 	if translateColumns {
-		fmt.Println("setting col translator")
 		mapper.ColTranslator = pdk.NewMapFrameTranslator()
 	}
 
