@@ -9,7 +9,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/pilosa/pdk"
 	"github.com/pilosa/pilosa/test"
+	"github.com/pkg/errors"
 )
 
 func TestFileIngest(t *testing.T) {
@@ -28,22 +30,37 @@ func TestFileIngest(t *testing.T) {
 		t.Fatalf("running ingester: %v", err)
 	}
 
-	http.Post("http://"+pilosaHost+"/recalculate-caches", "", strings.NewReader(""))
+	// http.Post("http://"+pilosaHost+"/recalculate-caches", "", strings.NewReader(""))
 
-	fmt.Printf("%s\n", mustQueryHost(t, "Bitmap(frame=stuff, row=0)", pilosaHost))
-	fmt.Printf("%s\n", mustQueryHost(t, "TopN(frame=stuff)", pilosaHost))
+	// fmt.Printf("%s\n", mustQueryHost(t, "Bitmap(frame=stuff, row=0)", pilosaHost))
+	// fmt.Printf("%s\n", mustQueryHost(t, "TopN(frame=stuff)", pilosaHost))
 
-	fmt.Printf("%s\n", mustQuery(t, "Bitmap(frame=stuff, row=stuff1)"))
-	fmt.Printf("%s\n", mustQuery(t, "TopN(frame=stuff)"))
+	// fmt.Printf("%s\n", mustQuery(t, "Bitmap(frame=stuff, row=stuff1)"))
+	// fmt.Printf("%s\n", mustQuery(t, "TopN(frame=stuff)"))
 
 }
 
-var data = `{"id": "123", "value": 17, "stuff": "stuff1"}
-{"id": "122", "value": 16, "stuff": "stuff2"}
-{"id": "121", "value": 16, "stuff": "stuff3"}
-{"id": "120", "value": 16, "stuff": "stuff2"}
-{"id": "119", "value": 19, "stuff": "stuff1"}
-{"id": "123", "value": 22, "stuff": "stuff2"}`
+var data = `
+{"id": "123", "value": 17}
+{"id": "120", "value": 16}
+{"id": "119", "value": 19}
+`
+
+func TestMinimalBreak(t *testing.T) {
+	pilosa := test.MustRunMainWithCluster(t, 1)
+	pilosaHost := pilosa[0].Server.Addr().String()
+	indexer, err := pdk.SetupPilosa([]string{pilosaHost}, "pdk", []pdk.FrameSpec{}, 1)
+	if err != nil {
+		t.Fatal(errors.Wrap(err, "setting up Pilosa"))
+	}
+	indexer.AddValue("default", "value", 0, 17)
+	indexer.AddValue("default", "value", 0, 16)
+	indexer.AddValue("default", "value", 0, 19)
+	err = indexer.Close()
+	if err != nil {
+		t.Fatalf("closing indexer: %v", err)
+	}
+}
 
 func mustQuery(t *testing.T, q string) string {
 	resp, err := http.Post("http://localhost:55346/index/pdk/query", "application/pql", strings.NewReader(q))
@@ -92,7 +109,8 @@ func check(t *testing.T, err error, r *http.Response) {
 	}
 	if r.StatusCode > 300 {
 		bod, _ := ioutil.ReadAll(r.Body)
-		t.Fatalf("status fail %d %s", r.StatusCode, bod)
+		t.Logf("status fail %d %s", r.StatusCode, bod)
+		panic("blah")
 	}
 }
 
@@ -128,6 +146,11 @@ func TestSimpleBreak(t *testing.T) {
 	r, err = http.Post("http://"+pilosaHost+"/import-value", "application/x-protobuf", bytes.NewBuffer([]byte{0xa, 0x3, 0x70, 0x64, 0x6b, 0x12, 0x7, 0x64, 0x65, 0x66, 0x61, 0x75, 0x6c, 0x74, 0x22, 0x5, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x2a, 0x1, 0x0, 0x32, 0x1, 0x10}))
 	check(t, err, r)
 
-	time.Sleep(1)
+	time.Sleep(time.Second)
+
+	http.Post("http://"+pilosaHost+"/recalculate-caches", "", strings.NewReader(""))
+
+	fmt.Printf("%s\n", mustQueryHost(t, "Bitmap(frame=stuff, row=0)", pilosaHost))
+	fmt.Printf("%s\n", mustQueryHost(t, "TopN(frame=stuff)", pilosaHost))
 
 }
