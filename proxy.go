@@ -115,7 +115,6 @@ func (p *pilosaForwarder) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		http.Error(w, "mapping request: "+err.Error(), http.StatusBadRequest)
 		return
 	}
-	fmt.Println("mapped query", string(body))
 
 	// forward the request and get the pilosa response
 	resp, err := p.proxy.ProxyRequest(req, body)
@@ -225,8 +224,7 @@ func (p *PilosaKeyMapper) MapResult(frame string, res interface{}) (mappedRes in
 		return p.mapSliceInterfaceResult(frame, result)
 	case map[string]interface{}:
 		// Bitmap/Intersect/Difference/Union
-		mappedRes = result
-		fmt.Println("result: ", result)
+		return p.mapBitmapResult(frame, result)
 	case bool:
 		// SetBit/ClearBit
 		mappedRes = result
@@ -237,6 +235,23 @@ func (p *PilosaKeyMapper) MapResult(frame string, res interface{}) (mappedRes in
 	return mappedRes, nil
 }
 
+func (p *PilosaKeyMapper) mapBitmapResult(frame string, result map[string]interface{}) (mappedRes interface{}, err error) {
+	cols, ok := result["columns"]
+	if !ok {
+		return result, errors.Errorf("columns key not in result: %#v", result)
+	}
+	colsSlice, ok := cols.([]interface{})
+	if !ok {
+		return result, errors.Errorf("columns should be a slice but is %T, %#v", cols, cols)
+	}
+	mappedCols, err := p.mapColumnSlice(frame, colsSlice)
+	if err != nil {
+		return result, errors.Wrap(err, "mapping column slice")
+	}
+	result["columns"] = mappedCols
+	return result, nil
+}
+
 func (p *PilosaKeyMapper) mapSliceInterfaceResult(frame string, res []interface{}) (mappedRes interface{}, err error) {
 	if len(res) == 0 {
 		return res, nil
@@ -244,21 +259,19 @@ func (p *PilosaKeyMapper) mapSliceInterfaceResult(frame string, res []interface{
 	switch res[0].(type) {
 	case map[string]interface{}:
 		return p.mapTopNResult(frame, res)
-	case uint64:
-		return p.mapBitmapResult(frame, res)
 	default:
 		return mappedRes, errors.Errorf("unexpected result type in slice: %T, %#v", res[0], res[0])
 	}
 }
 
-func (p *PilosaKeyMapper) mapBitmapResult(frame string, result []interface{}) (mappedRes interface{}, err error) {
+func (p *PilosaKeyMapper) mapColumnSlice(frame string, result []interface{}) (mappedRes interface{}, err error) {
 	cols := make([]interface{}, len(result))
 	for i, icol := range result {
-		col, ok := icol.(uint64)
+		col, ok := icol.(float64)
 		if !ok {
 			return nil, errors.Errorf("expected uint64, but got %T %#v", icol, icol)
 		}
-		colV, err := p.c.Get(col)
+		colV, err := p.c.Get(uint64(col))
 		if err != nil {
 			return nil, errors.Wrap(err, "translating column id to value")
 		}
@@ -310,7 +323,6 @@ func (p *PilosaKeyMapper) MapRequest(body []byte) ([]byte, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "parsing string")
 	}
-	fmt.Println("QUERY:", query)
 	for _, call := range query.Calls {
 		err := p.mapCall(call)
 		if err != nil {
@@ -322,10 +334,7 @@ func (p *PilosaKeyMapper) MapRequest(body []byte) ([]byte, error) {
 
 func (p *PilosaKeyMapper) mapCall(call *pql.Call) error {
 	if call.Name == "Bitmap" {
-		fmt.Println("arow", call.Args["row"])
-		fmt.Println("aframe", call.Args["frame"].(string))
 		id, err := p.t.GetID(call.Args["frame"].(string), call.Args["row"])
-		fmt.Println("id", id)
 		if err != nil {
 			return errors.Wrap(err, "getting ID")
 		}
