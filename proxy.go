@@ -217,7 +217,7 @@ func NewPilosaKeyMapper(t Translator, colTranslator ...FrameTranslator) *PilosaK
 // QueryResponse.Results) to its mapped counterpart.
 func (p *PilosaKeyMapper) MapResult(frame string, res interface{}) (mappedRes interface{}, err error) {
 	switch result := res.(type) {
-	case uint64, int64, uint, int:
+	case uint64:
 		// Count
 		mappedRes = result
 	case []interface{}:

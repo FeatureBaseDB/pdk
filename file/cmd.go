@@ -17,8 +17,6 @@ type Main struct {
 	SubjectAt   string   `help:"Tells the source to add a unique 'subject' key to each record which is the filename + record number."`
 	SubjectPath []string `help:"Path to value in each record that should be mapped to column ID. Blank gets a sequential ID."`
 	Proxy       string   `help:"Bind to this address to proxy and translate requests to Pilosa"`
-
-	done chan struct{}
 }
 
 // NewMain gets a new Main with the default configuration.
@@ -71,8 +69,5 @@ func (m *Main) Run() error {
 		err = pdk.StartMappingProxy(m.Proxy, pdk.NewPilosaForwarder(m.PilosaHosts[0], mapper.Translator, mapper.ColTranslator))
 		log.Fatal(errors.Wrap(err, "starting mapping proxy"))
 	}()
-	if err := ingester.Run(); err != nil {
-		return errors.Wrap(err, "running ingester")
-	}
-	return nil
+	return errors.Wrap(ingester.Run(), "running ingester")
 }
