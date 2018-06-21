@@ -72,22 +72,23 @@ func StartMappingProxy(bind string, h http.Handler) error {
 }
 
 type pilosaForwarder struct {
-	phost  string
-	client http.Client
-	km     KeyMapper
-	proxy  Proxy
+	phost     string
+	client    http.Client
+	km        KeyMapper
+	colMapper FrameTranslator
+	proxy     Proxy
 }
 
 // NewPilosaForwarder returns a new pilosaForwarder which forwards all requests
 // to `phost`. It inspects pilosa responses and runs the row ids through the
 // Translator `t` to translate them to whatever they were mapped from.
-func NewPilosaForwarder(phost string, t Translator) *pilosaForwarder {
+func NewPilosaForwarder(phost string, t Translator, colTranslator ...FrameTranslator) *pilosaForwarder {
 	if !strings.HasPrefix(phost, "http://") {
 		phost = "http://" + phost
 	}
 	f := &pilosaForwarder{
 		phost: phost,
-		km:    NewPilosaKeyMapper(t),
+		km:    NewPilosaKeyMapper(t, colTranslator...),
 	}
 	f.proxy = NewPilosaProxy(phost, &f.client)
 	return f
@@ -114,6 +115,7 @@ func (p *pilosaForwarder) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		http.Error(w, "mapping request: "+err.Error(), http.StatusBadRequest)
 		return
 	}
+	fmt.Println("mapped query", string(body))
 
 	// forward the request and get the pilosa response
 	resp, err := p.proxy.ProxyRequest(req, body)
@@ -198,60 +200,33 @@ func (p *pilosaProxy) ProxyRequest(orig *http.Request, origbody []byte) (*http.R
 // PilosaKeyMapper implements the KeyMapper interface.
 type PilosaKeyMapper struct {
 	t Translator
+	c FrameTranslator
 }
 
 // NewPilosaKeyMapper returns a PilosaKeyMapper.
-func NewPilosaKeyMapper(t Translator) *PilosaKeyMapper {
-	return &PilosaKeyMapper{
+func NewPilosaKeyMapper(t Translator, colTranslator ...FrameTranslator) *PilosaKeyMapper {
+	pkm := &PilosaKeyMapper{
 		t: t,
 	}
+	if len(colTranslator) > 0 {
+		pkm.c = colTranslator[0]
+	}
+	return pkm
 }
 
 // MapResult converts the result of a single top level query (one element of
 // QueryResponse.Results) to its mapped counterpart.
 func (p *PilosaKeyMapper) MapResult(frame string, res interface{}) (mappedRes interface{}, err error) {
 	switch result := res.(type) {
-	case uint64:
+	case uint64, int64, uint, int:
 		// Count
 		mappedRes = result
 	case []interface{}:
-		// TopN
-		mr := make([]struct {
-			Key   interface{}
-			Count uint64
-		}, len(result))
-		for i, intpair := range result {
-			if pair, ok := intpair.(map[string]interface{}); ok {
-				pairkey, gotKey := pair["id"]
-				paircount, gotCount := pair["count"]
-				if !(gotKey && gotCount) {
-					return nil, fmt.Errorf("expected pilosa.Pair, but have wrong keys: got %v", pair)
-				}
-				keyFloat, isKeyFloat := pairkey.(float64)
-				countFloat, isCountFloat := paircount.(float64)
-				if !(isKeyFloat && isCountFloat) {
-					return nil, fmt.Errorf("expected pilosa.Pair, but have wrong value types: got %v", pair)
-				}
-				keyVal, err := p.t.Get(frame, uint64(keyFloat))
-				if err != nil {
-					return nil, errors.Wrap(err, "translator.Get")
-				}
-
-				switch kv := keyVal.(type) {
-				case []byte:
-					mr[i].Key = string(kv)
-				default:
-					mr[i].Key = keyVal
-				}
-				mr[i].Count = uint64(countFloat)
-			} else {
-				return nil, fmt.Errorf("unknown type in inner slice: %v", intpair)
-			}
-		}
-		mappedRes = mr
+		return p.mapSliceInterfaceResult(frame, result)
 	case map[string]interface{}:
 		// Bitmap/Intersect/Difference/Union
 		mappedRes = result
+		fmt.Println("result: ", result)
 	case bool:
 		// SetBit/ClearBit
 		mappedRes = result
@@ -262,12 +237,80 @@ func (p *PilosaKeyMapper) MapResult(frame string, res interface{}) (mappedRes in
 	return mappedRes, nil
 }
 
+func (p *PilosaKeyMapper) mapSliceInterfaceResult(frame string, res []interface{}) (mappedRes interface{}, err error) {
+	if len(res) == 0 {
+		return res, nil
+	}
+	switch res[0].(type) {
+	case map[string]interface{}:
+		return p.mapTopNResult(frame, res)
+	case uint64:
+		return p.mapBitmapResult(frame, res)
+	default:
+		return mappedRes, errors.Errorf("unexpected result type in slice: %T, %#v", res[0], res[0])
+	}
+}
+
+func (p *PilosaKeyMapper) mapBitmapResult(frame string, result []interface{}) (mappedRes interface{}, err error) {
+	cols := make([]interface{}, len(result))
+	for i, icol := range result {
+		col, ok := icol.(uint64)
+		if !ok {
+			return nil, errors.Errorf("expected uint64, but got %T %#v", icol, icol)
+		}
+		colV, err := p.c.Get(col)
+		if err != nil {
+			return nil, errors.Wrap(err, "translating column id to value")
+		}
+		cols[i] = colV
+	}
+	return cols, nil
+}
+
+func (p *PilosaKeyMapper) mapTopNResult(frame string, result []interface{}) (mappedRes interface{}, err error) {
+	mr := make([]struct {
+		Key   interface{}
+		Count uint64
+	}, len(result))
+	for i, intpair := range result {
+		if pair, ok := intpair.(map[string]interface{}); ok {
+			pairkey, gotKey := pair["id"]
+			paircount, gotCount := pair["count"]
+			if !(gotKey && gotCount) {
+				return nil, fmt.Errorf("expected pilosa.Pair, but have wrong keys: got %v", pair)
+			}
+			keyFloat, isKeyFloat := pairkey.(float64)
+			countFloat, isCountFloat := paircount.(float64)
+			if !(isKeyFloat && isCountFloat) {
+				return nil, fmt.Errorf("expected pilosa.Pair, but have wrong value types: got %v", pair)
+			}
+			keyVal, err := p.t.Get(frame, uint64(keyFloat))
+			if err != nil {
+				return nil, errors.Wrap(err, "translator.Get")
+			}
+
+			switch kv := keyVal.(type) {
+			case []byte:
+				mr[i].Key = string(kv)
+			default:
+				mr[i].Key = keyVal
+			}
+			mr[i].Count = uint64(countFloat)
+		} else {
+			return nil, fmt.Errorf("unknown type in inner slice: %v", intpair)
+		}
+	}
+	mappedRes = mr
+	return mappedRes, nil
+}
+
 // MapRequest takes a request body and returns a mapped version of that body.
 func (p *PilosaKeyMapper) MapRequest(body []byte) ([]byte, error) {
 	query, err := pql.ParseString(string(body))
 	if err != nil {
 		return nil, errors.Wrap(err, "parsing string")
 	}
+	fmt.Println("QUERY:", query)
 	for _, call := range query.Calls {
 		err := p.mapCall(call)
 		if err != nil {
@@ -279,7 +322,10 @@ func (p *PilosaKeyMapper) MapRequest(body []byte) ([]byte, error) {
 
 func (p *PilosaKeyMapper) mapCall(call *pql.Call) error {
 	if call.Name == "Bitmap" {
+		fmt.Println("arow", call.Args["row"])
+		fmt.Println("aframe", call.Args["frame"].(string))
 		id, err := p.t.GetID(call.Args["frame"].(string), call.Args["row"])
+		fmt.Println("id", id)
 		if err != nil {
 			return errors.Wrap(err, "getting ID")
 		}

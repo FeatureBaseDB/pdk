@@ -140,8 +140,9 @@ func (m *MapFrameTranslator) GetID(val interface{}) (id uint64, err error) {
 		valMap = string(valB)
 		valSlice = valB
 	} else {
-		valMap, valSlice = val, val
+		valMap, valSlice = fmt.Sprintf("%s", valMap), val
 	}
+
 	if idv, ok := m.m.Load(valMap); ok {
 		if id, ok = idv.(uint64); !ok {
 			return 0, errors.Errorf("Got non uint64 value back from MapTranslator: %v", idv)
