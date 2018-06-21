@@ -33,7 +33,6 @@
 package pdk
 
 import (
-	"fmt"
 	"io"
 	"log"
 	"os"
@@ -124,12 +123,10 @@ func (n *Ingester) Run() error {
 				// Index
 				n.Stats.Count("ingest.Map", 1, 1)
 				for _, row := range pr.Rows {
-					fmt.Printf("AddBit: %s %v %v\n", row.Frame, pr.Col, row.ID)
 					n.indexer.AddBit(row.Frame, pr.Col, row.ID)
 					n.Stats.Count("ingest.AddBit", 1, 1)
 				}
 				for _, val := range pr.Vals {
-					fmt.Printf("AddVal: %s %s %v %v\n", val.Frame, val.Field, pr.Col, val.Value)
 					n.indexer.AddValue(val.Frame, val.Field, pr.Col, val.Value)
 					n.Stats.Count("ingest.AddValue", 1, 1)
 				}

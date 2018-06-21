@@ -134,15 +134,7 @@ func (m *MapFrameTranslator) GetID(val interface{}) (id uint64, err error) {
 	// TODO - this is a janky way to support byte slice value - revisit would be
 	// nice to support values of any type, but currently only things that are
 	// acceptable map keys are supported.(and byte slices because of this hack)
-	var valMap interface{}
-	var valSlice interface{}
-	if valB, ok := val.([]byte); ok {
-		valMap = string(valB)
-		valSlice = valB
-	} else {
-		valMap, valSlice = fmt.Sprintf("%s", valMap), val
-	}
-
+	valMap, valSlice := fmt.Sprintf("%s", val), val
 	if idv, ok := m.m.Load(valMap); ok {
 		if id, ok = idv.(uint64); !ok {
 			return 0, errors.Errorf("Got non uint64 value back from MapTranslator: %v", idv)
