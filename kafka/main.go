@@ -100,7 +100,7 @@ func (m *Main) Run() error {
 
 	ingester := pdk.NewIngester(src, parser, mapper, indexer)
 	go func() {
-		err = pdk.StartMappingProxy(m.Proxy, pdk.NewPilosaForwarder(m.PilosaHosts[0], mapper.Translator))
+		err = pdk.StartMappingProxy(m.Proxy, pdk.NewPilosaForwarder(m.PilosaHosts[0], mapper.Translator, mapper.ColTranslator))
 		log.Fatal(errors.Wrap(err, "starting mapping proxy"))
 	}()
 	return errors.Wrap(ingester.Run(), "running ingester")
