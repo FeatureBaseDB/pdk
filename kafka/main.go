@@ -69,6 +69,7 @@ func NewMain() *Main {
 
 // Run begins indexing data from Kafka into Pilosa.
 func (m *Main) Run() error {
+	log.Printf("Running Main: %#v", m)
 	var src pdk.Source
 	if m.RegistryURL == "" {
 		isrc := NewSource()
@@ -103,7 +104,10 @@ func (m *Main) Run() error {
 	mapper := pdk.NewCollapsingMapper()
 	mapper.Framer = &m.Framer
 	if translateColumns {
+		log.Println("translating columns")
 		mapper.ColTranslator = pdk.NewMapFrameTranslator()
+	} else {
+		log.Println("not translating columns")
 	}
 
 	indexer, err := pdk.SetupPilosa(m.PilosaHosts, m.Index, []pdk.FrameSpec{}, m.BatchSize)

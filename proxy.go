@@ -216,6 +216,10 @@ func NewPilosaKeyMapper(t Translator, colTranslator ...FrameTranslator) *PilosaK
 // MapResult converts the result of a single top level query (one element of
 // QueryResponse.Results) to its mapped counterpart.
 func (p *PilosaKeyMapper) MapResult(frame string, res interface{}) (mappedRes interface{}, err error) {
+	log.Printf("mapping result: '%#v'", res)
+	defer func() {
+		log.Printf("mapped result: '%#v'", mappedRes)
+	}()
 	switch result := res.(type) {
 	case uint64:
 		// Count
@@ -269,7 +273,7 @@ func (p *PilosaKeyMapper) mapColumnSlice(frame string, result []interface{}) (ma
 	for i, icol := range result {
 		col, ok := icol.(float64)
 		if !ok {
-			return nil, errors.Errorf("expected uint64, but got %T %#v", icol, icol)
+			return nil, errors.Errorf("expected float64, but got %T %#v", icol, icol)
 		}
 		colV, err := p.c.Get(uint64(col))
 		if err != nil {
@@ -319,6 +323,7 @@ func (p *PilosaKeyMapper) mapTopNResult(frame string, result []interface{}) (map
 
 // MapRequest takes a request body and returns a mapped version of that body.
 func (p *PilosaKeyMapper) MapRequest(body []byte) ([]byte, error) {
+	log.Printf("mapping request: '%s'", body)
 	query, err := pql.ParseString(string(body))
 	if err != nil {
 		return nil, errors.Wrap(err, "parsing string")
@@ -329,6 +334,7 @@ func (p *PilosaKeyMapper) MapRequest(body []byte) ([]byte, error) {
 			return nil, errors.Wrap(err, "mapping call")
 		}
 	}
+	log.Printf("mapped request: '%s'", query.String())
 	return []byte(query.String()), nil
 }
 
