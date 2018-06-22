@@ -34,7 +34,7 @@ func NewMain() *Main {
 	return m
 }
 
-func (m *Main) appendWeatherData() {
+func (m *Main) appendWeatherData() error {
 	/*
 		field     min      max        count
 		temp:     1.900000 102.900000 161
@@ -52,10 +52,22 @@ func (m *Main) appendWeatherData() {
 	startTime := time.Date(2009, 2, 1, 0, 0, 0, 0, time.UTC)
 	endTime := time.Date(2015, 12, 31, 0, 0, 0, 0, time.UTC)
 
-	pickup_year, _ := m.index.Field("pickup_year")
-	pickup_month, _ := m.index.Field("pickup_month")
-	pickup_mday, _ := m.index.Field("pickup_mday")
-	pickup_time, _ := m.index.Field("pickup_time")
+	pickup_year, err := m.index.Field("pickup_year")
+	if err != nil {
+		return err
+	}
+	pickup_month, err := m.index.Field("pickup_month")
+	if err != nil {
+		return err
+	}
+	pickup_mday, err := m.index.Field("pickup_mday")
+	if err != nil {
+		return err
+	}
+	pickup_time, err := m.index.Field("pickup_time")
+	if err != nil {
+		return err
+	}
 
 	for t := startTime; endTime.After(t); t = t.Add(time.Hour) {
 		timeBucket, _ := timeMapper.ID(t)
@@ -104,7 +116,7 @@ func (m *Main) appendWeatherData() {
 			}
 		}
 	}
-
+	return nil
 }
 
 // Run runs the weather usecase.
@@ -158,7 +170,10 @@ func (m *Main) Run() (err error) {
 		return errors.Wrap(err, "reading weather cache")
 	}
 
-	m.appendWeatherData()
+	err = m.appendWeatherData()
+	if err != nil {
+		return errors.Wrap(err, "appending weather data")
+	}
 
 	return errors.Wrap(m.importer.Close(), "closing indexer")
 }
