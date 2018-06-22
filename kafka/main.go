@@ -83,15 +83,20 @@ func (m *Main) Run() error {
 		return errors.Wrap(err, "opening kafka source")
 	}
 
+	translateColumns := true
 	parser := pdk.NewDefaultGenericParser()
 	if len(m.SubjectPath) == 0 {
 		parser.Subjecter = pdk.BlankSubjecter{}
+		translateColumns = false
 	} else {
 		parser.EntitySubjecter = pdk.SubjectPath(m.SubjectPath)
 	}
 
 	mapper := pdk.NewCollapsingMapper()
 	mapper.Framer = &m.Framer
+	if translateColumns {
+		mapper.ColTranslator = pdk.NewMapFrameTranslator()
+	}
 
 	indexer, err := pdk.SetupPilosa(m.PilosaHosts, m.Index, []pdk.FrameSpec{}, m.BatchSize)
 	if err != nil {
