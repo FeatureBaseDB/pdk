@@ -49,7 +49,7 @@ type Main struct {
 	PilosaHosts []string `help:"Comma separated list of Pilosa hosts and ports."`
 	Index       string   `help:"Pilosa index."`
 	BatchSize   uint     `help:"Batch size for Pilosa imports (latency/throughput tradeoff)."`
-	SubjectPath []string `help:"Path to value in each record that should be mapped to column ID. Blank gets a sequential ID."`
+	SubjectPath []string `help:"Comma separated path to value in each record that should be mapped to column ID. Blank gets a sequential ID"`
 	Proxy       string   `help:"Bind to this address to proxy and translate requests to Pilosa"`
 }
 
@@ -69,18 +69,26 @@ func NewMain() *Main {
 
 // Run begins indexing data from Kafka into Pilosa.
 func (m *Main) Run() error {
-	src := &Source{}
-	src.Hosts = m.Hosts
-	src.Topics = m.Topics
-	src.Group = m.Group
+	var src pdk.Source
 	if m.RegistryURL == "" {
-		src.Type = "json"
+		isrc := NewSource()
+		isrc.Hosts = m.Hosts
+		isrc.Topics = m.Topics
+		isrc.Group = m.Group
+		src = isrc
+		if err := isrc.Open(); err != nil {
+			return errors.Wrap(err, "opening kafka source")
+		}
 	} else {
-		src.Type = "raw"
-	}
-
-	if err := src.Open(); err != nil {
-		return errors.Wrap(err, "opening kafka source")
+		isrc := NewConfluentSource()
+		isrc.Hosts = m.Hosts
+		isrc.Topics = m.Topics
+		isrc.Group = m.Group
+		isrc.RegistryURL = m.RegistryURL
+		src = isrc
+		if err := isrc.Open(); err != nil {
+			return errors.Wrap(err, "opening kafka source")
+		}
 	}
 
 	translateColumns := true

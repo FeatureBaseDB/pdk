@@ -185,7 +185,7 @@ func (p *pilosaProxy) ProxyRequest(orig *http.Request, origbody []byte) (*http.R
 	reqURL, err := url.Parse(p.host + orig.URL.String())
 	if err != nil {
 		log.Printf("error parsing url: %v, err: %v", p.host+orig.URL.String(), err)
-		return nil, err
+		return nil, errors.Wrapf(err, "parsing url: %v", p.host+orig.URL.String())
 	}
 	orig.URL = reqURL
 	orig.Host = ""
