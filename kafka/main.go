@@ -13,7 +13,7 @@ type Main struct {
 	Topics      []string `help:"Comma separated list of Kafka topics"`
 	Group       string   `help:"Kafka group"`
 	RegistryURL string   `help:"URL of the confluent schema registry. Not required."`
-	Framer      pdk.DashFrame
+	Framer      pdk.DashField
 	PilosaHosts []string `help:"Comma separated list of Pilosa hosts and ports."`
 	Index       string   `help:"Pilosa index."`
 	BatchSize   uint     `help:"Batch size for Pilosa imports (latency/throughput tradeoff)."`

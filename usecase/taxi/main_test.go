@@ -47,9 +47,9 @@ func TestRunMain(t *testing.T) {
 	}
 
 	// query pilosa to ensure consistent results
-	index, cabTypeFrame := GetFrame(t, client, "taxi", "cab_type")
+	index, cabTypeField := GetField(t, client, "taxi", "cab_type")
 
-	resp, err := client.Query(index.Count(cabTypeFrame.Row(0)))
+	resp, err := client.Query(index.Count(cabTypeField.Row(0)))
 	if err != nil {
 		t.Fatalf("count querying: %v", err)
 	}
@@ -57,7 +57,7 @@ func TestRunMain(t *testing.T) {
 		t.Fatalf("cab_type 0 should have 34221, but got %d", resp.Result().Count())
 	}
 
-	resp, err = client.Query(index.Count(cabTypeFrame.Row(1)))
+	resp, err = client.Query(index.Count(cabTypeField.Row(1)))
 	if err != nil {
 		t.Fatalf("count querying: %v", err)
 	}
@@ -68,7 +68,7 @@ func TestRunMain(t *testing.T) {
 	// The cache needs to be refreshed before querying TopN.
 	client.HttpRequest("POST", "/recalculate-caches", nil, nil)
 
-	resp, err = client.Query(cabTypeFrame.TopN(5))
+	resp, err = client.Query(cabTypeField.TopN(5))
 	if err != nil {
 		t.Fatalf("topn query: %v", err)
 	}
@@ -86,7 +86,7 @@ func TestRunMain(t *testing.T) {
 
 }
 
-func GetFrame(t *testing.T, c *gopilosa.Client, index, frame string) (*gopilosa.Index, *gopilosa.Field) {
+func GetField(t *testing.T, c *gopilosa.Client, index, field string) (*gopilosa.Index, *gopilosa.Field) {
 	schema, err := c.Schema()
 	if err != nil {
 		t.Fatalf("getting schema: %v", err)
@@ -96,9 +96,9 @@ func GetFrame(t *testing.T, c *gopilosa.Client, index, frame string) (*gopilosa.
 		t.Fatalf("getting index: %v", err)
 	}
 
-	fram, err := idx.Field(frame)
+	fram, err := idx.Field(field)
 	if err != nil {
-		t.Fatalf("getting frame: %v", err)
+		t.Fatalf("getting field: %v", err)
 	}
 	err = c.SyncSchema(schema)
 	if err != nil {

@@ -14,7 +14,7 @@ type Main struct {
 	Seed           int64  `help:"Random seed for generating data. -1 will use current nanosecond."`
 	GenConcurrency int    `help:"Number of goroutines generating data."`
 	Num            uint64 `help:"Number of records to generate. 0 means infinity."`
-	Framer         pdk.DashFrame
+	Framer         pdk.DashField
 	PilosaHosts    []string `help:"Comma separated list of Pilosa hosts and ports."`
 	Index          string   `help:"Pilosa index."`
 	BatchSize      uint     `help:"Batch size for Pilosa imports (latency/throughput tradeoff)."`

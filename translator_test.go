@@ -13,28 +13,28 @@ import (
 
 func TestMapTranslator(t *testing.T) {
 	mt := NewMapTranslator()
-	id, err := mt.GetID("frame1", "thing")
+	id, err := mt.GetID("field1", "thing")
 	test.MustBe(t, id, uint64(0), "first")
 	test.MustBe(t, err, nil)
-	id, err = mt.GetID("frame1", "thing")
+	id, err = mt.GetID("field1", "thing")
 	test.MustBe(t, id, uint64(0), "repeat")
 	test.MustBe(t, err, nil)
 
-	id, err = mt.GetID("frame1", "thing1")
+	id, err = mt.GetID("field1", "thing1")
 	test.MustBe(t, id, uint64(1), "third")
 	test.MustBe(t, err, nil)
 
-	id, err = mt.GetID("frame2", "thing3")
+	id, err = mt.GetID("field2", "thing3")
 	test.MustBe(t, id, uint64(0), "fourth")
 	test.MustBe(t, err, nil)
 
-	val, err := mt.Get("frame1", 0)
+	val, err := mt.Get("field1", 0)
 	test.ErrNil(t, err, "Get1-0")
 	test.MustBe(t, "thing", val, "Get1-0")
-	val, err = mt.Get("frame1", 1)
+	val, err = mt.Get("field1", 1)
 	test.ErrNil(t, err, "get Get1-1")
 	test.MustBe(t, "thing1", val, "Get1-1")
-	val, err = mt.Get("frame2", 0)
+	val, err = mt.Get("field2", 0)
 	test.ErrNil(t, err, "get Get2-0")
 	test.MustBe(t, "thing3", val, "Get2-0")
 }

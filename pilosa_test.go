@@ -31,10 +31,10 @@ func TestSetupPilosa(t *testing.T) {
 		t.Fatalf("SetupPilosa: %v", err)
 	}
 
-	indexer.AddBit("field1", 0, 0)
+	indexer.AddColumn("field1", 0, 0)
 	indexer.AddValue("field3", 0, 97)
-	indexer.AddBitTimestamp("fieldtime", 0, 0, time.Date(2018, time.February, 22, 9, 0, 0, 0, time.UTC))
-	indexer.AddBitTimestamp("fieldtime", 2, 0, time.Date(2018, time.February, 24, 9, 0, 0, 0, time.UTC))
+	indexer.AddColumnTimestamp("fieldtime", 0, 0, time.Date(2018, time.February, 22, 9, 0, 0, 0, time.UTC))
+	indexer.AddColumnTimestamp("fieldtime", 2, 0, time.Date(2018, time.February, 24, 9, 0, 0, 0, time.UTC))
 	indexer.AddValue("field3", 0, 100)
 
 	err = indexer.Close()

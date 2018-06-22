@@ -90,7 +90,7 @@ func TestEverything(t *testing.T) {
 	for _, m := range mains {
 		hosts = append(hosts, m.Server.Addr().String())
 	}
-	idxer, err := pdk.SetupPilosa([]string{hosts[0]}, "kafkaavro", []pdk.FrameSpec{}, 10)
+	idxer, err := pdk.SetupPilosa([]string{hosts[0]}, "kafkaavro", nil, 10)
 	if err != nil {
 		t.Fatalf("setting up pilosa: %v", err)
 	}
@@ -126,17 +126,15 @@ func TestEverything(t *testing.T) {
 		t.Fatalf("getting index: %v", err)
 	}
 
-	for name, fram := range idx.Frames() {
-		for fname, field := range fram.Fields() {
-			resp, err := cli.Query(field.Sum(field.GTE(0)), nil)
-			if err != nil {
-				t.Fatalf("query for a field (%v): %v", fname, err)
-			}
-			fmt.Printf("%v: %v, Sum: %v\n", name, fname, resp.Result().Sum())
-		}
-		resp, err := cli.Query(fram.TopN(10), nil)
+	for name, field := range idx.Fields() {
+		resp, err := cli.Query(field.Sum(field.GTE(0)))
 		if err != nil {
-			t.Fatalf("fram topn query (%v): %v", name, err)
+			t.Fatalf("query for field (%v): %v", name, err)
+		}
+		fmt.Printf("%v: %v, Sum: %v\n", name, name, resp.Result().Value())
+		resp, err = cli.Query(field.TopN(10))
+		if err != nil {
+			t.Fatalf("field topn query (%v): %v", name, err)
 		}
 		fmt.Printf("%v: TopN: %v\n", name, resp.Result().CountItems())
 	}

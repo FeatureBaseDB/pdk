@@ -12,7 +12,7 @@ import (
 // property name.
 type CollapsingMapper struct {
 	Translator    Translator
-	ColTranslator FrameTranslator
+	ColTranslator FieldTranslator
 	Framer        Framer
 	Nexter        INexter
 }
@@ -20,12 +20,12 @@ type CollapsingMapper struct {
 // NewCollapsingMapper returns a CollapsingMapper with basic implementations of
 // its components. In order to track mapping of Pilosa columns to records, you
 // must replace the ColTranslator with something other than a
-// NexterFrameTranslator which just allocates ids and does not store a mapping.
+// NexterFieldTranslator which just allocates ids and does not store a mapping.
 func NewCollapsingMapper() *CollapsingMapper {
 	return &CollapsingMapper{
 		Translator:    NewMapTranslator(),
-		ColTranslator: NewNexterFrameTranslator(),
-		Framer:        &DashFrame{},
+		ColTranslator: NewNexterFieldTranslator(),
+		Framer:        &DashField{},
 		Nexter:        NewNexter(),
 	}
 }
@@ -81,50 +81,44 @@ func (m *CollapsingMapper) mapObj(val Object, pr *PilosaRecord, path []string) e
 func (m *CollapsingMapper) mapLit(val Literal, pr *PilosaRecord, path []string) error {
 	switch tval := val.(type) {
 	case F32, F64, I, I8, I16, I32, I64, U, U8, U16, U32, U64:
-		frame, field, err := m.Framer.Field(path)
+		field, err := m.Framer.Field(path)
 		if err != nil {
-			return errors.Wrapf(err, "getting frame/field from %v", path)
+			return errors.Wrapf(err, "getting field from %v", path)
+		}
+		if field == "" {
+			field = "default"
+		}
+		pr.AddVal(field, Int64ize(tval))
+	case S:
+		field, err := m.Framer.Field(path)
+		if err != nil {
+			return errors.Wrapf(err, "gettting field from %v", path)
 		}
 		if field == "" {
 			return nil
 		}
-		if frame == "" {
-			frame = "default"
-		}
-		pr.AddVal(frame, field, Int64ize(tval))
-	case S:
-		frame, err := m.Framer.Frame(path)
-		if err != nil {
-			return errors.Wrapf(err, "gettting frame from %v", path)
-		}
-		if frame == "" {
-			return nil
-		}
-		id, err := m.Translator.GetID(frame, tval)
+		id, err := m.Translator.GetID(field, tval)
 		if err != nil {
 			return errors.Wrapf(err, "getting id from %v", val)
 		}
-		pr.AddRow(frame, id)
+		pr.AddRow(field, id)
 	case B:
 		// for bools, use field as the row name - only set if val is true
 		if !tval {
 			return nil
 		}
-		frame, field, err := m.Framer.Field(path)
+		field, err := m.Framer.Field(path)
 		if err != nil {
-			return errors.Wrapf(err, "getting frame/field from %v", path)
+			return errors.Wrapf(err, "getting field from %v", path)
 		}
 		if field == "" {
-			return nil
+			field = "default"
 		}
-		if frame == "" {
-			frame = "default"
-		}
-		id, err := m.Translator.GetID(frame, field)
+		id, err := m.Translator.GetID(field, field)
 		if err != nil {
 			return errors.Wrapf(err, "getting bool id from %v", field)
 		}
-		pr.AddRow(frame, id)
+		pr.AddRow(field, id)
 	}
 	return nil
 }
@@ -161,7 +155,7 @@ func Int64ize(val Literal) int64 {
 
 }
 
-// PilosaRecord represents a number of set bits and values in a single Column
+// PilosaRecord represents a number of set columns and values in a single Column
 // in Pilosa.
 type PilosaRecord struct {
 	Col  uint64
@@ -171,27 +165,27 @@ type PilosaRecord struct {
 
 // AddVal adds a new value to be range encoded into the given field to the
 // PilosaRecord.
-func (pr *PilosaRecord) AddVal(frame, field string, value int64) {
-	pr.Vals = append(pr.Vals, Val{Frame: frame, Field: field, Value: value})
+func (pr *PilosaRecord) AddVal(field string, value int64) {
+	pr.Vals = append(pr.Vals, Val{Field: field, Value: value})
 }
 
-// AddRow adds a new bit to be set to the PilosaRecord.
-func (pr *PilosaRecord) AddRow(frame string, id uint64) {
-	pr.Rows = append(pr.Rows, Row{Frame: frame, ID: id})
+// AddRow adds a new column to be set to the PilosaRecord.
+func (pr *PilosaRecord) AddRow(field string, id uint64) {
+	pr.Rows = append(pr.Rows, Row{Field: field, ID: id})
 }
 
-// AddRowTime adds a new bit to be set with a timestamp to the PilosaRecord.
-func (pr *PilosaRecord) AddRowTime(frame string, id uint64, ts time.Time) {
-	pr.Rows = append(pr.Rows, Row{Frame: frame, ID: id, Time: ts})
+// AddRowTime adds a new column to be set with a timestamp to the PilosaRecord.
+func (pr *PilosaRecord) AddRowTime(field string, id uint64, ts time.Time) {
+	pr.Rows = append(pr.Rows, Row{Field: field, ID: id, Time: ts})
 }
 
-// Row represents a bit to set in Pilosa sans column id (which is held by the
+// Row represents a column to set in Pilosa sans column id (which is held by the
 // PilosaRecord containg the Row).
 type Row struct {
-	Frame string
+	Field string
 	ID    uint64
 
-	// Time is the timestamp for the bit in Pilosa which is the intersection of
+	// Time is the timestamp for the column in Pilosa which is the intersection of
 	// this row and the Column in the PilosaRecord which holds this row.
 	Time time.Time
 }
@@ -199,7 +193,6 @@ type Row struct {
 // Val represents a BSI value to set in a Pilosa field sans column id (which is
 // held by the PilosaRecord containing the Val).
 type Val struct {
-	Frame string
 	Field string
 	Value int64
 }

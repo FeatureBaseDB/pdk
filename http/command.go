@@ -18,7 +18,7 @@ type Main struct {
 	PilosaHosts []string `help:"List of host:port pairs for Pilosa cluster."`
 	Index       string   `help:"Pilosa index to write to."`
 	BatchSize   uint     `help:"Batch size for Pilosa imports."`
-	Framer      pdk.DashFrame
+	Framer      pdk.DashField
 	Subjecter   SubjecterOpts
 	Proxy       string `help:"Bind to this address to proxy and translate requests to Pilosa"`
 }
@@ -30,7 +30,7 @@ func NewMain() *Main {
 		PilosaHosts: []string{"localhost:10101"},
 		Index:       "jsonhttp",
 		BatchSize:   10,
-		Framer:      pdk.DashFrame{},
+		Framer:      pdk.DashField{},
 		Subjecter:   SubjecterOpts{},
 		Proxy:       ":13131",
 	}

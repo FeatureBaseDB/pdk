@@ -22,11 +22,11 @@ var _ pdk.Translator = &Translator{}
 type Translator struct {
 	lock    sync.RWMutex
 	dirname string
-	frames  map[string]*FrameTranslator
+	fields  map[string]*FieldTranslator
 }
 
-// FrameTranslator is a pdk.FrameTranslator which uses leveldb.
-type FrameTranslator struct {
+// FieldTranslator is a pdk.FieldTranslator which uses leveldb.
+type FieldTranslator struct {
 	lock   valueLocker
 	idMap  *leveldb.DB
 	valMap *leveldb.DB
@@ -46,10 +46,10 @@ func (errs errorList) Error() string {
 // Close closes all of the underlying leveldb instances.
 func (lt *Translator) Close() error {
 	errs := make(errorList, 0)
-	for f, lft := range lt.frames {
+	for f, lft := range lt.fields {
 		err := lft.Close()
 		if err != nil {
-			errs = append(errs, errors.Wrapf(err, "frame : %v", f))
+			errs = append(errs, errors.Wrapf(err, "field : %v", f))
 		}
 	}
 	if len(errs) > 0 {
@@ -58,8 +58,8 @@ func (lt *Translator) Close() error {
 	return nil
 }
 
-// Close closes the two leveldbs used by the FrameTranslator.
-func (lft *FrameTranslator) Close() error {
+// Close closes the two leveldbs used by the FieldTranslator.
+func (lft *FieldTranslator) Close() error {
 	errs := make(errorList, 0)
 	err := lft.idMap.Close()
 	if err != nil {
@@ -75,78 +75,78 @@ func (lft *FrameTranslator) Close() error {
 	return nil
 }
 
-// getFrameTranslator retrieves or creates a FrameTranslator for the given frame.
-func (lt *Translator) getFrameTranslator(frame string) (*FrameTranslator, error) {
+// getFieldTranslator retrieves or creates a FieldTranslator for the given field.
+func (lt *Translator) getFieldTranslator(field string) (*FieldTranslator, error) {
 	lt.lock.RLock()
-	if tr, ok := lt.frames[frame]; ok {
+	if tr, ok := lt.fields[field]; ok {
 		lt.lock.RUnlock()
 		return tr, nil
 	}
 	lt.lock.RUnlock()
 	lt.lock.Lock()
 	defer lt.lock.Unlock()
-	if tr, ok := lt.frames[frame]; ok {
+	if tr, ok := lt.fields[field]; ok {
 		return tr, nil
 	}
-	lft, err := NewFrameTranslator(lt.dirname, frame)
+	lft, err := NewFieldTranslator(lt.dirname, field)
 	if err != nil {
-		return nil, errors.Wrap(err, "creating new FrameTranslator")
+		return nil, errors.Wrap(err, "creating new FieldTranslator")
 	}
-	lt.frames[frame] = lft
+	lt.fields[field] = lft
 	return lft, nil
 }
 
-// NewFrameTranslator creates a new FrameTranslator which uses LevelDB as
+// NewFieldTranslator creates a new FieldTranslator which uses LevelDB as
 // backing storage.
-func NewFrameTranslator(dirname string, frame string) (*FrameTranslator, error) {
+func NewFieldTranslator(dirname string, field string) (*FieldTranslator, error) {
 	err := os.MkdirAll(dirname, 0700)
 	if err != nil {
 		return nil, errors.Wrap(err, "making directory")
 	}
 	var initialID uint64
-	mdbs := &FrameTranslator{
+	mdbs := &FieldTranslator{
 		curID: &initialID,
 		lock:  newBucketVLock(),
 	}
-	mdbs.idMap, err = leveldb.OpenFile(dirname+"/"+frame+"-id", &opt.Options{})
+	mdbs.idMap, err = leveldb.OpenFile(dirname+"/"+field+"-id", &opt.Options{})
 	if err != nil {
-		return nil, errors.Wrapf(err, "opening leveldb at %v", dirname+"/"+frame+"-id")
+		return nil, errors.Wrapf(err, "opening leveldb at %v", dirname+"/"+field+"-id")
 	}
-	mdbs.valMap, err = leveldb.OpenFile(dirname+"/"+frame+"-val", &opt.Options{})
+	mdbs.valMap, err = leveldb.OpenFile(dirname+"/"+field+"-val", &opt.Options{})
 	if err != nil {
-		return nil, errors.Wrapf(err, "opening leveldb at %v", dirname+"/"+frame+"-val")
+		return nil, errors.Wrapf(err, "opening leveldb at %v", dirname+"/"+field+"-val")
 	}
 	return mdbs, nil
 }
 
 // NewTranslator gets a new Translator.
-func NewTranslator(dirname string, frames ...string) (lt *Translator, err error) {
+func NewTranslator(dirname string, fields ...string) (lt *Translator, err error) {
 	lt = &Translator{
 		dirname: dirname,
-		frames:  make(map[string]*FrameTranslator),
+		fields:  make(map[string]*FieldTranslator),
 	}
-	for _, frame := range frames {
-		lft, err := NewFrameTranslator(dirname, frame)
+	for _, field := range fields {
+		lft, err := NewFieldTranslator(dirname, field)
 		if err != nil {
-			return nil, errors.Wrap(err, "making FrameTranslator")
+			return nil, errors.Wrap(err, "making FieldTranslator")
 		}
-		lt.frames[frame] = lft
+		lt.fields[field] = lft
 	}
 	return lt, err
 }
 
-// Get returns the value mapped to the given id in the given frame.
-func (lt *Translator) Get(frame string, id uint64) (val interface{}, err error) {
-	lft, err := lt.getFrameTranslator(frame)
+// Get returns the value mapped to the given id in the given field.
+func (lt *Translator) Get(field string, id uint64) (val interface{}, err error) {
+	lft, err := lt.getFieldTranslator(field)
 	if err != nil {
-		return nil, errors.Wrap(err, "getting frame translator")
+		return nil, errors.Wrap(err, "getting field translator")
 	}
 	val, err = lft.Get(id)
 	return val, err
 }
 
 // Get returns the value mapped to the given id.
-func (lft *FrameTranslator) Get(id uint64) (val interface{}, err error) {
+func (lft *FieldTranslator) Get(id uint64) (val interface{}, err error) {
 	idBytes := make([]byte, 8)
 	binary.BigEndian.PutUint64(idBytes, id)
 	data, err := lft.idMap.Get(idBytes, nil)
@@ -156,19 +156,19 @@ func (lft *FrameTranslator) Get(id uint64) (val interface{}, err error) {
 	return pdk.FromBytes(data), nil
 }
 
-// GetID returns the integer id associated with the given value in the given
-// frame. It allocates a new ID if the value is not found.
-func (lt *Translator) GetID(frame string, val interface{}) (id uint64, err error) {
-	lft, err := lt.getFrameTranslator(frame)
+// GetID returns the integer id associated with the given value in the given field.
+// It allocates a new ID if the value is not found.
+func (lt *Translator) GetID(field string, val interface{}) (id uint64, err error) {
+	lft, err := lt.getFieldTranslator(field)
 	if err != nil {
-		return 0, errors.Wrap(err, "getting frame translator")
+		return 0, errors.Wrap(err, "getting field translator")
 	}
 	return lft.GetID(val)
 }
 
 // GetID returns the integer id associated with the given value. It allocates a
 // new ID if the value is not found.
-func (lft *FrameTranslator) GetID(val interface{}) (id uint64, err error) {
+func (lft *FieldTranslator) GetID(val interface{}) (id uint64, err error) {
 	var vall pdk.Literal
 	switch valt := val.(type) {
 	case []byte:

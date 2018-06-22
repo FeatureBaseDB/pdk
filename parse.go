@@ -56,10 +56,10 @@ func (p IPParser) Parse(field string) (result interface{}, err error) {
 	return field, nil
 }
 
-// BitMapper is a struct for mapping some set of data fields to a
-// (frame, id) combination for sending to Pilosa as a SetBit query
-type BitMapper struct {
-	Frame   string
+// ColumnMapper is a struct for mapping some set of data fields to a
+// (field, id) combination for sending to Pilosa as a SetBit query
+type ColumnMapper struct {
+	Field   string
 	Mapper  Mapper
 	Parsers []Parser
 	Fields  []int

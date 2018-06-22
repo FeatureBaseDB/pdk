@@ -31,17 +31,17 @@ func (i *Index) Client() *gopilosa.Client {
 	return i.client
 }
 
-// AddBitTimestamp adds a bit to be imported to Pilosa with a timestamp.
-func (i *Index) AddBitTimestamp(frame string, row, col uint64, ts time.Time) {
-	i.addBit(frame, row, col, ts.UnixNano())
+// AddColumnTimestamp adds a column to be imported to Pilosa with a timestamp.
+func (i *Index) AddColumnTimestamp(field string, row, col uint64, ts time.Time) {
+	i.addColumn(field, row, col, ts.UnixNano())
 }
 
-// AddBit adds a bit to be imported to Pilosa.
-func (i *Index) AddBit(frame string, col uint64, row uint64) {
-	i.addBit(frame, col, row, 0)
+// AddColumn adds a column to be imported to Pilosa.
+func (i *Index) AddColumn(field string, col uint64, row uint64) {
+	i.addColumn(field, col, row, 0)
 }
 
-func (i *Index) addBit(fieldName string, col uint64, row uint64, ts int64) {
+func (i *Index) addColumn(fieldName string, col uint64, row uint64, ts int64) {
 	var c chanRecordIterator
 	var ok bool
 	i.lock.RLock()
@@ -55,7 +55,7 @@ func (i *Index) addBit(fieldName string, col uint64, row uint64, ts int64) {
 		}
 		field, err := i.index.Field(fieldName, []gopilosa.FieldOption{fieldType})
 		if err != nil {
-			log.Println(errors.Wrapf(err, "describing frame: %v", fieldName))
+			log.Println(errors.Wrapf(err, "describing field: %v", fieldName))
 			return
 		}
 		err = i.setupField(field)
@@ -107,22 +107,6 @@ func (i *Index) Close() error {
 	return nil
 }
 
-// FrameSpec holds a frame name and options.
-type FrameSpec struct {
-	Name        string
-	CacheType   gopilosa.CacheType
-	CacheSize   uint
-	TimeQuantum gopilosa.TimeQuantum
-	Fields      []FieldSpec
-}
-
-// FieldSpec holds a field name and options.
-type FieldSpec struct {
-	Name string
-	Min  int
-	Max  int
-}
-
 func NewRankedField(index *gopilosa.Index, name string, size int) *gopilosa.Field {
 	field, err := index.Field(name, gopilosa.OptFieldSet(gopilosa.CacheTypeRanked, size))
 	if err != nil {
@@ -138,29 +122,6 @@ func NewIntField(index *gopilosa.Index, name string, min, max int64) *gopilosa.F
 	}
 	return field
 
-}
-
-// NewRankedFrameSpec returns a new FrameSpec with the cache type ranked and the
-// given name and size.
-func NewRankedFrameSpec(name string, size int) FrameSpec {
-	fs := FrameSpec{
-		Name:      name,
-		CacheType: gopilosa.CacheTypeRanked,
-		CacheSize: uint(size),
-	}
-	return fs
-}
-
-// NewFieldFrameSpec creates a frame which is dedicated to a single BSI field
-// which will have the same name as the frame
-func NewFieldFrameSpec(name string, min int, max int) FrameSpec {
-	fs := FrameSpec{
-		Name:      name,
-		CacheType: gopilosa.CacheType(""),
-		CacheSize: 0,
-		Fields:    []FieldSpec{{Name: name, Min: min, Max: max}},
-	}
-	return fs
 }
 
 // setupField ensures the existence of a field in Pilosa,
@@ -180,14 +141,14 @@ func (i *Index) setupField(field *gopilosa.Field) error {
 			defer i.importWG.Done()
 			err := i.client.ImportField(fram, cbi, gopilosa.OptImportStrategy(gopilosa.BatchImport), gopilosa.OptImportBatchSize(int(i.batchSize)))
 			if err != nil {
-				log.Println(errors.Wrapf(err, "starting frame import for %v", fieldName))
+				log.Println(errors.Wrapf(err, "starting field import for %v", fieldName))
 			}
 		}(field, i.recordChans[fieldName])
 	}
 	return nil
 }
 
-// SetupPilosa returns a new Indexer after creating the given frames and starting importers.
+// SetupPilosa returns a new Indexer after creating the given fields and starting importers.
 func SetupPilosa(hosts []string, indexName string, schema *gopilosa.Schema, batchsize uint) (Indexer, error) {
 	indexer := newIndex()
 	indexer.batchSize = batchsize
@@ -209,7 +170,7 @@ func SetupPilosa(hosts []string, indexName string, schema *gopilosa.Schema, batc
 	for _, field := range indexer.index.Fields() {
 		err := indexer.setupField(field)
 		if err != nil {
-			return nil, errors.Wrapf(err, "setting up frame '%s'", field.Name())
+			return nil, errors.Wrapf(err, "setting up field '%s'", field.Name())
 		}
 	}
 	return indexer, nil

@@ -63,13 +63,13 @@ func TestBoltTranslator(t *testing.T) {
 		t.Fatalf("didn't get same ids for same values id1: %v, 1again: %v, 2: %v, 2again: %v", id1, id1again, id2, id2again)
 	}
 
-	id3, err := bt.GetID("f3", []byte("newframe"))
+	id3, err := bt.GetID("f3", []byte("newfield"))
 	if err != nil {
-		t.Fatalf("couldn't get id for newframe f3: %v", err)
+		t.Fatalf("couldn't get id for newfield f3: %v", err)
 	}
 	val = bt.Get("f3", id3)
-	if !bytes.Equal(val.([]byte), []byte("newframe")) {
-		t.Fatalf("unexpected value for newframe id in f3: %s", val)
+	if !bytes.Equal(val.([]byte), []byte("newfield")) {
+		t.Fatalf("unexpected value for newfield id in f3: %s", val)
 	}
 }
 

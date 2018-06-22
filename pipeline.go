@@ -29,10 +29,10 @@ type RecordMapper interface {
 
 // Indexer puts stuff into Pilosa.
 type Indexer interface {
-	AddBit(frame string, col, row uint64)
-	AddBitTimestamp(frame string, col, row uint64, ts time.Time)
+	AddColumn(field string, col, row uint64)
+	AddColumnTimestamp(field string, col, row uint64, ts time.Time)
 	AddValue(field string, col uint64, val int64)
-	// AddRowAttr(frame string, row uint64, key string, value AttrVal)
+	// AddRowAttr(field string, row uint64, key string, value AttrVal)
 	// AddColAttr(col uint64, key string, value AttrVal)
 	Close() error
 	Client() *gopilosa.Client

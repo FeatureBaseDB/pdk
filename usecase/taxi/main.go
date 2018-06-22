@@ -43,8 +43,8 @@ type Main struct {
 
 	indexer   pdk.Indexer
 	urls      []string
-	greenBms  []pdk.BitMapper
-	yellowBms []pdk.BitMapper
+	greenBms  []pdk.ColumnMapper
+	yellowBms []pdk.ColumnMapper
 	ams       []pdk.AttrMapper
 
 	nexter pdk.INexter
@@ -325,9 +325,9 @@ func (r record) clean() ([]string, bool) {
 	return fields, true
 }
 
-type bitFrame struct {
-	Bit   uint64
-	Frame string
+type columnField struct {
+	Column uint64
+	Field  string
 }
 
 func (m *Main) parseMapAndPost(records <-chan record) {
@@ -338,7 +338,7 @@ Records:
 			m.skippedRecs.Add(1)
 			continue
 		}
-		var bms []pdk.BitMapper
+		var bms []pdk.ColumnMapper
 		var cabType uint64
 		if record.Type == 'g' {
 			bms = m.greenBms
@@ -352,8 +352,8 @@ Records:
 			m.skippedRecs.Add(1)
 			continue
 		}
-		bitsToSet := make([]bitFrame, 0)
-		bitsToSet = append(bitsToSet, bitFrame{Bit: cabType, Frame: "cab_type"})
+		columnsToSet := make([]columnField, 0)
+		columnsToSet = append(columnsToSet, columnField{Column: cabType, Field: "cab_type"})
 		for _, bm := range bms {
 			if len(bm.Fields) != len(bm.Parsers) {
 				// TODO if len(pm.Parsers) == 1, use that for all fields
@@ -389,32 +389,32 @@ Records:
 					m.skippedRecs.Add(1)
 					continue Records
 				}
-				if strings.Contains(bm.Frame, "grid_id") && strings.Contains(err.Error(), "out of range") {
+				if strings.Contains(bm.Field, "grid_id") && strings.Contains(err.Error(), "out of range") {
 					m.badLocs.Add(1)
 					m.skippedRecs.Add(1)
 					continue Records
 				}
-				if bm.Frame == "speed_mph" && strings.Contains(err.Error(), "out of range") {
+				if bm.Field == "speed_mph" && strings.Contains(err.Error(), "out of range") {
 					m.badSpeeds.Add(1)
 					m.skippedRecs.Add(1)
 					continue Records
 				}
-				if bm.Frame == "total_amount_dollars" && strings.Contains(err.Error(), "out of range") {
+				if bm.Field == "total_amount_dollars" && strings.Contains(err.Error(), "out of range") {
 					m.badTotalAmnts.Add(1)
 					m.skippedRecs.Add(1)
 					continue Records
 				}
-				if bm.Frame == "duration_minutes" && strings.Contains(err.Error(), "out of range") {
+				if bm.Field == "duration_minutes" && strings.Contains(err.Error(), "out of range") {
 					m.badDurations.Add(1)
 					m.skippedRecs.Add(1)
 					continue Records
 				}
-				if bm.Frame == "passenger_count" && strings.Contains(err.Error(), "out of range") {
+				if bm.Field == "passenger_count" && strings.Contains(err.Error(), "out of range") {
 					m.badPassCounts.Add(1)
 					m.skippedRecs.Add(1)
 					continue Records
 				}
-				if bm.Frame == "dist_miles" && strings.Contains(err.Error(), "out of range") {
+				if bm.Field == "dist_miles" && strings.Contains(err.Error(), "out of range") {
 					m.badDist.Add(1)
 					m.skippedRecs.Add(1)
 					continue Records
@@ -425,12 +425,12 @@ Records:
 				continue Records
 			}
 			for _, id := range ids {
-				bitsToSet = append(bitsToSet, bitFrame{Bit: uint64(id), Frame: bm.Frame})
+				columnsToSet = append(columnsToSet, columnField{Column: uint64(id), Field: bm.Field})
 			}
 		}
 		columnID := m.nexter.Next()
-		for _, bit := range bitsToSet {
-			m.indexer.AddBit(bit.Frame, columnID, bit.Bit)
+		for _, bit := range columnsToSet {
+			m.indexer.AddColumn(bit.Field, columnID, bit.Column)
 		}
 	}
 }
@@ -441,7 +441,7 @@ func getAttrMappers() []pdk.AttrMapper {
 	return ams
 }
 
-func getBitMappers(fields map[string]int) []pdk.BitMapper {
+func getBitMappers(fields map[string]int) []pdk.ColumnMapper {
 	// map a pair of floats to a grid sector of a rectangular region
 	gm := pdk.GridMapper{
 		Xmin: -74.27,
@@ -498,117 +498,117 @@ func getBitMappers(fields map[string]int) []pdk.BitMapper {
 
 	tp := pdk.TimeParser{Layout: "2006-01-02 15:04:05"}
 
-	bms := []pdk.BitMapper{
-		pdk.BitMapper{
-			Frame:   "passenger_count",
+	bms := []pdk.ColumnMapper{
+		pdk.ColumnMapper{
+			Field:   "passenger_count",
 			Mapper:  pdk.IntMapper{Min: 0, Max: 9},
 			Parsers: []pdk.Parser{pdk.IntParser{}},
 			Fields:  []int{fields["passenger_count"]},
 		},
-		pdk.BitMapper{
-			Frame:   "total_amount_dollars",
+		pdk.ColumnMapper{
+			Field:   "total_amount_dollars",
 			Mapper:  lfm,
 			Parsers: []pdk.Parser{pdk.FloatParser{}},
 			Fields:  []int{fields["total_amount"]},
 		},
-		pdk.BitMapper{
-			Frame:   "pickup_time",
+		pdk.ColumnMapper{
+			Field:   "pickup_time",
 			Mapper:  pdk.TimeOfDayMapper{Res: 48},
 			Parsers: []pdk.Parser{tp},
 			Fields:  []int{fields["pickup_datetime"]},
 		},
-		pdk.BitMapper{
-			Frame:   "pickup_day",
+		pdk.ColumnMapper{
+			Field:   "pickup_day",
 			Mapper:  pdk.DayOfWeekMapper{},
 			Parsers: []pdk.Parser{tp},
 			Fields:  []int{fields["pickup_datetime"]},
 		},
-		pdk.BitMapper{
-			Frame:   "pickup_mday",
+		pdk.ColumnMapper{
+			Field:   "pickup_mday",
 			Mapper:  pdk.DayOfMonthMapper{},
 			Parsers: []pdk.Parser{tp},
 			Fields:  []int{fields["pickup_datetime"]},
 		},
-		pdk.BitMapper{
-			Frame:   "pickup_month",
+		pdk.ColumnMapper{
+			Field:   "pickup_month",
 			Mapper:  pdk.MonthMapper{},
 			Parsers: []pdk.Parser{tp},
 			Fields:  []int{fields["pickup_datetime"]},
 		},
-		pdk.BitMapper{
-			Frame:   "pickup_year",
+		pdk.ColumnMapper{
+			Field:   "pickup_year",
 			Mapper:  pdk.YearMapper{},
 			Parsers: []pdk.Parser{tp},
 			Fields:  []int{fields["pickup_datetime"]},
 		},
-		pdk.BitMapper{
-			Frame:   "drop_time",
+		pdk.ColumnMapper{
+			Field:   "drop_time",
 			Mapper:  pdk.TimeOfDayMapper{Res: 48},
 			Parsers: []pdk.Parser{tp},
 			Fields:  []int{fields["dropoff_datetime"]},
 		},
-		pdk.BitMapper{
-			Frame:   "drop_day",
+		pdk.ColumnMapper{
+			Field:   "drop_day",
 			Mapper:  pdk.DayOfWeekMapper{},
 			Parsers: []pdk.Parser{tp},
 			Fields:  []int{fields["dropoff_datetime"]},
 		},
-		pdk.BitMapper{
-			Frame:   "drop_mday",
+		pdk.ColumnMapper{
+			Field:   "drop_mday",
 			Mapper:  pdk.DayOfMonthMapper{},
 			Parsers: []pdk.Parser{tp},
 			Fields:  []int{fields["pickup_datetime"]},
 		},
-		pdk.BitMapper{
-			Frame:   "drop_month",
+		pdk.ColumnMapper{
+			Field:   "drop_month",
 			Mapper:  pdk.MonthMapper{},
 			Parsers: []pdk.Parser{tp},
 			Fields:  []int{fields["dropoff_datetime"]},
 		},
-		pdk.BitMapper{
-			Frame:   "drop_year",
+		pdk.ColumnMapper{
+			Field:   "drop_year",
 			Mapper:  pdk.YearMapper{},
 			Parsers: []pdk.Parser{tp},
 			Fields:  []int{fields["dropoff_datetime"]},
 		},
-		pdk.BitMapper{
-			Frame:   "dist_miles", // note "_miles" is a unit annotation
+		pdk.ColumnMapper{
+			Field:   "dist_miles", // note "_miles" is a unit annotation
 			Mapper:  lfm,
 			Parsers: []pdk.Parser{pdk.FloatParser{}},
 			Fields:  []int{fields["trip_distance"]},
 		},
-		pdk.BitMapper{
-			Frame:   "duration_minutes",
+		pdk.ColumnMapper{
+			Field:   "duration_minutes",
 			Mapper:  durm,
 			Parsers: []pdk.Parser{tp, tp},
 			Fields:  []int{fields["pickup_datetime"], fields["dropoff_datetime"]},
 		},
-		pdk.BitMapper{
-			Frame:   "speed_mph",
+		pdk.ColumnMapper{
+			Field:   "speed_mph",
 			Mapper:  speedm,
 			Parsers: []pdk.Parser{tp, tp, pdk.FloatParser{}},
 			Fields:  []int{fields["pickup_datetime"], fields["dropoff_datetime"], fields["trip_distance"]},
 		},
-		pdk.BitMapper{
-			Frame:   "pickup_grid_id",
+		pdk.ColumnMapper{
+			Field:   "pickup_grid_id",
 			Mapper:  gm,
 			Parsers: []pdk.Parser{pdk.FloatParser{}, pdk.FloatParser{}},
 			Fields:  []int{fields["pickup_longitude"], fields["pickup_latitude"]},
 		},
-		pdk.BitMapper{
-			Frame:   "drop_grid_id",
+		pdk.ColumnMapper{
+			Field:   "drop_grid_id",
 			Mapper:  gm,
 			Parsers: []pdk.Parser{pdk.FloatParser{}, pdk.FloatParser{}},
 			Fields:  []int{fields["dropoff_longitude"], fields["dropoff_latitude"]},
 		},
-		pdk.BitMapper{
-			Frame:   "pickup_elevation",
+		pdk.ColumnMapper{
+			Field:   "pickup_elevation",
 			Mapper:  gfm,
 			Parsers: []pdk.Parser{pdk.FloatParser{}, pdk.FloatParser{}},
 			Fields:  []int{fields["dropoff_longitude"], fields["dropoff_latitude"]},
 		},
-		pdk.BitMapper{
-			Frame:   "drop_elevation",
+		pdk.ColumnMapper{
+			Field:   "drop_elevation",
 			Mapper:  gfm,
 			Parsers: []pdk.Parser{pdk.FloatParser{}, pdk.FloatParser{}},
 			Fields:  []int{fields["dropoff_longitude"], fields["dropoff_latitude"]},

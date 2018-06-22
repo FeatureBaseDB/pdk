@@ -88,19 +88,19 @@ func (m *Main) appendWeatherData() {
 
 		for _, ID := range response.Result().Row().Columns {
 			// SetBit(weather.precip_code, ID, "precipitation_type")  // not implemented in weatherCache
-			m.importer.AddBit("weather_condition", ID, condID)
+			m.importer.AddColumn("weather_condition", ID, condID)
 
 			if err1 == nil && weather.Precipi > -100 {
-				m.importer.AddBit("precipitation_inches", ID, precipID)
+				m.importer.AddColumn("precipitation_inches", ID, precipID)
 			}
 			if err2 == nil {
-				m.importer.AddBit("temp_f", ID, tempID)
+				m.importer.AddColumn("temp_f", ID, tempID)
 			}
 			if err3 == nil {
-				m.importer.AddBit("pressure_i", ID, pressureID)
+				m.importer.AddColumn("pressure_i", ID, pressureID)
 			}
 			if err4 == nil && weather.Humidity > 10 {
-				m.importer.AddBit("humidity", ID, humidID)
+				m.importer.AddColumn("humidity", ID, humidID)
 			}
 		}
 	}
@@ -145,7 +145,7 @@ func (m *Main) Run() (err error) {
 	for _, fieldName := range readFieldNames {
 		_, err := m.index.Field(fieldName)
 		if err != nil {
-			return errors.Wrap(err, fmt.Sprintf("describing frame: %s", fieldName))
+			return errors.Wrap(err, fmt.Sprintf("describing field: %s", fieldName))
 		}
 	}
 	err = setupClient.SyncSchema(schema)
