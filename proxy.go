@@ -140,15 +140,21 @@ func (p *pilosaForwarder) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	}
 	for i, result := range pilosaResp.Results {
 		if frames[i] == "" {
-			mappedResp.Results[i] = result
-			continue
+			mappedResult, err := p.km.MapResult(frames[i], result)
+			if err != nil {
+				log.Printf("mapping frameless result: %v", err)
+				mappedResp.Results[i] = result
+			} else {
+				mappedResp.Results[i] = mappedResult
+			}
+		} else {
+			mappedResult, err := p.km.MapResult(frames[i], result)
+			if err != nil {
+				http.Error(w, "mapping result: "+err.Error(), http.StatusInternalServerError)
+				return
+			}
+			mappedResp.Results[i] = mappedResult
 		}
-		mappedResult, err := p.km.MapResult(frames[i], result)
-		if err != nil {
-			http.Error(w, "mapping result: "+err.Error(), http.StatusInternalServerError)
-			return
-		}
-		mappedResp.Results[i] = mappedResult
 	}
 
 	// Allow cross-domain requests
