@@ -246,9 +246,13 @@ func (p *PilosaKeyMapper) MapResult(frame string, res interface{}) (mappedRes in
 }
 
 func (p *PilosaKeyMapper) mapBitmapResult(frame string, result map[string]interface{}) (mappedRes interface{}, err error) {
-	cols, ok := result["columns"]
+	colkey := "columns"
+	cols, ok := result[colkey]
 	if !ok {
-		return result, errors.Errorf("columns key not in result: %#v", result)
+		colkey = "bits"
+		if cols, ok = result[colkey]; !ok {
+			return result, errors.Errorf("neither \"columns\" nor \"bits\" key in result: %#v", result)
+		}
 	}
 	colsSlice, ok := cols.([]interface{})
 	if !ok {
@@ -258,7 +262,7 @@ func (p *PilosaKeyMapper) mapBitmapResult(frame string, result map[string]interf
 	if err != nil {
 		return result, errors.Wrap(err, "mapping column slice")
 	}
-	result["columns"] = mappedCols
+	result[colkey] = mappedCols
 	return result, nil
 }
 
