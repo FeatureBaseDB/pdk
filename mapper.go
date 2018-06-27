@@ -142,7 +142,9 @@ func (m *CollapsingMapper) mapLit(val Literal, pr *PilosaRecord, path []string) 
 		if !tval {
 			return nil
 		}
-		frame, field, err := m.Framer.Field(path)
+		frame, _, err := m.Framer.Field(path)
+		field := path[0] // in the case of booleans, the path becomes the row id
+		// and therefore should not be downcased/trimmed.
 		if err != nil {
 			return errors.Wrapf(err, "getting frame/field from %v", path)
 		}

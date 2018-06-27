@@ -41,16 +41,17 @@ import (
 
 // Main holds the options for running Pilosa ingestion from Kafka.
 type Main struct {
-	Hosts       []string `help:"Comma separated list of Kafka hosts and ports"`
-	Topics      []string `help:"Comma separated list of Kafka topics"`
-	Group       string   `help:"Kafka group"`
-	RegistryURL string   `help:"URL of the confluent schema registry. Pass an empty string to use JSON instead of Avro."`
-	Framer      pdk.DashFrame
-	PilosaHosts []string `help:"Comma separated list of Pilosa hosts and ports."`
-	Index       string   `help:"Pilosa index."`
-	BatchSize   uint     `help:"Batch size for Pilosa imports (latency/throughput tradeoff)."`
-	SubjectPath []string `help:"Comma separated path to value in each record that should be mapped to column ID. Blank gets a sequential ID"`
-	Proxy       string   `help:"Bind to this address to proxy and translate requests to Pilosa"`
+	Hosts         []string `help:"Comma separated list of Kafka hosts and ports"`
+	Topics        []string `help:"Comma separated list of Kafka topics"`
+	Group         string   `help:"Kafka group"`
+	RegistryURL   string   `help:"URL of the confluent schema registry. Pass an empty string to use JSON instead of Avro."`
+	Framer        pdk.DashFrame
+	PilosaHosts   []string `help:"Comma separated list of Pilosa hosts and ports."`
+	Index         string   `help:"Pilosa index."`
+	BatchSize     uint     `help:"Batch size for Pilosa imports (latency/throughput tradeoff)."`
+	SubjectPath   []string `help:"Comma separated path to value in each record that should be mapped to column ID. Blank gets a sequential ID"`
+	Proxy         string   `help:"Bind to this address to proxy and translate requests to Pilosa"`
+	AllowedFrames []string `help:"If any are passed, only frame names in this comma separated list will be indexed."`
 }
 
 // NewMain returns a new Main.
@@ -116,6 +117,12 @@ func (m *Main) Run() error {
 	}
 
 	ingester := pdk.NewIngester(src, parser, mapper, indexer)
+	if len(m.AllowedFrames) > 0 {
+		ingester.AllowedFrames = make(map[string]bool)
+		for _, fram := range m.AllowedFrames {
+			ingester.AllowedFrames[fram] = true
+		}
+	}
 	go func() {
 		err = pdk.StartMappingProxy(m.Proxy, pdk.NewPilosaForwarder(m.PilosaHosts[0], mapper.Translator, mapper.ColTranslator))
 		log.Fatal(errors.Wrap(err, "starting mapping proxy"))
