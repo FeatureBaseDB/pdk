@@ -45,7 +45,7 @@ func TestSetupPilosa(t *testing.T) {
 	s := ptest.MustRunMainWithCluster(t, 2)
 	hosts := []string{}
 	for _, com := range s {
-		hosts = append(hosts, "http://"+com.Server.Addr().String())
+		hosts = append(hosts, com.Server.URI.String())
 	}
 
 	schema := gopilosa.NewSchema()

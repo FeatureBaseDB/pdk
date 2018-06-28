@@ -139,22 +139,6 @@ func (i *Index) Close() error {
 	return nil
 }
 
-// FrameSpec holds a frame name and options.
-type FrameSpec struct {
-	Name        string
-	CacheType   gopilosa.CacheType
-	CacheSize   uint
-	TimeQuantum gopilosa.TimeQuantum
-	Fields      []FieldSpec
-}
-
-// FieldSpec holds a field name and options.
-type FieldSpec struct {
-	Name string
-	Min  int
-	Max  int
-}
-
 func NewRankedField(index *gopilosa.Index, name string, size int) *gopilosa.Field {
 	field, err := index.Field(name, gopilosa.OptFieldSet(gopilosa.CacheTypeRanked, size))
 	if err != nil {
@@ -170,29 +154,6 @@ func NewIntField(index *gopilosa.Index, name string, min, max int64) *gopilosa.F
 	}
 	return field
 
-}
-
-// NewRankedFrameSpec returns a new FrameSpec with the cache type ranked and the
-// given name and size.
-func NewRankedFrameSpec(name string, size int) FrameSpec {
-	fs := FrameSpec{
-		Name:      name,
-		CacheType: gopilosa.CacheTypeRanked,
-		CacheSize: uint(size),
-	}
-	return fs
-}
-
-// NewFieldFrameSpec creates a frame which is dedicated to a single BSI field
-// which will have the same name as the frame
-func NewFieldFrameSpec(name string, min int, max int) FrameSpec {
-	fs := FrameSpec{
-		Name:      name,
-		CacheType: gopilosa.CacheType(""),
-		CacheSize: 0,
-		Fields:    []FieldSpec{{Name: name, Min: min, Max: max}},
-	}
-	return fs
 }
 
 // setupField ensures the existence of a field in Pilosa,

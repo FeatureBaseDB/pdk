@@ -34,8 +34,8 @@
 [[projects]]
   name = "github.com/aws/aws-sdk-go"
   packages = ["aws","aws/awserr","aws/awsutil","aws/client","aws/client/metadata","aws/corehandlers","aws/credentials","aws/credentials/ec2rolecreds","aws/credentials/endpointcreds","aws/credentials/stscreds","aws/csm","aws/defaults","aws/ec2metadata","aws/endpoints","aws/request","aws/session","aws/signer/v4","internal/sdkio","internal/sdkrand","internal/shareddefaults","private/protocol","private/protocol/eventstream","private/protocol/eventstream/eventstreamapi","private/protocol/query","private/protocol/query/queryutil","private/protocol/rest","private/protocol/restxml","private/protocol/xml/xmlutil","service/s3","service/sts"]
-  revision = "e4805606f5138247510183050abe642344275ebd"
-  version = "v1.14.10"
+  revision = "07ab5fdce76c9a9a0ba520a1bcaa95fbc6bdeb03"
+  version = "v1.14.15"
 
 [[projects]]
   name = "github.com/boltdb/bolt"
@@ -232,7 +232,7 @@
   branch = "master"
   name = "github.com/mmcloughlin/geohash"
   packages = ["."]
-  revision = "f062401d77f5a8360a4355455806193f6301bda1"
+  revision = "3b756d8ac3d9d9b1217f28a9e6cbba629e1815b3"
 
 [[projects]]
   name = "github.com/pelletier/go-toml"
@@ -243,20 +243,20 @@
 [[projects]]
   name = "github.com/pierrec/lz4"
   packages = [".","internal/xxh32"]
-  revision = "6b9367c9ff401dbc54fabce3fb8d972e799b702d"
-  version = "v2.0.2"
+  revision = "1958fd8fff7f115e79725b1288e0b878b3e06b00"
+  version = "v2.0.3"
 
 [[projects]]
-  branch = "unified-import-function"
+  branch = "updates"
   name = "github.com/pilosa/go-pilosa"
   packages = [".","gopilosa_pbuf"]
-  revision = "bc259d1189b223b44a657c813c5b7c4140dd9a28"
+  revision = "6333519c6188697ccbe12550578b61cb375ce996"
 
 [[projects]]
   branch = "develop"
   name = "github.com/pilosa/pilosa"
   packages = [".","boltdb","enterprise","enterprise/b","gcnotify","gopsutil","gossip","http","inmem","internal","lru","pql","roaring","server","statsd","test","toml"]
-  revision = "f3d9311d7f0b7eae702e209cefe323a803bc7f0a"
+  revision = "f59452a7e7ed3a66b1e62ecbf362c3a2b9ec7f4c"
 
 [[projects]]
   name = "github.com/pkg/errors"
@@ -334,13 +334,13 @@
   branch = "master"
   name = "golang.org/x/crypto"
   packages = ["ed25519","ed25519/internal/edwards25519"]
-  revision = "7f39a6fea4fe9364fb61e1def6a268a51b4f3a06"
+  revision = "a49355c7e3f8fe157a85be2f77e6e269a0f89602"
 
 [[projects]]
   branch = "master"
   name = "golang.org/x/net"
   packages = ["bpf","context","internal/iana","internal/socket","ipv4","ipv6"]
-  revision = "db08ff08e8622530d9ed3a0e8ac279f6d4c02196"
+  revision = "e514e69ffb8bc3c76a71ae40de0118d794855992"
 
 [[projects]]
   branch = "master"
@@ -352,7 +352,7 @@
   branch = "master"
   name = "golang.org/x/sys"
   packages = ["unix","windows"]
-  revision = "ad87a3a340fa7f3bed189293fbfa7a9b7e021ae1"
+  revision = "7138fd3d9dc8335c567ca206f4333fb75eb05d56"
 
 [[projects]]
   name = "golang.org/x/text"
@@ -369,6 +369,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "3619d38e9ca912303323e89a9506b0342e116f5a17006970195b7b0c4af3bbdc"
+  inputs-digest = "e68e6e6bf069a4f3ba50ce300782b1b7b8031a2c3c6ad0e35e8e282d3d51a042"
   solver-name = "gps-cdcl"
   solver-version = 1

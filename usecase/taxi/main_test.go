@@ -59,7 +59,7 @@ func TestRunMain(t *testing.T) {
 	// 	}
 	// 	time.Sleep(time.Millisecond)
 	// }
-	client, err := gopilosa.NewClient([]string{cluster[0].Server.Addr().String(), cluster[1].Server.Addr().String(), cluster[2].Server.Addr().String()})
+	client, err := gopilosa.NewClient([]string{cluster[0].Server.URI.String(), cluster[1].Server.URI.String(), cluster[2].Server.URI.String()})
 	if err != nil {
 		t.Fatalf("getting new client: %v", err)
 	}
@@ -70,7 +70,7 @@ func TestRunMain(t *testing.T) {
 	main.Index = "taxi"
 	main.Concurrency = 2
 	main.FetchConcurrency = 3
-	main.PilosaHost = cluster[0].Server.Addr().String()
+	main.PilosaHost = cluster[0].Server.URI.String()
 
 	main.BufferSize = 100000
 	err = main.Run()
