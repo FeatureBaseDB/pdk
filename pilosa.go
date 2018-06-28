@@ -182,6 +182,9 @@ func (i *Index) setupField(field *gopilosa.Field) error {
 
 // SetupPilosa returns a new Indexer after creating the given frames and starting importers.
 func SetupPilosa(hosts []string, indexName string, schema *gopilosa.Schema, batchsize uint) (Indexer, error) {
+	if schema == nil {
+		schema = gopilosa.NewSchema()
+	}
 	indexer := newIndex()
 	indexer.batchSize = batchsize
 	client, err := gopilosa.NewClient(hosts,

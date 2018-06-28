@@ -119,7 +119,7 @@ func TestEverything(t *testing.T) {
 	mains := test.MustRunMainWithCluster(t, 3)
 	var hosts []string
 	for _, m := range mains {
-		hosts = append(hosts, m.Server.Addr().String())
+		hosts = append(hosts, m.Server.URI.String())
 	}
 	idxer, err := pdk.SetupPilosa([]string{hosts[0]}, "kafkaavro", nil, 10)
 	if err != nil {
@@ -157,13 +157,13 @@ func TestEverything(t *testing.T) {
 		t.Fatalf("getting index: %v", err)
 	}
 
-	for name, fram := range idx.Field() {
-		resp, err := cli.Query(field.Sum(field.GTE(0)), nil)
+	for name, fram := range idx.Fields() {
+		resp, err := cli.Query(fram.Sum(fram.GTE(0)), nil)
 		if err != nil {
 			t.Fatalf("query for a field (%v): %v", name, err)
 		}
 		fmt.Printf("%v: %v, Sum: %v\n", name, name, resp.Result().Value())
-		resp, err := cli.Query(fram.TopN(10), nil)
+		resp, err = cli.Query(fram.TopN(10), nil)
 		if err != nil {
 			t.Fatalf("fram topn query (%v): %v", name, err)
 		}
