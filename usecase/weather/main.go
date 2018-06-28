@@ -1,3 +1,35 @@
+// Copyright 2017 Pilosa Corp.
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions
+// are met:
+//
+// 1. Redistributions of source code must retain the above copyright
+// notice, this list of conditions and the following disclaimer.
+//
+// 2. Redistributions in binary form must reproduce the above copyright
+// notice, this list of conditions and the following disclaimer in the
+// documentation and/or other materials provided with the distribution.
+//
+// 3. Neither the name of the copyright holder nor the names of its
+// contributors may be used to endorse or promote products derived
+// from this software without specific prior written permission.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND
+// CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES,
+// INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+// MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+// DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR
+// CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+// SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+// BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+// SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+// WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+// NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH
+// DAMAGE.
+
 package weather
 
 import (
@@ -34,7 +66,7 @@ func NewMain() *Main {
 	return m
 }
 
-func (m *Main) appendWeatherData() {
+func (m *Main) appendWeatherData() error {
 	/*
 		field     min      max        count
 		temp:     1.900000 102.900000 161
@@ -52,10 +84,22 @@ func (m *Main) appendWeatherData() {
 	startTime := time.Date(2009, 2, 1, 0, 0, 0, 0, time.UTC)
 	endTime := time.Date(2015, 12, 31, 0, 0, 0, 0, time.UTC)
 
-	pickup_year, _ := m.index.Field("pickup_year")
-	pickup_month, _ := m.index.Field("pickup_month")
-	pickup_mday, _ := m.index.Field("pickup_mday")
-	pickup_time, _ := m.index.Field("pickup_time")
+	pickup_year, err := m.index.Field("pickup_year")
+	if err != nil {
+		return err
+	}
+	pickup_month, err := m.index.Field("pickup_month")
+	if err != nil {
+		return err
+	}
+	pickup_mday, err := m.index.Field("pickup_mday")
+	if err != nil {
+		return err
+	}
+	pickup_time, err := m.index.Field("pickup_time")
+	if err != nil {
+		return err
+	}
 
 	for t := startTime; endTime.After(t); t = t.Add(time.Hour) {
 		timeBucket, _ := timeMapper.ID(t)
@@ -104,7 +148,7 @@ func (m *Main) appendWeatherData() {
 			}
 		}
 	}
-
+	return nil
 }
 
 // Run runs the weather usecase.
@@ -158,7 +202,10 @@ func (m *Main) Run() (err error) {
 		return errors.Wrap(err, "reading weather cache")
 	}
 
-	m.appendWeatherData()
+	err = m.appendWeatherData()
+	if err != nil {
+		return errors.Wrap(err, "appending weather data")
+	}
 
 	return errors.Wrap(m.importer.Close(), "closing indexer")
 }
