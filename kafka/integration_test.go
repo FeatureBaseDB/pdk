@@ -116,7 +116,7 @@ func TestEverything(t *testing.T) {
 	parser := pdk.NewDefaultGenericParser()
 	mapper := pdk.NewCollapsingMapper()
 
-	mains := test.MustRunMainWithCluster(t, 3)
+	mains := test.MustRunCluster(t, 3)
 	var hosts []string
 	for _, m := range mains {
 		hosts = append(hosts, m.Server.URI.String())

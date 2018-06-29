@@ -42,23 +42,7 @@ import (
 
 func TestRunMain(t *testing.T) {
 	// start up pilosa cluster
-	cluster := test.MustRunMainWithCluster(t, 3)
-
-	// client, err := gopilosa.NewClient(cluster[0].Server.Addr().String())
-	// if err != nil {
-	// 	t.Fatalf("getting new client: %v", err)
-	// }
-	// var status gopilosa.Status
-	// for {
-	// 	status, err = client.Status()
-	// 	if err != nil {
-	// 		t.Fatalf("getting status: %v", err)
-	// 	}
-	// 	if len(status.Nodes) == 3 {
-	// 		break
-	// 	}
-	// 	time.Sleep(time.Millisecond)
-	// }
+	cluster := test.MustRunCluster(t, 3)
 	client, err := gopilosa.NewClient([]string{cluster[0].Server.URI.String(), cluster[1].Server.URI.String(), cluster[2].Server.URI.String()})
 	if err != nil {
 		t.Fatalf("getting new client: %v", err)
