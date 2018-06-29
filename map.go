@@ -66,9 +66,9 @@ type BinaryIntMapper struct {
 }
 
 // TimeOfDayMapper is a Mapper for timestamps, mapping the time component only
-// TODO: consider putting all time buckets in same frame
-// pros: single frame
-// cons: would have to abandon the simple ID interface. also single frame may not be a good thing
+// TODO: consider putting all time buckets in same field
+// pros: single field
+// cons: would have to abandon the simple ID interface. also single field may not be a good thing
 type TimeOfDayMapper struct {
 	Res int64
 }
@@ -251,7 +251,7 @@ func (m IntMapper) ID(ii ...interface{}) (rowIDs []int64, err error) {
 	return []int64{i - m.Min}, nil
 }
 
-// ID maps floats to binary bit sets
+// ID maps floats to binary column sets
 func (m BinaryIntMapper) ID(ii ...interface{}) (rowIDs []int64, err error) {
 	// TODO implement (have to redo the Mapper interface to return slice)
 	return []int64{0}, nil
@@ -306,7 +306,7 @@ func (m FloatMapper) ID(fi ...interface{}) (rowIDs []int64, err error) {
 	return []int64{0}, nil
 }
 
-// ID maps floats to binary bit sets
+// ID maps floats to binary column sets
 func (m BinaryFloatMapper) ID(fi ...interface{}) (rowIDs []int64, err error) {
 	// TODO implement (have to redo the Mapper interface to handle slice)
 	return []int64{0}, nil

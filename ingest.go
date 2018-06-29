@@ -123,11 +123,11 @@ func (n *Ingester) Run() error {
 				// Index
 				n.Stats.Count("ingest.Map", 1, 1)
 				for _, row := range pr.Rows {
-					n.indexer.AddBit(row.Frame, pr.Col, row.ID)
+					n.indexer.AddColumn(row.Field, pr.Col, row.ID)
 					n.Stats.Count("ingest.AddBit", 1, 1)
 				}
 				for _, val := range pr.Vals {
-					n.indexer.AddValue(val.Frame, val.Field, pr.Col, val.Value)
+					n.indexer.AddValue(val.Field, pr.Col, val.Value)
 					n.Stats.Count("ingest.AddValue", 1, 1)
 				}
 			}

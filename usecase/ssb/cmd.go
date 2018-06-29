@@ -43,6 +43,7 @@ import (
 	"sync"
 	"time"
 
+	gopilosa "github.com/pilosa/go-pilosa"
 	"github.com/pilosa/pdk"
 	"github.com/pkg/errors"
 )
@@ -81,7 +82,11 @@ func (m *Main) Run() (err error) {
 		return errors.Wrap(err, "getting new translator")
 	}
 	log.Println("setting up pilosa")
-	m.index, err = pdk.SetupPilosa(m.Hosts, m.Index, frames, 1000000)
+	schema, err := m.schema()
+	if err != nil {
+		return errors.Wrap(err, "describing schema")
+	}
+	m.index, err = pdk.SetupPilosa(m.Hosts, m.Index, schema, 1000000)
 	if err != nil {
 		return errors.Wrap(err, "setting up Pilosa")
 	}
@@ -135,93 +140,93 @@ func (m *Main) mapRecords(rc <-chan *record) {
 		if err != nil {
 			log.Printf("Couldn't map record col: %v, rec: %v, err: %v", col, rec, err)
 		}
-		m.index.AddBit("lo_year", col, id)
+		m.index.AddColumn("lo_year", col, id)
 		id, err = m.trans.GetID("lo_month", rec.order_month)
 		if err != nil {
 			log.Printf("Couldn't map record col: %v, rec: %v, err: %v", col, rec, err)
 		}
-		m.index.AddBit("lo_month", col, id)
+		m.index.AddColumn("lo_month", col, id)
 
 		id, err = m.trans.GetID("lo_weeknum", rec.order_weeknum)
 		if err != nil {
 			log.Printf("Couldn't map record col: %v, rec: %v, err: %v", col, rec, err)
 		}
-		m.index.AddBit("lo_weeknum", col, id)
+		m.index.AddColumn("lo_weeknum", col, id)
 
 		id, err = m.trans.GetID("lo_discount_b", rec.lo_discount)
 		if err != nil {
 			log.Printf("Couldn't map record col: %v, rec: %v, err: %v", col, rec, err)
 		}
-		m.index.AddBit("lo_discount_b", col, id)
+		m.index.AddColumn("lo_discount_b", col, id)
 
 		id, err = m.trans.GetID("lo_quantity_b", rec.lo_quantity)
 		if err != nil {
 			log.Printf("Couldn't map record col: %v, rec: %v, err: %v", col, rec, err)
 		}
-		m.index.AddBit("lo_quantity_b", col, id)
+		m.index.AddColumn("lo_quantity_b", col, id)
 
-		m.index.AddValue("lo_quantity", "lo_quantity", col, int64(rec.lo_quantity))
-		m.index.AddValue("lo_extendedprice", "lo_extendedprice", col, int64(rec.lo_extendedprice))
-		m.index.AddValue("lo_discount", "lo_discount", col, int64(rec.lo_discount))
-		m.index.AddValue("lo_revenue", "lo_revenue", col, int64(rec.lo_revenue))
-		m.index.AddValue("lo_supplycost", "lo_supplycost", col, int64(rec.lo_supplycost))
+		m.index.AddValue("lo_quantity", col, int64(rec.lo_quantity))
+		m.index.AddValue("lo_extendedprice", col, int64(rec.lo_extendedprice))
+		m.index.AddValue("lo_discount", col, int64(rec.lo_discount))
+		m.index.AddValue("lo_revenue", col, int64(rec.lo_revenue))
+		m.index.AddValue("lo_supplycost", col, int64(rec.lo_supplycost))
 
 		revenueComputed := int64(float64(rec.lo_extendedprice) * float64(rec.lo_discount) * 0.01)
-		m.index.AddValue("lo_revenue_computed", "lo_revenue_computed", col, revenueComputed)
+		m.index.AddValue("lo_revenue_computed", col, revenueComputed)
 		profitComputed := uint32(rec.lo_revenue) - rec.lo_supplycost
-		m.index.AddValue("lo_profit", "lo_profit", col, int64(profitComputed))
+		m.index.AddValue("lo_profit", col, int64(profitComputed))
 
 		id, err = m.trans.GetID("c_city", rec.c_city)
 		if err != nil {
 			log.Printf("Couldn't map record col: %v, rec: %v, err: %v", col, rec, err)
 		}
-		m.index.AddBit("c_city", col, id)
+		m.index.AddColumn("c_city", col, id)
 		id, err = m.trans.GetID("c_nation", rec.c_nation)
 		if err != nil {
 			log.Printf("Couldn't map record col: %v, rec: %v, err: %v", col, rec, err)
 		}
-		m.index.AddBit("c_nation", col, id)
+		m.index.AddColumn("c_nation", col, id)
 
 		id, err = m.trans.GetID("c_region", rec.c_region)
 		if err != nil {
 			log.Printf("Couldn't map record col: %v, rec: %v, err: %v", col, rec, err)
 		}
-		m.index.AddBit("c_region", col, id)
+		m.index.AddColumn("c_region", col, id)
 
 		id, err = m.trans.GetID("s_city", rec.s_city)
 		if err != nil {
 			log.Printf("Couldn't map record col: %v, rec: %v, err: %v", col, rec, err)
 		}
-		m.index.AddBit("s_city", col, id)
+		m.index.AddColumn("s_city", col, id)
 		id, err = m.trans.GetID("s_nation", rec.s_nation)
 		if err != nil {
 			log.Printf("Couldn't map record col: %v, rec: %v, err: %v", col, rec, err)
 		}
-		m.index.AddBit("s_nation", col, id)
+		m.index.AddColumn("s_nation", col, id)
 
 		id, err = m.trans.GetID("s_region", rec.s_region)
 		if err != nil {
 			log.Printf("Couldn't map record col: %v, rec: %v, err: %v", col, rec, err)
 		}
-		m.index.AddBit("s_region", col, id)
+		m.index.AddColumn("s_region", col, id)
 
 		id, err = m.trans.GetID("p_mfgr", rec.p_mfgr)
 		if err != nil {
 			log.Printf("Couldn't map record col: %v, rec: %v, err: %v", col, rec, err)
 		}
-		m.index.AddBit("p_mfgr", col, id)
+		m.index.AddColumn("p_mfgr", col, id)
 
 		id, err = m.trans.GetID("p_category", rec.p_category)
 		if err != nil {
 			log.Printf("Couldn't map record col: %v, rec: %v, err: %v", col, rec, err)
 		}
-		m.index.AddBit("p_category", col, id)
+		m.index.AddColumn("p_category", col, id)
 
 		id, err = m.trans.GetID("p_brand1", rec.p_brand1)
 		if err != nil {
 			log.Printf("Couldn't map record col: %v, rec: %v, err: %v", col, rec, err)
 		}
-		m.index.AddBit("p_brand1", col, id)
+		m.index.AddColumn("p_brand1", col, id)
 	}
 }
 
@@ -413,56 +418,42 @@ func (m *Main) setupEdgeTables() (cust map[int]customer, par map[int]part, supp 
 	return cust, par, supp, dat, nil
 }
 
-var frames = []pdk.FrameSpec{
+func (m *Main) schema() (*gopilosa.Schema, error) {
+	schema := gopilosa.NewSchema()
+	index, err := schema.Index(m.Index)
+	if err != nil {
+		return nil, err
+	}
 	// LO_
-	pdk.NewRankedFrameSpec("lo_year", 10),
-	pdk.NewRankedFrameSpec("lo_month", 12),
-	pdk.NewRankedFrameSpec("lo_weeknum", 52),
-	pdk.NewRankedFrameSpec("lo_quantity_b", 65),
-	pdk.NewRankedFrameSpec("lo_discount_b", 20),
-	pdk.NewFieldFrameSpec("lo_quantity", 0, 63),
-	pdk.NewFieldFrameSpec("lo_extendedprice", 0, 65535),
-	pdk.NewFieldFrameSpec("lo_discount", 0, 15),
-	pdk.NewFieldFrameSpec("lo_revenue", 0, 134217727),
-	pdk.NewFieldFrameSpec("lo_supplycost", 0, 131071),
-	pdk.NewFieldFrameSpec("lo_profit", 0, 134217727),
-	pdk.NewFieldFrameSpec("lo_revenue_computed", 0, 65535),
-	// pdk.NewFrameSpec("lo_tax"),
-	// pdk.NewFrameSpec("lo_commityear"),
-	// pdk.NewFrameSpec("lo_commitmonth"),
-	// pdk.NewFrameSpec("lo_commitday"),
-	// pdk.NewFrameSpec("lo_shipmode"),
-	// pdk.NewFrameSpec("lo_orderpriority"),
-	// pdk.NewFrameSpec("lo_shippriority"),
+	pdk.NewRankedField(index, "lo_year", 10)
+	pdk.NewRankedField(index, "lo_month", 12)
+	pdk.NewRankedField(index, "lo_weeknum", 52)
+	pdk.NewRankedField(index, "lo_quantity_b", 65)
+	pdk.NewRankedField(index, "lo_discount_b", 20)
+	pdk.NewIntField(index, "lo_quantity", 0, 63)
+	pdk.NewIntField(index, "lo_extendedprice", 0, 65535)
+	pdk.NewIntField(index, "lo_discount", 0, 15)
+	pdk.NewIntField(index, "lo_revenue", 0, 134217727)
+	pdk.NewIntField(index, "lo_supplycost", 0, 131071)
+	pdk.NewIntField(index, "lo_profit", 0, 134217727)
+	pdk.NewIntField(index, "lo_revenue_computed", 0, 65535)
 
 	// C_
-	pdk.NewRankedFrameSpec("c_city", 500),
-	pdk.NewRankedFrameSpec("c_nation", 30),
-	pdk.NewRankedFrameSpec("c_region", 10),
-	// pdk.NewFrameSpec("c_phone"),
-	// pdk.NewFrameSpec("c_mktsegment"),
-	// pdk.NewFrameSpec("c_name"),
-	// pdk.NewFrameSpec("c_address"),
+	pdk.NewRankedField(index, "c_city", 500)
+	pdk.NewRankedField(index, "c_nation", 30)
+	pdk.NewRankedField(index, "c_region", 10)
 
 	// S_
-	pdk.NewRankedFrameSpec("s_city", 500),
-	pdk.NewRankedFrameSpec("s_nation", 30),
-	pdk.NewRankedFrameSpec("s_region", 10),
-	// pdk.NewFrameSpec("s_name"),
-	// pdk.NewFrameSpec("s_address"),
-	// pdk.NewFrameSpec("s_phone"),
-	// pdk.NewFrameSpec("s_nation_prefix"),
+	pdk.NewRankedField(index, "s_city", 500)
+	pdk.NewRankedField(index, "s_nation", 30)
+	pdk.NewRankedField(index, "s_region", 10)
 
 	// P_
-	pdk.NewRankedFrameSpec("p_mfgr", 20),
-	pdk.NewRankedFrameSpec("p_category", 50),
-	pdk.NewRankedFrameSpec("p_brand1", 2000),
-	// pdk.NewFrameSpec("key"),
-	// pdk.NewFrameSpec("name"),
-	// pdk.NewFrameSpec("color"),
-	// pdk.NewFrameSpec("type"),
-	// pdk.NewFrameSpec("size"),
-	// pdk.NewFrameSpec("container"),
+	pdk.NewRankedField(index, "p_mfgr", 20)
+	pdk.NewRankedField(index, "p_category", 50)
+	pdk.NewRankedField(index, "p_brand1", 2000)
+
+	return schema, nil
 }
 
 type customer struct {

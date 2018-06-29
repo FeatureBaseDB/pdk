@@ -47,7 +47,7 @@ type Main struct {
 	PilosaHosts []string `help:"Comma separated list of Pilosa hosts and ports."`
 	Index       string   `help:"Pilosa index."`
 	BatchSize   uint     `help:"Batch size for Pilosa imports (latency/throughput tradeoff)."`
-	Framer      pdk.DashFrame
+	Framer      pdk.DashField
 	SubjectAt   string   `help:"Tells the S3 source to add a unique 'subject' key to each record which is the s3 object key + record number."`
 	SubjectPath []string `help:"Path to value in each record that should be mapped to column ID. Blank gets a sequential ID."`
 	Proxy       string   `help:"Bind to this address to proxy and translate requests to Pilosa"`
@@ -93,7 +93,7 @@ func (m *Main) Run() error {
 	mapper := pdk.NewCollapsingMapper()
 	mapper.Framer = &m.Framer
 
-	indexer, err := pdk.SetupPilosa(m.PilosaHosts, m.Index, []pdk.FrameSpec{}, m.BatchSize)
+	indexer, err := pdk.SetupPilosa(m.PilosaHosts, m.Index, nil, m.BatchSize)
 	if err != nil {
 		return errors.Wrap(err, "setting up Pilosa")
 	}

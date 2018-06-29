@@ -23,11 +23,11 @@
 
 [[constraint]]
   name = "github.com/pilosa/pilosa"
-  branch = "master"
+  branch = "develop"
 
 [[constraint]]
   name = "github.com/pilosa/go-pilosa"
-  branch = "master"
+  branch = "develop"
 
 [[constraint]]
   name = "github.com/aws/aws-sdk-go"

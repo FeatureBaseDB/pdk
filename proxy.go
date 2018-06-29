@@ -51,7 +51,7 @@ import (
 // in requests and responses.
 type KeyMapper interface {
 	MapRequest(body []byte) ([]byte, error)
-	MapResult(frame string, res interface{}) (interface{}, error)
+	MapResult(field string, res interface{}) (interface{}, error)
 }
 
 // Proxy describes the functionality for proxying requests.
@@ -101,11 +101,11 @@ func (p *pilosaForwarder) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	// inspect the request to determine which queries have a frame - the Translator
-	// needs the frame for it's lookups.
-	frames, err := GetFrames(body)
+	// inspect the request to determine which queries have a field - the Translator
+	// needs the field for it's lookups.
+	fields, err := GetFields(body)
 	if err != nil {
-		http.Error(w, "getting frames: "+err.Error(), http.StatusBadRequest)
+		http.Error(w, "getting fields: "+err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -138,11 +138,11 @@ func (p *pilosaForwarder) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		Results: make([]interface{}, len(pilosaResp.Results)),
 	}
 	for i, result := range pilosaResp.Results {
-		if frames[i] == "" {
+		if fields[i] == "" {
 			mappedResp.Results[i] = result
 			continue
 		}
-		mappedResult, err := p.km.MapResult(frames[i], result)
+		mappedResult, err := p.km.MapResult(fields[i], result)
 		if err != nil {
 			http.Error(w, "mapping result: "+err.Error(), http.StatusInternalServerError)
 			return
@@ -209,7 +209,7 @@ func NewPilosaKeyMapper(t Translator) *PilosaKeyMapper {
 
 // MapResult converts the result of a single top level query (one element of
 // QueryResponse.Results) to its mapped counterpart.
-func (p *PilosaKeyMapper) MapResult(frame string, res interface{}) (mappedRes interface{}, err error) {
+func (p *PilosaKeyMapper) MapResult(field string, res interface{}) (mappedRes interface{}, err error) {
 	switch result := res.(type) {
 	case uint64:
 		// Count
@@ -232,7 +232,7 @@ func (p *PilosaKeyMapper) MapResult(frame string, res interface{}) (mappedRes in
 				if !(isKeyFloat && isCountFloat) {
 					return nil, fmt.Errorf("expected pilosa.Pair, but have wrong value types: got %v", pair)
 				}
-				keyVal, err := p.t.Get(frame, uint64(keyFloat))
+				keyVal, err := p.t.Get(field, uint64(keyFloat))
 				if err != nil {
 					return nil, errors.Wrap(err, "translator.Get")
 				}
@@ -250,7 +250,7 @@ func (p *PilosaKeyMapper) MapResult(frame string, res interface{}) (mappedRes in
 		}
 		mappedRes = mr
 	case map[string]interface{}:
-		// Bitmap/Intersect/Difference/Union
+		// Row/Intersect/Difference/Union
 		mappedRes = result
 	case bool:
 		// SetBit/ClearBit
@@ -278,8 +278,8 @@ func (p *PilosaKeyMapper) MapRequest(body []byte) ([]byte, error) {
 }
 
 func (p *PilosaKeyMapper) mapCall(call *pql.Call) error {
-	if call.Name == "Bitmap" {
-		id, err := p.t.GetID(call.Args["frame"].(string), call.Args["row"])
+	if call.Name == "Row" {
+		id, err := p.t.GetID(call.Args["field"].(string), call.Args["row"])
 		if err != nil {
 			return errors.Wrap(err, "getting ID")
 		}
@@ -294,23 +294,23 @@ func (p *PilosaKeyMapper) mapCall(call *pql.Call) error {
 	return nil
 }
 
-// GetFrames interprets body as pql queries and then tries to determine the
-// frame of each. Some queries do not have frames, and the empty string will be
+// GetFields interprets body as pql queries and then tries to determine the
+// field of each. Some queries do not have fields, and the empty string will be
 // returned for these.
-func GetFrames(body []byte) ([]string, error) {
+func GetFields(body []byte) ([]string, error) {
 	query, err := pql.ParseString(string(body))
 	if err != nil {
 		return nil, fmt.Errorf("parsing query: %v", err.Error())
 	}
 
-	frames := make([]string, len(query.Calls))
+	fields := make([]string, len(query.Calls))
 
 	for i, call := range query.Calls {
-		if frame, ok := call.Args["frame"].(string); ok {
-			frames[i] = frame
+		if field, ok := call.Args["field"].(string); ok {
+			fields[i] = field
 		} else {
-			frames[i] = ""
+			fields[i] = ""
 		}
 	}
-	return frames, nil
+	return fields, nil
 }

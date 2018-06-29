@@ -42,24 +42,8 @@ import (
 
 func TestRunMain(t *testing.T) {
 	// start up pilosa cluster
-	cluster := test.MustRunMainWithCluster(t, 3)
-
-	// client, err := gopilosa.NewClient(cluster[0].Server.Addr().String())
-	// if err != nil {
-	// 	t.Fatalf("getting new client: %v", err)
-	// }
-	// var status gopilosa.Status
-	// for {
-	// 	status, err = client.Status()
-	// 	if err != nil {
-	// 		t.Fatalf("getting status: %v", err)
-	// 	}
-	// 	if len(status.Nodes) == 3 {
-	// 		break
-	// 	}
-	// 	time.Sleep(time.Millisecond)
-	// }
-	client, err := gopilosa.NewClient([]string{cluster[0].Server.Addr().String(), cluster[1].Server.Addr().String(), cluster[2].Server.Addr().String()})
+	cluster := test.MustRunCluster(t, 3)
+	client, err := gopilosa.NewClient([]string{cluster[0].Server.URI.String(), cluster[1].Server.URI.String(), cluster[2].Server.URI.String()})
 	if err != nil {
 		t.Fatalf("getting new client: %v", err)
 	}
@@ -70,7 +54,7 @@ func TestRunMain(t *testing.T) {
 	main.Index = "taxi"
 	main.Concurrency = 2
 	main.FetchConcurrency = 3
-	main.PilosaHost = cluster[0].Server.Addr().String()
+	main.PilosaHost = cluster[0].Server.URI.String()
 
 	main.BufferSize = 100000
 	err = main.Run()
@@ -79,9 +63,9 @@ func TestRunMain(t *testing.T) {
 	}
 
 	// query pilosa to ensure consistent results
-	index, cabTypeFrame := GetFrame(t, client, "taxi", "cab_type")
+	index, cabTypeField := GetField(t, client, "taxi", "cab_type")
 
-	resp, err := client.Query(index.Count(cabTypeFrame.Bitmap(0)))
+	resp, err := client.Query(index.Count(cabTypeField.Row(0)))
 	if err != nil {
 		t.Fatalf("count querying: %v", err)
 	}
@@ -89,7 +73,7 @@ func TestRunMain(t *testing.T) {
 		t.Fatalf("cab_type 0 should have 34221, but got %d", resp.Result().Count())
 	}
 
-	resp, err = client.Query(index.Count(cabTypeFrame.Bitmap(1)))
+	resp, err = client.Query(index.Count(cabTypeField.Row(1)))
 	if err != nil {
 		t.Fatalf("count querying: %v", err)
 	}
@@ -100,7 +84,7 @@ func TestRunMain(t *testing.T) {
 	// The cache needs to be refreshed before querying TopN.
 	client.HttpRequest("POST", "/recalculate-caches", nil, nil)
 
-	resp, err = client.Query(cabTypeFrame.TopN(5))
+	resp, err = client.Query(cabTypeField.TopN(5))
 	if err != nil {
 		t.Fatalf("topn query: %v", err)
 	}
@@ -118,7 +102,7 @@ func TestRunMain(t *testing.T) {
 
 }
 
-func GetFrame(t *testing.T, c *gopilosa.Client, index, frame string) (*gopilosa.Index, *gopilosa.Frame) {
+func GetField(t *testing.T, c *gopilosa.Client, index, field string) (*gopilosa.Index, *gopilosa.Field) {
 	schema, err := c.Schema()
 	if err != nil {
 		t.Fatalf("getting schema: %v", err)
@@ -128,9 +112,9 @@ func GetFrame(t *testing.T, c *gopilosa.Client, index, frame string) (*gopilosa.
 		t.Fatalf("getting index: %v", err)
 	}
 
-	fram, err := idx.Frame(frame)
+	fram, err := idx.Field(field)
 	if err != nil {
-		t.Fatalf("getting frame: %v", err)
+		t.Fatalf("getting field: %v", err)
 	}
 	err = c.SyncSchema(schema)
 	if err != nil {
