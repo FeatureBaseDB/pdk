@@ -34,8 +34,8 @@
 [[projects]]
   name = "github.com/aws/aws-sdk-go"
   packages = ["aws","aws/awserr","aws/awsutil","aws/client","aws/client/metadata","aws/corehandlers","aws/credentials","aws/credentials/ec2rolecreds","aws/credentials/endpointcreds","aws/credentials/stscreds","aws/csm","aws/defaults","aws/ec2metadata","aws/endpoints","aws/request","aws/session","aws/signer/v4","internal/sdkio","internal/sdkrand","internal/shareddefaults","private/protocol","private/protocol/eventstream","private/protocol/eventstream/eventstreamapi","private/protocol/query","private/protocol/query/queryutil","private/protocol/rest","private/protocol/restxml","private/protocol/xml/xmlutil","service/s3","service/sts"]
-  revision = "07ab5fdce76c9a9a0ba520a1bcaa95fbc6bdeb03"
-  version = "v1.14.15"
+  revision = "5e98666858b97db54a61044bb1150d3b81436860"
+  version = "v1.14.16"
 
 [[projects]]
   name = "github.com/boltdb/bolt"
@@ -247,16 +247,16 @@
   version = "v2.0.3"
 
 [[projects]]
-  branch = "updates"
+  branch = "develop"
   name = "github.com/pilosa/go-pilosa"
   packages = [".","gopilosa_pbuf"]
-  revision = "6333519c6188697ccbe12550578b61cb375ce996"
+  revision = "be40691d19197e136080b652dcb8d8de9728e718"
 
 [[projects]]
   branch = "develop"
   name = "github.com/pilosa/pilosa"
   packages = [".","boltdb","enterprise","enterprise/b","gcnotify","gopsutil","gossip","http","inmem","internal","lru","pql","roaring","server","statsd","test","toml"]
-  revision = "f59452a7e7ed3a66b1e62ecbf362c3a2b9ec7f4c"
+  revision = "c75b85d9c11d119dac84c1f89801b50f398cb1fb"
 
 [[projects]]
   name = "github.com/pkg/errors"
@@ -340,7 +340,7 @@
   branch = "master"
   name = "golang.org/x/net"
   packages = ["bpf","context","internal/iana","internal/socket","ipv4","ipv6"]
-  revision = "e514e69ffb8bc3c76a71ae40de0118d794855992"
+  revision = "4cb1c02c05b0e749b0365f61ae859a8e0cfceed9"
 
 [[projects]]
   branch = "master"
@@ -369,6 +369,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "e68e6e6bf069a4f3ba50ce300782b1b7b8031a2c3c6ad0e35e8e282d3d51a042"
+  inputs-digest = "e50efa12574ac354378167fc908b009fea15fbf16225a8824ca5f4210deb3b8f"
   solver-name = "gps-cdcl"
   solver-version = 1

@@ -42,7 +42,7 @@ import (
 )
 
 func TestSetupPilosa(t *testing.T) {
-	s := ptest.MustRunMainWithCluster(t, 2)
+	s := ptest.MustRunCluster(t, 2)
 	hosts := []string{}
 	for _, com := range s {
 		hosts = append(hosts, com.Server.URI.String())
