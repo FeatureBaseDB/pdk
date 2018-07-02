@@ -1,4 +1,4 @@
-.PHONY: dep pdk vendor-update docker pdk crossbuild install test test-all
+.PHONY: dep pdk vendor-update docker pdk crossbuild install test
 
 DEP := $(shell command -v dep 2>/dev/null)
 PROTOC := $(shell command -v protoc 2>/dev/null)
@@ -29,9 +29,6 @@ Gopkg.lock: dep Gopkg.toml
 
 test: vendor
 	go test $(PKGS) $(TESTFLAGS) ./...
-
-test-all: vendor
-	go test -tags=aws $(PKGS) $(TESTFLAGS) ./...
 
 pdk: vendor
 	go build $(LDFLAGS) $(FLAGS) $(CLONE_URL)/cmd/pdk
