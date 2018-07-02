@@ -99,7 +99,7 @@ func (i *Index) addColumn(fieldName string, col uint64, row uint64, ts int64) {
 	} else {
 		i.lock.RUnlock()
 	}
-	c <- gopilosa.Bit{RowID: row, ColumnID: col, Timestamp: ts}
+	c <- gopilosa.Column{RowID: row, ColumnID: col, Timestamp: ts}
 }
 
 // AddValue adds a value to be imported to Pilosa.
