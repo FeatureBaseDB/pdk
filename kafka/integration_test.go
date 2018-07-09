@@ -41,7 +41,10 @@ import (
 	"io/ioutil"
 	"math/rand"
 	"net/http"
+	"reflect"
+	"sort"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -94,11 +97,15 @@ func TestSource(t *testing.T) {
 
 }
 
+func TestEverything(t *testing.T) {
+	runEverything(t)
+}
+
 // TestEverything relies on having a running instance of kafka, schema-registry,
 // and rest proxy running. Currently using confluent-3.3.0 which you can get
 // here: https://www.confluent.io/download Decompress, enter directory, then run
 // "./bin/confluent start kafka-rest"
-func TestEverything(t *testing.T) {
+func runEverything(t *testing.T) {
 	for i := 0; i < 1000; i++ {
 		postData(t)
 	}
@@ -156,8 +163,85 @@ func TestEverything(t *testing.T) {
 	if err != nil {
 		t.Fatalf("getting index: %v", err)
 	}
+	framelist := []string{}
+	for name, fram := range idx.Frames() {
+		framelist = append(framelist, name)
+		for fname, field := range fram.Fields() {
+			resp, err := cli.Query(field.Sum(field.GTE(0)), nil)
+			if err != nil {
+				t.Fatalf("query for a field (%v): %v", fname, err)
+			}
+			fmt.Printf("%v: %v, Sum: %v\n", name, fname, resp.Result().Value())
+		}
+		resp, err := cli.Query(fram.TopN(10), nil)
+		if err != nil {
+			t.Fatalf("fram topn query (%v): %v", name, err)
+		}
+		fmt.Printf("%v: TopN: %v\n", name, resp.Result().CountItems())
+	}
 
+	expFrames := []string{"geoip-region", "geoip-city", "geoip-country_name", "timestamp", "aba", "default", "geoip", "geoip-country_code", "geoip-region_name", "db", "geoip-country_code3", "geoip-postal_code", "geoip-time_zone"}
+	sort.Strings(expFrames)
+	sort.Strings(framelist)
+	if !reflect.DeepEqual(framelist, expFrames) {
+		t.Fatalf("got unexpected frames: %v", framelist)
+	}
+}
+
+func TestMain(t *testing.T) {
+	runMain(t, []string{})
+}
+
+func TestAllowedFrames(t *testing.T) {
+	runMain(t, []string{"geoip-country_code", "default", "aba"})
+}
+
+func runMain(t *testing.T, allowedFrames []string) {
+	for i := 0; i < 1000; i++ {
+		postData(t)
+	}
+
+	m := kafka.NewMain()
+	pilosa := test.MustRunMainWithCluster(t, 1)
+	pilosaHost := pilosa[0].Server.Addr().String()
+	m.PilosaHosts = []string{pilosaHost}
+	m.BatchSize = 5
+	m.AllowedFrames = allowedFrames
+	m.SubjectPath = []string{"user_id"}
+	m.Topics = []string{kafkaTopic}
+	m.Proxy = ":39485"
+
+	go func() {
+		err := m.Run()
+		if err != nil {
+			t.Logf("error running: %v", err)
+		}
+	}()
+	time.Sleep(time.Second * 7)
+
+	_, err := http.Post("http://"+pilosaHost+"/recalculate-caches", "", strings.NewReader(""))
+	if err != nil {
+		t.Fatalf("recalcing caches: %v", err)
+	}
+
+	cli, err := gopilosa.NewClient([]string{pilosaHost})
+	if err != nil {
+		t.Fatalf("getting pilosa client: %v", err)
+	}
+
+	schema, err := cli.Schema()
+	if err != nil {
+		t.Fatalf("getting schema: %v", err)
+	}
+
+	idx, err := schema.Index("pdk")
+	if err != nil {
+		t.Fatalf("getting index: %v", err)
+	}
+
+	fieldlist := []string{}
 	for name, field := range idx.Fields() {
+		fieldlist = append(fieldlist, name)
 		resp, err := cli.Query(field.Sum(field.GTE(0)))
 		if err != nil {
 			t.Fatalf("query for field (%v): %v", name, err)
@@ -169,6 +253,66 @@ func TestEverything(t *testing.T) {
 		}
 		fmt.Printf("%v: TopN: %v\n", name, resp.Result().CountItems())
 	}
+
+	expFrames := []string{"geoip-region", "geoip-city", "geoip-country_name", "timestamp", "aba", "default", "geoip", "geoip-country_code", "geoip-region_name", "db", "geoip-country_code3", "geoip-postal_code", "geoip-time_zone"}
+	if len(allowedFrames) > 0 {
+		expFrames = allowedFrames
+	}
+	sort.Strings(expFrames)
+	sort.Strings(framelist)
+	if !reflect.DeepEqual(framelist, expFrames) {
+		t.Fatalf("got unexpected frames: %v", framelist)
+	}
+
+	fmt.Println(mustHTTP(t, pilosaHost, "/schema"))
+}
+
+func TestMainJSON(t *testing.T) {
+
+}
+
+func mustQuery(t *testing.T, q string) string {
+	resp, err := http.Post("http://localhost:39485/index/pdk/query", "application/pql", strings.NewReader(q))
+
+	if err != nil {
+		t.Fatalf("querying: %v", err)
+	}
+	bod, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatalf("reading body: %v", err)
+	}
+	return string(bod)
+}
+
+func mustQueryHost(t *testing.T, q string, host string) string {
+	resp, err := http.Post("http://"+host+"/index/pdk/query", "application/pql", strings.NewReader(q))
+
+	if err != nil {
+		t.Fatalf("querying: %v", err)
+	}
+	bod, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatalf("reading body: %v", err)
+	}
+	return string(bod)
+}
+
+func mustHTTP(t *testing.T, host, path string) string {
+	resp, err := http.Get("http://" + host + path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resp.StatusCode > 299 {
+		t.Fatal("bad status")
+	}
+	bod, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatalf("reading body: %v", err)
+	}
+	return string(bod)
+}
+
+func postJSONData(t *testing.T) {
 
 }
 

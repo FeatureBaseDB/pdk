@@ -73,6 +73,12 @@ type Event struct {
 	// A boolean to associate with this event.
 	Active bool `json:"active"`
 
+	// Another boolean at the top level.
+	Alive bool `json:"alive"`
+
+	// One more boolean with mixed case.
+	DeceasedBoolean bool `json:"deceasedBoolean"`
+
 	// The location of this event.
 	Geo Geo `json:"geo"`
 }
@@ -120,22 +126,22 @@ func NewEventGenerator(seed int64) *EventGenerator {
 
 // Event generates a random event.
 func (g *EventGenerator) Event() *Event {
-	active := false
-	if g.r.Intn(2) > 0 {
-		active = true
-	}
+	active, alive := g.r.Intn(2) > 0, g.r.Intn(2) > 0
 	return &Event{
-		ID:         fmt.Sprintf("%d", g.r.Uint64()),
-		Station:    g.g.String(6, 2000),
-		UserID:     int(g.g.Uint64(100000000)) + 1,
-		Timestamp:  g.g.Time(time.Date(2017, time.January, 1, 0, 0, 0, 0, time.UTC), time.Second*3).Format(time.RFC3339),
-		Favorites:  g.genFavorites(),
-		Items:      g.genItems(),
-		Ranking:    g.genItems(),
-		IfaceThing: String(g.g.String(5, 5)),
-		Velocity:   g.r.Intn(1000) + 2500,
-		Active:     active,
-		Geo:        g.genGeo(),
+		ID:              fmt.Sprintf("%d", g.r.Uint64()),
+		Station:         g.g.String(6, 2000),
+		UserID:          int(g.g.Uint64(100000000)) + 1,
+		Timestamp:       g.g.Time(time.Date(2017, time.January, 1, 0, 0, 0, 0, time.UTC), time.Second*3).Format(time.RFC3339),
+		Favorites:       g.genFavorites(),
+		Items:           g.genItems(),
+		Ranking:         g.genItems(),
+		IfaceThing:      String(g.g.String(5, 5)),
+		Velocity:        g.r.Intn(1000) + 2500,
+		Active:          active,
+		Alive:           alive,
+		DeceasedBoolean: alive,
+
+		Geo: g.genGeo(),
 	}
 
 }

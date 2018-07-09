@@ -43,8 +43,10 @@ func TestCollapsingMapper(t *testing.T) {
 	e := &pdk.Entity{
 		Subject: "blah",
 		Objects: map[pdk.Property]pdk.Object{
-			"aa": pdk.S("hello"),
-			"bb": pdk.I(49),
+			"aa":     pdk.S("hello"),
+			"bb":     pdk.I(49),
+			"active": pdk.B(true),
+			"alive":  pdk.B(true),
 		},
 	}
 	pr, err := cm.Map(e)
@@ -59,7 +61,19 @@ func TestCollapsingMapper(t *testing.T) {
 		t.Fatalf("bad val from translator")
 	}
 
-	if len(pr.Rows) != 1 {
+	idactive, err := cm.Translator.GetID("default", "active")
+	if err != nil {
+		t.Fatal(err)
+	}
+	idalive, err := cm.Translator.GetID("default", "alive")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !(idalive == 0 && idactive == 1 || idactive == 0 && idalive == 1) {
+		t.Fatalf("mapping error, active: %v, alive: %v", idactive, idalive)
+	}
+
+	if len(pr.Rows) != 3 {
 		t.Fatalf("wrong rows: %v", pr.Rows)
 	}
 	if len(pr.Vals) != 1 {

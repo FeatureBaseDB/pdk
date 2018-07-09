@@ -214,7 +214,6 @@ func (lft *FieldTranslator) GetID(val interface{}) (id uint64, err error) {
 		}
 	}
 	valBytes := pdk.ToBytes(vall)
-
 	var data []byte
 
 	// if you're expecting most of the mapping to already be done, this would be faster

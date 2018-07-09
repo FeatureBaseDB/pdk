@@ -44,6 +44,9 @@ import (
 
 func TestEntitySubjecter(t *testing.T) {
 	es := SubjectPath([]string{"id"})
+	fake.GenEvent()
+	fake.GenEvent()
+	fake.GenEvent()
 	event := fake.GenEvent()
 	bytes, err := json.Marshal(event)
 	if err != nil {
@@ -70,6 +73,8 @@ func TestEntitySubjecter(t *testing.T) {
 	if val, ok := ent.Objects[Property("id")]; ok {
 		t.Fatalf("should not have found 'id', but got %v", val)
 	}
+
+	fmt.Println(ent.Objects[Property("alive")])
 
 	es = SubjectPath([]string{"geo", "timezone"})
 	subj, err = es.Subject(ent)

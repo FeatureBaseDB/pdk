@@ -135,18 +135,22 @@ func (m *CollapsingMapper) mapLit(val Literal, pr *PilosaRecord, path []string) 
 		}
 		pr.AddRow(field, id)
 	case B:
-		// for bools, use field as the row name - only set if val is true
+		// for bools, use the last path element as the row name - only set if val is true
 		if !tval {
 			return nil
 		}
-		field, err := m.Framer.Field(path)
-		if err != nil {
-			return errors.Wrapf(err, "getting field from %v", path)
-		}
-		if field == "" {
+		var field string
+		var err error
+		if len(path) == 1 {
 			field = "default"
+		} else {
+			field, err = m.Framer.Field(path[:len(path)-1])
+			if err != nil {
+				return errors.Wrapf(err, "getting field from %v", path)
+			}
 		}
-		id, err := m.Translator.GetID(field, field)
+		rowname := path[len(path)-1]
+		id, err := m.Translator.GetID(field, rowname)
 		if err != nil {
 			return errors.Wrapf(err, "getting bool id from %v", field)
 		}
