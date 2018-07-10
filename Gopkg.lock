@@ -307,7 +307,7 @@
   revision = "b0cc27278987a4021ed60cd169e81cc0c44dc31d"
 
 [[projects]]
-  branch = "handler-close-timeout"
+  branch = "master"
   name = "github.com/pilosa/pilosa"
   packages = [
     ".",
@@ -328,8 +328,7 @@
     "test",
     "toml"
   ]
-  revision = "b7e5f8842e66ebf0a895c65efc1c510034fe3596"
-  source = "github.com/jaffee/pilosa"
+  revision = "302166dac6d8df5cc220be27576c0a1ad86d88de"
 
 [[projects]]
   name = "github.com/pkg/errors"
@@ -358,13 +357,21 @@
 [[projects]]
   name = "github.com/shirou/gopsutil"
   packages = [
+    "cpu",
     "host",
     "internal/common",
     "mem",
+    "net",
     "process"
   ]
   revision = "4a180b209f5f494e5923cfce81ea30ba23915877"
   version = "v2.18.06"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/shirou/w32"
+  packages = ["."]
+  revision = "bb4de0191aa41b5507caa14b0650cdbddcd9280b"
 
 [[projects]]
   name = "github.com/spf13/afero"
@@ -483,6 +490,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "11d9209ab2c76e0e66d210eef31edbd9482221363b66ba74beab45c5bcd73609"
+  inputs-digest = "e4b69aa24db36885e4f57e173d2763f5275ba4b2dc39c7153c8d7241c4fcb735"
   solver-name = "gps-cdcl"
   solver-version = 1

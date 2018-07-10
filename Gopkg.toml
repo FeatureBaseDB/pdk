@@ -23,8 +23,7 @@
 
 [[constraint]]
   name = "github.com/pilosa/pilosa"
-  source = "github.com/jaffee/pilosa"
-  branch = "handler-close-timeout"
+  branch = "master"
 
 [[constraint]]
   name = "github.com/pilosa/go-pilosa"
