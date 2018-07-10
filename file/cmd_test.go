@@ -14,11 +14,18 @@ import (
 
 func TestFileIngest(t *testing.T) {
 	pilosa := test.MustRunCluster(t, 1)
+	defer func() {
+		err := pilosa.Close()
+		if err != nil {
+			t.Logf("closing cluster: %v", err)
+		}
+	}()
 
 	fname := newFileWithData(t, data)
 	cmd := NewMain()
 	cmd.Path = fname
-	pilosaHost := pilosa[0].Server.URI.HostPort()
+	pilosaHost := pilosa[0].API.Node().URI.HostPort()
+	fmt.Println(pilosaHost)
 	cmd.PilosaHosts = []string{pilosaHost}
 	cmd.BatchSize = 1
 	cmd.SubjectPath = []string{"id"}
@@ -31,11 +38,10 @@ func TestFileIngest(t *testing.T) {
 	http.Post("http://"+pilosaHost+"/recalculate-caches", "", strings.NewReader(""))
 
 	fmt.Printf("%s", mustQueryHost(t, "Row(stuff=0)", pilosaHost))
-	fmt.Printf("%s", mustQueryHost(t, "TopN(field=stuff)", pilosaHost))
+	fmt.Printf("%s", mustQueryHost(t, "TopN(stuff)", pilosaHost))
 
 	fmt.Printf("%s", mustQuery(t, "Row(stuff=stuff1)"))
-	fmt.Printf("%s", mustQuery(t, "TopN(field=stuff)"))
-
+	fmt.Printf("%s", mustQuery(t, "TopN(stuff)"))
 }
 
 var data = `{"id": "123", "value": 17, "stuff": "stuff1"}
@@ -48,7 +54,7 @@ var data = `{"id": "123", "value": 17, "stuff": "stuff1"}
 func TestMinimalBreak(t *testing.T) {
 	t.SkipNow()
 	pilosa := test.MustRunCluster(t, 1)
-	pilosaHost := pilosa[0].Server.URI.HostPort()
+	pilosaHost := pilosa[0].API.Node().URI.HostPort()
 	indexer, err := pdk.SetupPilosa([]string{pilosaHost}, "pdk", nil, 1)
 	if err != nil {
 		t.Fatal(errors.Wrap(err, "setting up Pilosa"))

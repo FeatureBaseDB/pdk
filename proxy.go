@@ -350,11 +350,23 @@ func (p *PilosaKeyMapper) MapRequest(body []byte) ([]byte, error) {
 
 func (p *PilosaKeyMapper) mapCall(call *pql.Call) error {
 	if call.Name == "Row" {
-		id, err := p.t.GetID(call.Args["field"].(string), call.Args["row"])
+		var field string
+		var value interface{}
+		for k, v := range call.Args {
+			if !strings.HasPrefix(k, "_") {
+				field = k
+				value = v
+				break
+			}
+		}
+		if value == nil {
+			return errors.Errorf("no field with non-nil value in Row call: %s", call)
+		}
+		id, err := p.t.GetID(field, value)
 		if err != nil {
 			return errors.Wrap(err, "getting ID")
 		}
-		call.Args["row"] = id
+		call.Args[field] = id
 		return nil
 	}
 	for _, child := range call.Children {

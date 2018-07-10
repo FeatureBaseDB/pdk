@@ -85,9 +85,9 @@ func (i *Index) addColumn(fieldName string, col uint64, row uint64, ts int64) {
 		if ts != 0 {
 			fieldType = gopilosa.OptFieldTime(gopilosa.TimeQuantumYearMonthDayHour)
 		}
-		field, err := i.index.Field(fieldName, []gopilosa.FieldOption{fieldType})
+		field, err := i.index.Field(fieldName, fieldType)
 		if err != nil {
-			log.Println(errors.Wrapf(err, "describing field: %v", fieldName))
+			log.Println(errors.Wrapf(err, "addColumn: describing field: %v", fieldName))
 			return
 		}
 		err = i.setupField(field)
@@ -114,7 +114,7 @@ func (i *Index) AddValue(fieldName string, col uint64, val int64) {
 		defer i.lock.Unlock()
 		field, err := i.index.Field(fieldName, gopilosa.OptFieldInt(0, 1<<31-1))
 		if err != nil {
-			log.Println(errors.Wrap(err, "describing field"))
+			log.Println(errors.Wrap(err, "addValue: describing field"))
 			return
 		}
 		err = i.setupField(field)
@@ -194,13 +194,13 @@ func SetupPilosa(hosts []string, indexName string, schema *gopilosa.Schema, batc
 		return nil, errors.Wrap(err, "creating pilosa cluster client")
 	}
 	indexer.client = client
-	err = client.SyncSchema(schema)
-	if err != nil {
-		return nil, errors.Wrap(err, "synchronizing schema")
-	}
 	indexer.index, err = schema.Index(indexName)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting index")
+	}
+	err = client.SyncSchema(schema)
+	if err != nil {
+		return nil, errors.Wrap(err, "synchronizing schema")
 	}
 	for _, field := range indexer.index.Fields() {
 		err := indexer.setupField(field)

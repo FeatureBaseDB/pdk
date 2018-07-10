@@ -52,6 +52,7 @@ type Main struct {
 	SubjectPath   []string `help:"Comma separated path to value in each record that should be mapped to column ID. Blank gets a sequential ID"`
 	Proxy         string   `help:"Bind to this address to proxy and translate requests to Pilosa"`
 	AllowedFields []string `help:"If any are passed, only frame names in this comma separated list will be indexed."`
+	MaxRecords    int      `help:"Maximum number of records to ingest from kafka before stopping."`
 }
 
 // NewMain returns a new Main.
@@ -77,6 +78,7 @@ func (m *Main) Run() error {
 		isrc.Hosts = m.Hosts
 		isrc.Topics = m.Topics
 		isrc.Group = m.Group
+		isrc.MaxMsgs = m.MaxRecords
 		src = isrc
 		if err := isrc.Open(); err != nil {
 			return errors.Wrap(err, "opening kafka source")
@@ -87,6 +89,7 @@ func (m *Main) Run() error {
 		isrc.Topics = m.Topics
 		isrc.Group = m.Group
 		isrc.RegistryURL = m.RegistryURL
+		isrc.MaxMsgs = m.MaxRecords
 		src = isrc
 		if err := isrc.Open(); err != nil {
 			return errors.Wrap(err, "opening kafka source")
@@ -118,9 +121,9 @@ func (m *Main) Run() error {
 
 	ingester := pdk.NewIngester(src, parser, mapper, indexer)
 	if len(m.AllowedFields) > 0 {
-		ingester.AllowedFrames = make(map[string]bool)
+		ingester.AllowedFields = make(map[string]bool)
 		for _, fram := range m.AllowedFields {
-			ingester.AllowedFrames[fram] = true
+			ingester.AllowedFields[fram] = true
 		}
 	}
 	go func() {
