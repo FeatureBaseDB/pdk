@@ -7,9 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/pilosa/pdk"
 	"github.com/pilosa/pilosa/test"
-	"github.com/pkg/errors"
 )
 
 func TestFileIngest(t *testing.T) {
@@ -50,23 +48,6 @@ var data = `{"id": "123", "value": 17, "stuff": "stuff1"}
 {"id": "120", "value": 16, "stuff": "stuff2"}
 {"id": "119", "value": 19, "stuff": "stuff1"}
 {"id": "123", "value": 22, "stuff": "stuff2"}`
-
-func TestMinimalBreak(t *testing.T) {
-	t.SkipNow()
-	pilosa := test.MustRunCluster(t, 1)
-	pilosaHost := pilosa[0].API.Node().URI.HostPort()
-	indexer, err := pdk.SetupPilosa([]string{pilosaHost}, "pdk", nil, 1)
-	if err != nil {
-		t.Fatal(errors.Wrap(err, "setting up Pilosa"))
-	}
-	indexer.AddValue("value", 0, 17)
-	indexer.AddValue("value", 0, 16)
-	indexer.AddValue("value", 0, 19)
-	err = indexer.Close()
-	if err != nil {
-		t.Fatalf("closing indexer: %v", err)
-	}
-}
 
 func mustQuery(t *testing.T, q string) string {
 	resp, err := http.Post("http://localhost:55346/index/pdk/query", "application/pql", strings.NewReader(q))

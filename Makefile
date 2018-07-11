@@ -28,6 +28,9 @@ Gopkg.lock: dep Gopkg.toml
 	dep ensure
 
 test: vendor
+	go test $(PKGS) -short $(TESTFLAGS) ./...
+
+test-all:
 	go test $(PKGS) $(TESTFLAGS) ./...
 
 pdk: vendor

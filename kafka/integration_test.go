@@ -30,8 +30,6 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH
 // DAMAGE.
 
-// +build integration
-
 package kafka_test
 
 import (
@@ -49,7 +47,6 @@ import (
 	"time"
 
 	gopilosa "github.com/pilosa/go-pilosa"
-	"github.com/pilosa/pdk"
 	"github.com/pilosa/pdk/kafka"
 	"github.com/pilosa/pilosa/test"
 )
@@ -58,6 +55,9 @@ var kafkaTopic = "testtopic"
 var kafkaGroup = "testgroup"
 
 func TestSource(t *testing.T) {
+	if testing.Short() {
+		t.Skip("integration test")
+	}
 	for i := 0; i < 10; i++ {
 		postData(t)
 	}
@@ -95,123 +95,6 @@ func TestSource(t *testing.T) {
 		}
 	}
 
-}
-
-// TestEverything relies on having a running instance of kafka, schema-registry,
-// and rest proxy running. Currently using confluent-3.3.0 which you can get
-// here: https://www.confluent.io/download Decompress, enter directory, then run
-// "./bin/confluent start kafka-rest"
-func TestEverything(t *testing.T) {
-	runEverything(t)
-}
-
-func check(t *testing.T, err error) {
-	if err != nil {
-		t.Fatal(err)
-	}
-}
-
-func runEverything(t *testing.T) {
-	for i := 0; i < 1000; i++ {
-		postData(t)
-	}
-
-	src := kafka.NewConfluentSource()
-	src.Hosts = []string{"localhost:9092"}
-	src.Group = kafkaGroup
-	src.Topics = []string{kafkaTopic}
-	src.RegistryURL = "localhost:8081"
-	err := src.Open()
-	if err != nil {
-		t.Fatalf("opening kafka source: %v", err)
-	}
-
-	parser := pdk.NewDefaultGenericParser()
-	mapper := pdk.NewCollapsingMapper()
-
-	mains := test.MustRunCluster(t, 3)
-	defer func() {
-		err := mains.Close()
-		if err != nil {
-			t.Logf("closing cluster: %v", err)
-		}
-	}()
-	var hosts []string
-	for _, m := range mains {
-		hosts = append(hosts, m.URL())
-	}
-	schema := gopilosa.NewSchema()
-	idx, err := schema.Index("kafkaavro")
-	check(t, err)
-	_, err = idx.Field("geoip-latitude", gopilosa.OptFieldInt(-90, 90))
-	check(t, err)
-	_, err = idx.Field("geoip-longitude", gopilosa.OptFieldInt(-180, 180))
-	check(t, err)
-	idxer, err := pdk.SetupPilosa([]string{hosts[0]}, "kafkaavro", schema, 10)
-	if err != nil {
-		t.Fatalf("setting up pilosa: %v", err)
-	}
-	done := make(chan struct{})
-	go func() {
-		time.Sleep(time.Second * 2)
-		err = src.Close()
-		if err != nil {
-			t.Logf("closing kafka source: %v", err)
-		}
-		close(done)
-	}()
-
-	ingester := pdk.NewIngester(src, parser, mapper, idxer)
-	err = ingester.Run()
-	if err != nil {
-		t.Fatalf("running ingester: %v", err)
-	}
-	<-done
-
-	cli, err := gopilosa.NewClient([]string{hosts[0]})
-	if err != nil {
-		t.Fatalf("getting pilosa client: %v", err)
-	}
-
-	schema, err = cli.Schema()
-	if err != nil {
-		t.Fatalf("getting schema: %v", err)
-	}
-
-	idx, err = schema.Index("kafkaavro")
-	if err != nil {
-		t.Fatalf("getting index: %v", err)
-	}
-
-	fieldlist := []string{}
-	for name, field := range idx.Fields() {
-		fieldlist = append(fieldlist, name)
-		if field.Options().Type() == gopilosa.FieldTypeInt {
-			if resp, err := cli.Query(field.Sum(field.GTE(0))); err != nil {
-				t.Errorf("query for field (%v): %v", name, err)
-			} else {
-				fmt.Printf("%v, Sum: %v\n", name, resp.Result().Value())
-			}
-		} else if field.Options().Type() == gopilosa.FieldTypeSet {
-			if resp, err := cli.Query(field.TopN(10)); err != nil {
-				t.Errorf("field topn query (%v): %v", name, err)
-			} else {
-				fmt.Printf("%v: TopN: %v\n", name, resp.Result().CountItems())
-			}
-		} else if field.Options().Type() == gopilosa.FieldTypeTime {
-			if resp, err := cli.Query(field.Range(0, time.Unix(0, 0), time.Unix(1931228574, 0))); err != nil {
-				t.Errorf("field range query (%v): %v", name, err)
-			} else {
-				fmt.Printf("%v: Range: %v\n", name, resp.Result())
-			}
-		}
-	}
-
-	expFields := []string{"geoip-region", "geoip-city", "geoip-country_name", "timestamp", "aba", "geoip-country_code", "geoip-region_name", "db", "geoip-country_code3", "geoip-postal_code", "geoip-time_zone", "customer_id", "geoip-area_code", "geoip-dma_code", "geoip-latitude", "geoip-longitude", "geoip-metro_code", "user_id"}
-	if unexp, unfound := compareStringLists(fieldlist, expFields); len(unexp) > 0 || len(unfound) > 0 {
-		t.Errorf("got unexpected fields:%v", unexp)
-		t.Errorf("didn't find fields:   %v", unfound)
-	}
 }
 
 func compareStringLists(act, exp []string) (unexpected, unfound []string) {
@@ -304,13 +187,20 @@ func TestCompareStringLists(t *testing.T) {
 // "./bin/confluent start kafka-rest"
 func TestMain(t *testing.T) {
 	runMain(t, []string{})
+	// without this sleep, the next test will hang sometimes. I'm guessing
+	// something in Confluent or the OS needs to settle between tests.
+	time.Sleep(time.Second)
 }
 
 func TestAllowedFields(t *testing.T) {
 	runMain(t, []string{"geoip-country_code", "aba"})
+	time.Sleep(time.Second)
 }
 
 func runMain(t *testing.T, allowedFields []string) {
+	if testing.Short() {
+		t.Skip("integration test")
+	}
 	for i := 0; i < 1000; i++ {
 		postData(t)
 	}
@@ -318,7 +208,11 @@ func runMain(t *testing.T, allowedFields []string) {
 	m := kafka.NewMain()
 	pilosa := test.MustRunCluster(t, 1)
 	defer func() {
-		err := pilosa.Close()
+		err := m.Close()
+		if err != nil {
+			t.Logf("closing kafka ingest main: %v", err)
+		}
+		err = pilosa.Close()
 		if err != nil {
 			t.Logf("closing cluster: %v", err)
 		}

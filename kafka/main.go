@@ -34,6 +34,7 @@ package kafka
 
 import (
 	"log"
+	"net/http"
 
 	"github.com/pilosa/pdk"
 	"github.com/pkg/errors"
@@ -53,6 +54,8 @@ type Main struct {
 	Proxy         string   `help:"Bind to this address to proxy and translate requests to Pilosa"`
 	AllowedFields []string `help:"If any are passed, only frame names in this comma separated list will be indexed."`
 	MaxRecords    int      `help:"Maximum number of records to ingest from kafka before stopping."`
+
+	proxy http.Server
 }
 
 // NewMain returns a new Main.
@@ -126,9 +129,19 @@ func (m *Main) Run() error {
 			ingester.AllowedFields[fram] = true
 		}
 	}
+	m.proxy = http.Server{
+		Addr:    m.Proxy,
+		Handler: pdk.NewPilosaForwarder(m.PilosaHosts[0], mapper.Translator, mapper.ColTranslator),
+	}
 	go func() {
-		err = pdk.StartMappingProxy(m.Proxy, pdk.NewPilosaForwarder(m.PilosaHosts[0], mapper.Translator, mapper.ColTranslator))
-		log.Fatal(errors.Wrap(err, "starting mapping proxy"))
+		err := m.proxy.ListenAndServe()
+		if err != nil {
+			log.Printf("proxy closed: %v", err)
+		}
 	}()
 	return errors.Wrap(ingester.Run(), "running ingester")
+}
+
+func (m *Main) Close() error {
+	return errors.Wrap(m.proxy.Close(), "closing proxy server")
 }
