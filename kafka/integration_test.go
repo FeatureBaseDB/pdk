@@ -97,6 +97,10 @@ func TestSource(t *testing.T) {
 
 }
 
+// TestEverything relies on having a running instance of kafka, schema-registry,
+// and rest proxy running. Currently using confluent-3.3.0 which you can get
+// here: https://www.confluent.io/download Decompress, enter directory, then run
+// "./bin/confluent start kafka-rest"
 func TestEverything(t *testing.T) {
 	runEverything(t)
 }
@@ -107,10 +111,6 @@ func check(t *testing.T, err error) {
 	}
 }
 
-// TestEverything relies on having a running instance of kafka, schema-registry,
-// and rest proxy running. Currently using confluent-3.3.0 which you can get
-// here: https://www.confluent.io/download Decompress, enter directory, then run
-// "./bin/confluent start kafka-rest"
 func runEverything(t *testing.T) {
 	for i := 0; i < 1000; i++ {
 		postData(t)
@@ -298,6 +298,10 @@ func TestCompareStringLists(t *testing.T) {
 
 }
 
+// TestMain relies on having a running instance of kafka, schema-registry,
+// and rest proxy running. Currently using confluent-3.3.0 which you can get
+// here: https://www.confluent.io/download Decompress, enter directory, then run
+// "./bin/confluent start kafka-rest"
 func TestMain(t *testing.T) {
 	runMain(t, []string{})
 }

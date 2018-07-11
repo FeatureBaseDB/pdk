@@ -74,8 +74,6 @@ func TestEntitySubjecter(t *testing.T) {
 		t.Fatalf("should not have found 'id', but got %v", val)
 	}
 
-	fmt.Println(ent.Objects[Property("alive")])
-
 	es = SubjectPath([]string{"geo", "timezone"})
 	subj, err = es.Subject(ent)
 	if err != nil {
