@@ -14,7 +14,7 @@ type Main struct {
 	Index       string   `help:"Pilosa index."`
 	BatchSize   uint     `help:"Batch size for Pilosa imports (latency/throughput tradeoff)."`
 	Framer      pdk.DashField
-	SubjectAt   string   `help:"Tells the S3 source to add a unique 'subject' key to each record which is the s3 object key + record number."`
+	SubjectAt   string   `help:"Tells the source to add a unique 'subject' key to each record which is the filename + record number."`
 	SubjectPath []string `help:"Path to value in each record that should be mapped to column ID. Blank gets a sequential ID."`
 	Proxy       string   `help:"Bind to this address to proxy and translate requests to Pilosa"`
 }
@@ -41,9 +41,11 @@ func (m *Main) Run() error {
 		return errors.Wrap(err, "getting file source")
 	}
 
+	translateColumns := true
 	parser := pdk.NewDefaultGenericParser()
 	if len(m.SubjectPath) == 0 && m.SubjectAt == "" {
 		parser.Subjecter = pdk.BlankSubjecter{}
+		translateColumns = false
 	} else if len(m.SubjectPath) == 0 && m.SubjectAt != "" {
 		m.SubjectPath = []string{m.SubjectAt}
 		parser.EntitySubjecter = pdk.SubjectPath(m.SubjectPath)
@@ -53,6 +55,9 @@ func (m *Main) Run() error {
 
 	mapper := pdk.NewCollapsingMapper()
 	mapper.Framer = &m.Framer
+	if translateColumns {
+		mapper.ColTranslator = pdk.NewMapFieldTranslator()
+	}
 
 	indexer, err := pdk.SetupPilosa(m.PilosaHosts, m.Index, nil, m.BatchSize)
 	if err != nil {
@@ -61,7 +66,7 @@ func (m *Main) Run() error {
 	ingester := pdk.NewIngester(src, parser, mapper, indexer)
 
 	go func() {
-		err = pdk.StartMappingProxy(m.Proxy, pdk.NewPilosaForwarder(m.PilosaHosts[0], mapper.Translator))
+		err = pdk.StartMappingProxy(m.Proxy, pdk.NewPilosaForwarder(m.PilosaHosts[0], mapper.Translator, mapper.ColTranslator))
 		log.Fatal(errors.Wrap(err, "starting mapping proxy"))
 	}()
 	return errors.Wrap(ingester.Run(), "running ingester")

@@ -54,7 +54,8 @@ type Ingester struct {
 	mapper  RecordMapper
 	indexer Indexer
 
-	Transformers []Transformer
+	Transformers  []Transformer
+	AllowedFields map[string]bool
 
 	Stats Statter
 	Log   Logger
@@ -123,12 +124,16 @@ func (n *Ingester) Run() error {
 				// Index
 				n.Stats.Count("ingest.Map", 1, 1)
 				for _, row := range pr.Rows {
-					n.indexer.AddColumn(row.Field, pr.Col, row.ID)
-					n.Stats.Count("ingest.AddBit", 1, 1)
+					if n.AllowedFields == nil || n.AllowedFields[row.Field] {
+						n.indexer.AddColumn(row.Field, pr.Col, row.ID)
+						n.Stats.Count("ingest.AddBit", 1, 1)
+					}
 				}
 				for _, val := range pr.Vals {
-					n.indexer.AddValue(val.Field, pr.Col, val.Value)
-					n.Stats.Count("ingest.AddValue", 1, 1)
+					if n.AllowedFields == nil || n.AllowedFields[val.Field] {
+						n.indexer.AddValue(val.Field, pr.Col, val.Value)
+						n.Stats.Count("ingest.AddValue", 1, 1)
+					}
 				}
 			}
 			if recordErr != io.EOF && recordErr != nil {

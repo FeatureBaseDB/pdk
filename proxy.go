@@ -72,22 +72,23 @@ func StartMappingProxy(bind string, h http.Handler) error {
 }
 
 type pilosaForwarder struct {
-	phost  string
-	client http.Client
-	km     KeyMapper
-	proxy  Proxy
+	phost     string
+	client    http.Client
+	km        KeyMapper
+	colMapper FieldTranslator
+	proxy     Proxy
 }
 
 // NewPilosaForwarder returns a new pilosaForwarder which forwards all requests
 // to `phost`. It inspects pilosa responses and runs the row ids through the
 // Translator `t` to translate them to whatever they were mapped from.
-func NewPilosaForwarder(phost string, t Translator) *pilosaForwarder {
+func NewPilosaForwarder(phost string, t Translator, colTranslator ...FieldTranslator) *pilosaForwarder {
 	if !strings.HasPrefix(phost, "http://") {
 		phost = "http://" + phost
 	}
 	f := &pilosaForwarder{
 		phost: phost,
-		km:    NewPilosaKeyMapper(t),
+		km:    NewPilosaKeyMapper(t, colTranslator...),
 	}
 	f.proxy = NewPilosaProxy(phost, &f.client)
 	return f
@@ -139,15 +140,21 @@ func (p *pilosaForwarder) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	}
 	for i, result := range pilosaResp.Results {
 		if fields[i] == "" {
-			mappedResp.Results[i] = result
-			continue
+			mappedResult, err := p.km.MapResult(fields[i], result)
+			if err != nil {
+				log.Printf("mapping frameless result: %v", err)
+				mappedResp.Results[i] = result
+			} else {
+				mappedResp.Results[i] = mappedResult
+			}
+		} else {
+			mappedResult, err := p.km.MapResult(fields[i], result)
+			if err != nil {
+				http.Error(w, "mapping result: "+err.Error(), http.StatusInternalServerError)
+				return
+			}
+			mappedResp.Results[i] = mappedResult
 		}
-		mappedResult, err := p.km.MapResult(fields[i], result)
-		if err != nil {
-			http.Error(w, "mapping result: "+err.Error(), http.StatusInternalServerError)
-			return
-		}
-		mappedResp.Results[i] = mappedResult
 	}
 
 	// Allow cross-domain requests
@@ -184,7 +191,7 @@ func (p *pilosaProxy) ProxyRequest(orig *http.Request, origbody []byte) (*http.R
 	reqURL, err := url.Parse(p.host + orig.URL.String())
 	if err != nil {
 		log.Printf("error parsing url: %v, err: %v", p.host+orig.URL.String(), err)
-		return nil, err
+		return nil, errors.Wrapf(err, "parsing url: %v", p.host+orig.URL.String())
 	}
 	orig.URL = reqURL
 	orig.Host = ""
@@ -198,60 +205,36 @@ func (p *pilosaProxy) ProxyRequest(orig *http.Request, origbody []byte) (*http.R
 // PilosaKeyMapper implements the KeyMapper interface.
 type PilosaKeyMapper struct {
 	t Translator
+	c FieldTranslator
 }
 
 // NewPilosaKeyMapper returns a PilosaKeyMapper.
-func NewPilosaKeyMapper(t Translator) *PilosaKeyMapper {
-	return &PilosaKeyMapper{
+func NewPilosaKeyMapper(t Translator, colTranslator ...FieldTranslator) *PilosaKeyMapper {
+	pkm := &PilosaKeyMapper{
 		t: t,
 	}
+	if len(colTranslator) > 0 {
+		pkm.c = colTranslator[0]
+	}
+	return pkm
 }
 
 // MapResult converts the result of a single top level query (one element of
 // QueryResponse.Results) to its mapped counterpart.
 func (p *PilosaKeyMapper) MapResult(field string, res interface{}) (mappedRes interface{}, err error) {
+	log.Printf("mapping result: '%#v'", res)
+	defer func() {
+		log.Printf("mapped result: '%#v'", mappedRes)
+	}()
 	switch result := res.(type) {
 	case uint64:
 		// Count
 		mappedRes = result
 	case []interface{}:
-		// TopN
-		mr := make([]struct {
-			Key   interface{}
-			Count uint64
-		}, len(result))
-		for i, intpair := range result {
-			if pair, ok := intpair.(map[string]interface{}); ok {
-				pairkey, gotKey := pair["id"]
-				paircount, gotCount := pair["count"]
-				if !(gotKey && gotCount) {
-					return nil, fmt.Errorf("expected pilosa.Pair, but have wrong keys: got %v", pair)
-				}
-				keyFloat, isKeyFloat := pairkey.(float64)
-				countFloat, isCountFloat := paircount.(float64)
-				if !(isKeyFloat && isCountFloat) {
-					return nil, fmt.Errorf("expected pilosa.Pair, but have wrong value types: got %v", pair)
-				}
-				keyVal, err := p.t.Get(field, uint64(keyFloat))
-				if err != nil {
-					return nil, errors.Wrap(err, "translator.Get")
-				}
-
-				switch kv := keyVal.(type) {
-				case []byte:
-					mr[i].Key = string(kv)
-				default:
-					mr[i].Key = keyVal
-				}
-				mr[i].Count = uint64(countFloat)
-			} else {
-				return nil, fmt.Errorf("unknown type in inner slice: %v", intpair)
-			}
-		}
-		mappedRes = mr
+		return p.mapSliceInterfaceResult(field, result)
 	case map[string]interface{}:
-		// Row/Intersect/Difference/Union
-		mappedRes = result
+		// Bitmap/Intersect/Difference/Union
+		return p.mapBitmapResult(field, result)
 	case bool:
 		// SetBit/ClearBit
 		mappedRes = result
@@ -262,8 +245,95 @@ func (p *PilosaKeyMapper) MapResult(field string, res interface{}) (mappedRes in
 	return mappedRes, nil
 }
 
+func (p *PilosaKeyMapper) mapBitmapResult(field string, result map[string]interface{}) (mappedRes interface{}, err error) {
+	colkey := "columns"
+	cols, ok := result[colkey]
+	if !ok {
+		colkey = "bits"
+		if cols, ok = result[colkey]; !ok {
+			return result, errors.Errorf("neither \"columns\" nor \"bits\" key in result: %#v", result)
+		}
+	}
+	colsSlice, ok := cols.([]interface{})
+	if !ok {
+		return result, errors.Errorf("columns should be a slice but is %T, %#v", cols, cols)
+	}
+	mappedCols, err := p.mapColumnSlice(field, colsSlice)
+	if err != nil {
+		return result, errors.Wrap(err, "mapping column slice")
+	}
+	result[colkey] = mappedCols
+	return result, nil
+}
+
+func (p *PilosaKeyMapper) mapSliceInterfaceResult(field string, res []interface{}) (mappedRes interface{}, err error) {
+	if len(res) == 0 {
+		return res, nil
+	}
+	switch res[0].(type) {
+	case map[string]interface{}:
+		return p.mapTopNResult(field, res)
+	default:
+		return mappedRes, errors.Errorf("unexpected result type in slice: %T, %#v", res[0], res[0])
+	}
+}
+
+func (p *PilosaKeyMapper) mapColumnSlice(field string, result []interface{}) (mappedRes interface{}, err error) {
+	cols := make([]interface{}, len(result))
+	for i, icol := range result {
+		col, ok := icol.(float64)
+		if !ok {
+			return nil, errors.Errorf("expected float64, but got %T %#v", icol, icol)
+		}
+		colV, err := p.c.Get(uint64(col))
+		if err != nil {
+			return nil, errors.Wrap(err, "translating column id to value")
+		}
+		cols[i] = colV
+	}
+	return cols, nil
+}
+
+func (p *PilosaKeyMapper) mapTopNResult(field string, result []interface{}) (mappedRes interface{}, err error) {
+	mr := make([]struct {
+		Key   interface{}
+		Count uint64
+	}, len(result))
+	for i, intpair := range result {
+		if pair, ok := intpair.(map[string]interface{}); ok {
+			pairkey, gotKey := pair["id"]
+			paircount, gotCount := pair["count"]
+			if !(gotKey && gotCount) {
+				return nil, fmt.Errorf("expected pilosa.Pair, but have wrong keys: got %v", pair)
+			}
+			keyFloat, isKeyFloat := pairkey.(float64)
+			countFloat, isCountFloat := paircount.(float64)
+			if !(isKeyFloat && isCountFloat) {
+				return nil, fmt.Errorf("expected pilosa.Pair, but have wrong value types: got %v", pair)
+			}
+			keyVal, err := p.t.Get(field, uint64(keyFloat))
+			if err != nil {
+				return nil, errors.Wrap(err, "translator.Get")
+			}
+
+			switch kv := keyVal.(type) {
+			case []byte:
+				mr[i].Key = string(kv)
+			default:
+				mr[i].Key = keyVal
+			}
+			mr[i].Count = uint64(countFloat)
+		} else {
+			return nil, fmt.Errorf("unknown type in inner slice: %v", intpair)
+		}
+	}
+	mappedRes = mr
+	return mappedRes, nil
+}
+
 // MapRequest takes a request body and returns a mapped version of that body.
 func (p *PilosaKeyMapper) MapRequest(body []byte) ([]byte, error) {
+	log.Printf("mapping request: '%s'", body)
 	query, err := pql.ParseString(string(body))
 	if err != nil {
 		return nil, errors.Wrap(err, "parsing string")
@@ -274,16 +344,29 @@ func (p *PilosaKeyMapper) MapRequest(body []byte) ([]byte, error) {
 			return nil, errors.Wrap(err, "mapping call")
 		}
 	}
+	log.Printf("mapped request: '%s'", query.String())
 	return []byte(query.String()), nil
 }
 
 func (p *PilosaKeyMapper) mapCall(call *pql.Call) error {
 	if call.Name == "Row" {
-		id, err := p.t.GetID(call.Args["field"].(string), call.Args["row"])
+		var field string
+		var value interface{}
+		for k, v := range call.Args {
+			if !strings.HasPrefix(k, "_") {
+				field = k
+				value = v
+				break
+			}
+		}
+		if value == nil {
+			return errors.Errorf("no field with non-nil value in Row call: %s", call)
+		}
+		id, err := p.t.GetID(field, value)
 		if err != nil {
 			return errors.Wrap(err, "getting ID")
 		}
-		call.Args["row"] = id
+		call.Args[field] = id
 		return nil
 	}
 	for _, child := range call.Children {
