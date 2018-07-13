@@ -8,10 +8,10 @@
   revision = "39b0596a2da3c92787b3319c6b5425a474b4e0da"
 
 [[projects]]
+  branch = "master"
   name = "github.com/DataDog/datadog-go"
   packages = ["statsd"]
-  revision = "e67964b4021ad3a334e748e8811eb3cd6becbc6e"
-  version = "2.1.0"
+  revision = "ef3a9daf849df2d7ee3bbf13808dfb481069a773"
 
 [[projects]]
   name = "github.com/Shopify/sarama"
@@ -29,7 +29,7 @@
   branch = "master"
   name = "github.com/armon/go-metrics"
   packages = ["."]
-  revision = "783273d703149aaeb9897cf58613d5af48861c25"
+  revision = "58588f401c2cc130a7308a52ca3bc6c0a76db04b"
 
 [[projects]]
   name = "github.com/aws/aws-sdk-go"
@@ -44,6 +44,7 @@
     "aws/credentials/ec2rolecreds",
     "aws/credentials/endpointcreds",
     "aws/credentials/stscreds",
+    "aws/csm",
     "aws/defaults",
     "aws/ec2metadata",
     "aws/endpoints",
@@ -54,6 +55,8 @@
     "internal/sdkrand",
     "internal/shareddefaults",
     "private/protocol",
+    "private/protocol/eventstream",
+    "private/protocol/eventstream/eventstreamapi",
     "private/protocol/query",
     "private/protocol/query/queryutil",
     "private/protocol/rest",
@@ -62,8 +65,8 @@
     "service/s3",
     "service/sts"
   ]
-  revision = "398d14696895d68a3409bb3ccb1cfe8abc2d4376"
-  version = "v1.13.57"
+  revision = "852052a10992d92f68b9a60862a3312292524903"
+  version = "v1.14.17"
 
 [[projects]]
   name = "github.com/boltdb/bolt"
@@ -264,8 +267,8 @@
 [[projects]]
   name = "github.com/miekg/dns"
   packages = ["."]
-  revision = "e57bf427e68187a27e22adceac868350d7a7079b"
-  version = "v1.0.7"
+  revision = "5a2b9fab83ff0f8bfc99684bd5f43a37abe560f1"
+  version = "v1.0.8"
 
 [[projects]]
   branch = "master"
@@ -277,34 +280,31 @@
   branch = "master"
   name = "github.com/mmcloughlin/geohash"
   packages = ["."]
-  revision = "5e66c96e7880a0a689d5dec564b000c2c89331dd"
+  revision = "3b756d8ac3d9d9b1217f28a9e6cbba629e1815b3"
 
 [[projects]]
   name = "github.com/pelletier/go-toml"
   packages = ["."]
-  revision = "acdc4509485b587f5e675510c4f2c63e90ff68a8"
-  version = "v1.1.0"
+  revision = "c01d1270ff3e442a8a57cddc1c92dc1138598194"
+  version = "v1.2.0"
 
 [[projects]]
   name = "github.com/pierrec/lz4"
-  packages = ["."]
-  revision = "2fcda4cb7018ce05a25959d2fe08c83e3329f169"
-  version = "v1.1"
+  packages = [
+    ".",
+    "internal/xxh32"
+  ]
+  revision = "1958fd8fff7f115e79725b1288e0b878b3e06b00"
+  version = "v2.0.3"
 
 [[projects]]
-  name = "github.com/pierrec/xxHash"
-  packages = ["xxHash32"]
-  revision = "f051bb7f1d1aaf1b5a665d74fb6b0217712c69f7"
-  version = "v0.1.1"
-
-[[projects]]
-  branch = "master"
+  branch = "develop"
   name = "github.com/pilosa/go-pilosa"
   packages = [
     ".",
     "gopilosa_pbuf"
   ]
-  revision = "a7ac58f0673f523c06e4771082cef66f1cb6ba40"
+  revision = "b0cc27278987a4021ed60cd169e81cc0c44dc31d"
 
 [[projects]]
   branch = "master"
@@ -312,34 +312,29 @@
   packages = [
     ".",
     "boltdb",
+    "encoding/proto",
     "enterprise",
     "enterprise/b",
     "gcnotify",
     "gopsutil",
     "gossip",
+    "http",
     "internal",
     "lru",
     "pql",
     "roaring",
     "server",
-    "statik",
     "statsd",
     "test",
     "toml"
   ]
-  revision = "a04e5c8a9bccb662d88613d5bc8cc279a6190158"
+  revision = "302166dac6d8df5cc220be27576c0a1ad86d88de"
 
 [[projects]]
   name = "github.com/pkg/errors"
   packages = ["."]
   revision = "645ef00459ed84a119197bfb8d8205042c6df63d"
   version = "v0.8.0"
-
-[[projects]]
-  name = "github.com/rakyll/statik"
-  packages = ["fs"]
-  revision = "fd36b3595eb2ec8da4b8153b107f7ea08504899d"
-  version = "v0.1.1"
 
 [[projects]]
   branch = "master"
@@ -362,13 +357,21 @@
 [[projects]]
   name = "github.com/shirou/gopsutil"
   packages = [
+    "cpu",
     "host",
     "internal/common",
     "mem",
+    "net",
     "process"
   ]
-  revision = "c95755e4bcd7a62bb8bd33f3a597a7c7f35e2cf3"
-  version = "v2.18.04"
+  revision = "4a180b209f5f494e5923cfce81ea30ba23915877"
+  version = "v2.18.06"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/shirou/w32"
+  packages = ["."]
+  revision = "bb4de0191aa41b5507caa14b0650cdbddcd9280b"
 
 [[projects]]
   name = "github.com/spf13/afero"
@@ -376,8 +379,8 @@
     ".",
     "mem"
   ]
-  revision = "63644898a8da0bc22138abf860edaf5277b6102e"
-  version = "v1.1.0"
+  revision = "787d034dfe70e44075ccc060d346146ef53270ad"
+  version = "v1.1.1"
 
 [[projects]]
   name = "github.com/spf13/cast"
@@ -426,7 +429,7 @@
     "leveldb/table",
     "leveldb/util"
   ]
-  revision = "5d6fca44a948d2be89a9702de7717f0168403d3d"
+  revision = "0d5a0ceb10cf9ab89fdd744cc8c50a83134f6697"
 
 [[projects]]
   branch = "master"
@@ -435,7 +438,7 @@
     "ed25519",
     "ed25519/internal/edwards25519"
   ]
-  revision = "ab813273cd59e1333f7ae7bff5d027d4aadf528c"
+  revision = "a49355c7e3f8fe157a85be2f77e6e269a0f89602"
 
 [[projects]]
   branch = "master"
@@ -448,7 +451,7 @@
     "ipv4",
     "ipv6"
   ]
-  revision = "75944861c7512f64725d687546cfbc757626151f"
+  revision = "4cb1c02c05b0e749b0365f61ae859a8e0cfceed9"
 
 [[projects]]
   branch = "master"
@@ -463,7 +466,7 @@
     "unix",
     "windows"
   ]
-  revision = "c11f84a56e43e20a78cee75a7c034031ecf57d1f"
+  revision = "7138fd3d9dc8335c567ca206f4333fb75eb05d56"
 
 [[projects]]
   name = "golang.org/x/text"
@@ -487,6 +490,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "7365024a990d857b00dded209e4363bf071312c2953baf8329407607ef229447"
+  inputs-digest = "e4b69aa24db36885e4f57e173d2763f5275ba4b2dc39c7153c8d7241c4fcb735"
   solver-name = "gps-cdcl"
   solver-version = 1

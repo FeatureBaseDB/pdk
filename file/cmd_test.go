@@ -7,18 +7,23 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/pilosa/pdk"
 	"github.com/pilosa/pilosa/test"
-	"github.com/pkg/errors"
 )
 
 func TestFileIngest(t *testing.T) {
-	pilosa := test.MustRunMainWithCluster(t, 1)
+	pilosa := test.MustRunCluster(t, 1)
+	defer func() {
+		err := pilosa.Close()
+		if err != nil {
+			t.Logf("closing cluster: %v", err)
+		}
+	}()
 
 	fname := newFileWithData(t, data)
 	cmd := NewMain()
 	cmd.Path = fname
-	pilosaHost := pilosa[0].Server.Addr().String()
+	pilosaHost := pilosa[0].API.Node().URI.HostPort()
+	fmt.Println(pilosaHost)
 	cmd.PilosaHosts = []string{pilosaHost}
 	cmd.BatchSize = 1
 	cmd.SubjectPath = []string{"id"}
@@ -30,12 +35,11 @@ func TestFileIngest(t *testing.T) {
 
 	http.Post("http://"+pilosaHost+"/recalculate-caches", "", strings.NewReader(""))
 
-	fmt.Printf("%s", mustQueryHost(t, "Bitmap(frame=stuff, row=0)", pilosaHost))
-	fmt.Printf("%s", mustQueryHost(t, "TopN(frame=stuff)", pilosaHost))
+	fmt.Printf("%s", mustQueryHost(t, "Row(stuff=0)", pilosaHost))
+	fmt.Printf("%s", mustQueryHost(t, "TopN(stuff)", pilosaHost))
 
-	fmt.Printf("%s", mustQuery(t, "Bitmap(frame=stuff, row=stuff1)"))
-	fmt.Printf("%s", mustQuery(t, "TopN(frame=stuff)"))
-
+	fmt.Printf("%s", mustQuery(t, "Row(stuff=stuff1)"))
+	fmt.Printf("%s", mustQuery(t, "TopN(stuff)"))
 }
 
 var data = `{"id": "123", "value": 17, "stuff": "stuff1"}
@@ -44,23 +48,6 @@ var data = `{"id": "123", "value": 17, "stuff": "stuff1"}
 {"id": "120", "value": 16, "stuff": "stuff2"}
 {"id": "119", "value": 19, "stuff": "stuff1"}
 {"id": "123", "value": 22, "stuff": "stuff2"}`
-
-func TestMinimalBreak(t *testing.T) {
-	t.SkipNow()
-	pilosa := test.MustRunMainWithCluster(t, 1)
-	pilosaHost := pilosa[0].Server.Addr().String()
-	indexer, err := pdk.SetupPilosa([]string{pilosaHost}, "pdk", []pdk.FrameSpec{}, 1)
-	if err != nil {
-		t.Fatal(errors.Wrap(err, "setting up Pilosa"))
-	}
-	indexer.AddValue("default", "value", 0, 17)
-	indexer.AddValue("default", "value", 0, 16)
-	indexer.AddValue("default", "value", 0, 19)
-	err = indexer.Close()
-	if err != nil {
-		t.Fatalf("closing indexer: %v", err)
-	}
-}
 
 func mustQuery(t *testing.T, q string) string {
 	resp, err := http.Post("http://localhost:55346/index/pdk/query", "application/pql", strings.NewReader(q))

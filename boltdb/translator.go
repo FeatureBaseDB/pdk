@@ -56,7 +56,7 @@ var (
 type Translator struct {
 	Db     *bolt.DB
 	fmu    sync.RWMutex
-	frames map[string]struct{}
+	fields map[string]struct{}
 }
 
 // Close syncs and closes the underlying boltdb.
@@ -69,9 +69,9 @@ func (bt *Translator) Close() error {
 }
 
 // NewTranslator gets a new Translator
-func NewTranslator(filename string, frames ...string) (bt *Translator, err error) {
+func NewTranslator(filename string, fields ...string) (bt *Translator, err error) {
 	bt = &Translator{
-		frames: make(map[string]struct{}),
+		fields: make(map[string]struct{}),
 	}
 	bt.Db, err = bolt.Open(filename, 0600, &bolt.Options{Timeout: 1 * time.Second, InitialMmapSize: 50000000, NoGrowSync: true})
 	if err != nil {
@@ -87,8 +87,8 @@ func NewTranslator(filename string, frames ...string) (bt *Translator, err error
 		if err != nil {
 			return errors.Wrap(err, "creating valKey bucket")
 		}
-		for _, frame := range frames {
-			_, _, err = bt.addFrame(ib, vb, frame)
+		for _, field := range fields {
+			_, _, err = bt.addField(ib, vb, field)
 			if err != nil {
 				return err
 			}
@@ -101,17 +101,17 @@ func NewTranslator(filename string, frames ...string) (bt *Translator, err error
 	return bt, nil
 }
 
-func (bt *Translator) addFrame(ib, vb *bolt.Bucket, frame string) (fib, fvb *bolt.Bucket, err error) {
-	fib, err = ib.CreateBucketIfNotExists([]byte(frame))
+func (bt *Translator) addField(ib, vb *bolt.Bucket, field string) (fib, fvb *bolt.Bucket, err error) {
+	fib, err = ib.CreateBucketIfNotExists([]byte(field))
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "adding "+frame+" to id bucket")
+		return nil, nil, errors.Wrap(err, "adding "+field+" to id bucket")
 	}
-	fvb, err = vb.CreateBucketIfNotExists([]byte(frame))
+	fvb, err = vb.CreateBucketIfNotExists([]byte(field))
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "adding "+frame+" to id bucket")
+		return nil, nil, errors.Wrap(err, "adding "+field+" to id bucket")
 	}
 	bt.fmu.Lock()
-	bt.frames[frame] = struct{}{}
+	bt.fields[field] = struct{}{}
 	bt.fmu.Unlock()
 
 	return fib, fvb, nil
@@ -119,15 +119,15 @@ func (bt *Translator) addFrame(ib, vb *bolt.Bucket, frame string) (fib, fvb *bol
 
 // Get returns the previously mapped value to the monotonic id generated from
 // GetID. For BoltTranslator, val will always be a []byte.
-func (bt *Translator) Get(frame string, id uint64) (val interface{}) {
+func (bt *Translator) Get(field string, id uint64) (val interface{}) {
 	bt.fmu.RLock()
-	if _, ok := bt.frames[frame]; !ok {
-		panic(errors.Errorf("can't Get() with unknown frame '%v'", frame))
+	if _, ok := bt.fields[field]; !ok {
+		panic(errors.Errorf("can't Get() with unknown field '%v'", field))
 	}
 	bt.fmu.RUnlock()
 	err := bt.Db.View(func(tx *bolt.Tx) error {
 		ib := tx.Bucket(idBucket)
-		fib := ib.Bucket([]byte(frame))
+		fib := ib.Bucket([]byte(field))
 		idBytes := make([]byte, 8)
 		binary.BigEndian.PutUint64(idBytes, id)
 		val = fib.Get(idBytes)
@@ -140,34 +140,34 @@ func (bt *Translator) Get(frame string, id uint64) (val interface{}) {
 }
 
 // GetID maps val (which must be a byte slice) to a monotonic id.
-func (bt *Translator) GetID(frame string, val interface{}) (id uint64, err error) {
-	// ensure frame existence
+func (bt *Translator) GetID(field string, val interface{}) (id uint64, err error) {
+	// ensure field existence
 	bt.fmu.RLock()
-	_, ok := bt.frames[frame]
+	_, ok := bt.fields[field]
 	bt.fmu.RUnlock()
 	if !ok {
 		err = bt.Db.Update(func(tx *bolt.Tx) error {
 			ib := tx.Bucket(idBucket)
 			vb := tx.Bucket(valBucket)
-			_, _, err := bt.addFrame(ib, vb, frame)
+			_, _, err := bt.addField(ib, vb, field)
 			return err
 		})
 		if err != nil {
-			return 0, errors.Wrap(err, "adding frames in GetID")
+			return 0, errors.Wrap(err, "adding fields in GetID")
 		}
 	}
 
 	// check that val is of a supported type
 	bsval, ok := val.([]byte)
 	if !ok {
-		return 0, errors.Errorf("val %v of type %T for frame %v not supported by BoltTranslator - must be a []byte. ", val, val, frame)
+		return 0, errors.Errorf("val %v of type %T for field %v not supported by BoltTranslator - must be a []byte. ", val, val, field)
 	}
 
 	// look up to see if this val is already mapped to an id
 	var ret []byte
 	err = bt.Db.View(func(tx *bolt.Tx) error {
 		vb := tx.Bucket(valBucket)
-		fvb := vb.Bucket([]byte(frame))
+		fvb := vb.Bucket([]byte(field))
 		ret = fvb.Get(bsval)
 		return nil
 	})
@@ -177,8 +177,8 @@ func (bt *Translator) GetID(frame string, val interface{}) (id uint64, err error
 
 	// get new id, and map it in both directions
 	err = bt.Db.Batch(func(tx *bolt.Tx) error {
-		fib := tx.Bucket(idBucket).Bucket([]byte(frame))
-		fvb := tx.Bucket(valBucket).Bucket([]byte(frame))
+		fib := tx.Bucket(idBucket).Bucket([]byte(field))
+		fvb := tx.Bucket(valBucket).Bucket([]byte(field))
 
 		id, err = fib.NextSequence()
 		if err != nil {
@@ -202,14 +202,14 @@ func (bt *Translator) GetID(frame string, val interface{}) (id uint64, err error
 	return id, nil
 }
 
-// BulkAdd adds many values to a frame at once, allocating ids.
-func (bt *Translator) BulkAdd(frame string, values [][]byte) error {
+// BulkAdd adds many values to a field at once, allocating ids.
+func (bt *Translator) BulkAdd(field string, values [][]byte) error {
 	var batchSize uint64 = 10000
 	var batch uint64
 	for batch*batchSize < uint64(len(values)) {
 		err := bt.Db.Batch(func(tx *bolt.Tx) error {
-			fib := tx.Bucket(idBucket).Bucket([]byte(frame))
-			fvb := tx.Bucket(valBucket).Bucket([]byte(frame))
+			fib := tx.Bucket(idBucket).Bucket([]byte(field))
+			fvb := tx.Bucket(valBucket).Bucket([]byte(field))
 
 			for i := batch * batchSize; i < (batch+1)*batchSize && i < uint64(len(values)); i++ {
 				idBytes := make([]byte, 8)

@@ -501,7 +501,7 @@ func (U64) isObj()  {}
 
 // Note: if we start adding lots more literals, reserve numbers 128 and greater.
 // Right now, ToBytes and FromBytes use a single byte at the start of the value
-// to denote the type - if we grow to 128, we can use first bit as a marker to
+// to denote the type - if we grow to 128, we can use first column as a marker to
 // signify that the type is now two bytes.
 const (
 	bID = iota + 1 // reserve 0 for some future use.

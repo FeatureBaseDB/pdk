@@ -40,17 +40,17 @@ import (
 )
 
 // Translator describes the functionality for mapping arbitrary values in a
-// given Pilosa frame to row ids and back. Implementations should be threadsafe
+// given Pilosa field to row ids and back. Implementations should be threadsafe
 // and generate ids monotonically.
 type Translator interface {
-	Get(frame string, id uint64) (interface{}, error)
-	GetID(frame string, val interface{}) (uint64, error)
+	Get(field string, id uint64) (interface{}, error)
+	GetID(field string, val interface{}) (uint64, error)
 }
 
-// FrameTranslator works like a Translator, but the methods don't take frames as
-// arguments. Typically a Translator will include a FrameTranslator for each
-// frame.
-type FrameTranslator interface {
+// FieldTranslator works like a Translator, but the methods don't take fields as
+// arguments. Typically a Translator will include a FieldTranslator for each
+// field.
+type FieldTranslator interface {
 	Get(id uint64) (interface{}, error)
 	GetID(val interface{}) (uint64, error)
 }
@@ -58,50 +58,50 @@ type FrameTranslator interface {
 // MapTranslator is an in-memory implementation of Translator using maps.
 type MapTranslator struct {
 	lock   sync.RWMutex
-	frames map[string]*MapFrameTranslator
+	fields map[string]*MapFieldTranslator
 }
 
 // NewMapTranslator creates a new MapTranslator.
 func NewMapTranslator() *MapTranslator {
 	return &MapTranslator{
-		frames: make(map[string]*MapFrameTranslator),
+		fields: make(map[string]*MapFieldTranslator),
 	}
 }
 
-func (m *MapTranslator) getFrameTranslator(frame string) *MapFrameTranslator {
+func (m *MapTranslator) getFieldTranslator(field string) *MapFieldTranslator {
 	m.lock.RLock()
-	if mt, ok := m.frames[frame]; ok {
+	if mt, ok := m.fields[field]; ok {
 		m.lock.RUnlock()
 		return mt
 	}
 	m.lock.RUnlock()
 	m.lock.Lock()
 	defer m.lock.Unlock()
-	if mt, ok := m.frames[frame]; ok {
+	if mt, ok := m.fields[field]; ok {
 		return mt
 	}
-	m.frames[frame] = NewMapFrameTranslator()
-	return m.frames[frame]
+	m.fields[field] = NewMapFieldTranslator()
+	return m.fields[field]
 }
 
-// Get returns the value mapped to the given id in the given frame.
-func (m *MapTranslator) Get(frame string, id uint64) (interface{}, error) {
-	val, err := m.getFrameTranslator(frame).Get(id)
+// Get returns the value mapped to the given id in the given field.
+func (m *MapTranslator) Get(field string, id uint64) (interface{}, error) {
+	val, err := m.getFieldTranslator(field).Get(id)
 	if err != nil {
-		return nil, errors.Wrapf(err, "frame '%v', id %v", frame, id)
+		return nil, errors.Wrapf(err, "field '%v', id %v", field, id)
 	}
 	return val, nil
 }
 
 // GetID returns the integer id associated with the given value in the given
-// frame. It allocates a new ID if the value is not found.
-func (m *MapTranslator) GetID(frame string, val interface{}) (id uint64, err error) {
-	return m.getFrameTranslator(frame).GetID(val)
+// field. It allocates a new ID if the value is not found.
+func (m *MapTranslator) GetID(field string, val interface{}) (id uint64, err error) {
+	return m.getFieldTranslator(field).GetID(val)
 }
 
-// MapFrameTranslator is an in-memory implementation of FrameTranslator using
+// MapFieldTranslator is an in-memory implementation of FrameTranslator using
 // sync.Map and a slice.
-type MapFrameTranslator struct {
+type MapFieldTranslator struct {
 	m sync.Map
 
 	n *Nexter
@@ -110,16 +110,16 @@ type MapFrameTranslator struct {
 	s []interface{}
 }
 
-// NewMapFrameTranslator creates a new MapFrameTranslator.
-func NewMapFrameTranslator() *MapFrameTranslator {
-	return &MapFrameTranslator{
+// NewMapFieldTranslator creates a new MapFrameTranslator.
+func NewMapFieldTranslator() *MapFieldTranslator {
+	return &MapFieldTranslator{
 		n: NewNexter(),
 		s: make([]interface{}, 0),
 	}
 }
 
 // Get returns the value mapped to the given id.
-func (m *MapFrameTranslator) Get(id uint64) (interface{}, error) {
+func (m *MapFieldTranslator) Get(id uint64) (interface{}, error) {
 	m.l.RLock()
 	defer m.l.RUnlock()
 	if uint64(len(m.s)) < id {
@@ -130,10 +130,10 @@ func (m *MapFrameTranslator) Get(id uint64) (interface{}, error) {
 
 // GetID returns the integer id associated with the given value. It allocates a
 // new ID if the value is not found.
-func (m *MapFrameTranslator) GetID(val interface{}) (id uint64, err error) {
-	// TODO - this is a janky way to support byte slice value - revisit would be
-	// nice to support values of any type, but currently only things that are
-	// acceptable map keys are supported.(and byte slices because of this hack)
+func (m *MapFieldTranslator) GetID(val interface{}) (id uint64, err error) {
+	// We make everything a string before mapping it. There are some subtle
+	// issues that can occur with the map because it stores type information as
+	// well as the actual value.
 	valMap, valSlice := fmt.Sprintf("%s", val), val
 	if idv, ok := m.m.Load(valMap); ok {
 		if id, ok = idv.(uint64); !ok {
@@ -169,8 +169,8 @@ type NexterFrameTranslator struct {
 	n *Nexter
 }
 
-// NewNexterFrameTranslator creates a new NexterFrameTranslator
-func NewNexterFrameTranslator() *NexterFrameTranslator {
+// NewNexterFieldTranslator creates a new NexterFrameTranslator
+func NewNexterFieldTranslator() *NexterFrameTranslator {
 	return &NexterFrameTranslator{
 		n: NewNexter(),
 	}

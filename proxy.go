@@ -51,7 +51,7 @@ import (
 // in requests and responses.
 type KeyMapper interface {
 	MapRequest(body []byte) ([]byte, error)
-	MapResult(frame string, res interface{}) (interface{}, error)
+	MapResult(field string, res interface{}) (interface{}, error)
 }
 
 // Proxy describes the functionality for proxying requests.
@@ -75,14 +75,14 @@ type pilosaForwarder struct {
 	phost     string
 	client    http.Client
 	km        KeyMapper
-	colMapper FrameTranslator
+	colMapper FieldTranslator
 	proxy     Proxy
 }
 
 // NewPilosaForwarder returns a new pilosaForwarder which forwards all requests
 // to `phost`. It inspects pilosa responses and runs the row ids through the
 // Translator `t` to translate them to whatever they were mapped from.
-func NewPilosaForwarder(phost string, t Translator, colTranslator ...FrameTranslator) *pilosaForwarder {
+func NewPilosaForwarder(phost string, t Translator, colTranslator ...FieldTranslator) *pilosaForwarder {
 	if !strings.HasPrefix(phost, "http://") {
 		phost = "http://" + phost
 	}
@@ -102,11 +102,11 @@ func (p *pilosaForwarder) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	// inspect the request to determine which queries have a frame - the Translator
-	// needs the frame for it's lookups.
-	frames, err := GetFrames(body)
+	// inspect the request to determine which queries have a field - the Translator
+	// needs the field for it's lookups.
+	fields, err := GetFields(body)
 	if err != nil {
-		http.Error(w, "getting frames: "+err.Error(), http.StatusBadRequest)
+		http.Error(w, "getting fields: "+err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -139,16 +139,22 @@ func (p *pilosaForwarder) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		Results: make([]interface{}, len(pilosaResp.Results)),
 	}
 	for i, result := range pilosaResp.Results {
-		if frames[i] == "" {
-			mappedResp.Results[i] = result
-			continue
+		if fields[i] == "" {
+			mappedResult, err := p.km.MapResult(fields[i], result)
+			if err != nil {
+				log.Printf("mapping frameless result: %v", err)
+				mappedResp.Results[i] = result
+			} else {
+				mappedResp.Results[i] = mappedResult
+			}
+		} else {
+			mappedResult, err := p.km.MapResult(fields[i], result)
+			if err != nil {
+				http.Error(w, "mapping result: "+err.Error(), http.StatusInternalServerError)
+				return
+			}
+			mappedResp.Results[i] = mappedResult
 		}
-		mappedResult, err := p.km.MapResult(frames[i], result)
-		if err != nil {
-			http.Error(w, "mapping result: "+err.Error(), http.StatusInternalServerError)
-			return
-		}
-		mappedResp.Results[i] = mappedResult
 	}
 
 	// Allow cross-domain requests
@@ -199,11 +205,11 @@ func (p *pilosaProxy) ProxyRequest(orig *http.Request, origbody []byte) (*http.R
 // PilosaKeyMapper implements the KeyMapper interface.
 type PilosaKeyMapper struct {
 	t Translator
-	c FrameTranslator
+	c FieldTranslator
 }
 
 // NewPilosaKeyMapper returns a PilosaKeyMapper.
-func NewPilosaKeyMapper(t Translator, colTranslator ...FrameTranslator) *PilosaKeyMapper {
+func NewPilosaKeyMapper(t Translator, colTranslator ...FieldTranslator) *PilosaKeyMapper {
 	pkm := &PilosaKeyMapper{
 		t: t,
 	}
@@ -215,16 +221,20 @@ func NewPilosaKeyMapper(t Translator, colTranslator ...FrameTranslator) *PilosaK
 
 // MapResult converts the result of a single top level query (one element of
 // QueryResponse.Results) to its mapped counterpart.
-func (p *PilosaKeyMapper) MapResult(frame string, res interface{}) (mappedRes interface{}, err error) {
+func (p *PilosaKeyMapper) MapResult(field string, res interface{}) (mappedRes interface{}, err error) {
+	log.Printf("mapping result: '%#v'", res)
+	defer func() {
+		log.Printf("mapped result: '%#v'", mappedRes)
+	}()
 	switch result := res.(type) {
 	case uint64:
 		// Count
 		mappedRes = result
 	case []interface{}:
-		return p.mapSliceInterfaceResult(frame, result)
+		return p.mapSliceInterfaceResult(field, result)
 	case map[string]interface{}:
 		// Bitmap/Intersect/Difference/Union
-		return p.mapBitmapResult(frame, result)
+		return p.mapBitmapResult(field, result)
 	case bool:
 		// SetBit/ClearBit
 		mappedRes = result
@@ -235,41 +245,45 @@ func (p *PilosaKeyMapper) MapResult(frame string, res interface{}) (mappedRes in
 	return mappedRes, nil
 }
 
-func (p *PilosaKeyMapper) mapBitmapResult(frame string, result map[string]interface{}) (mappedRes interface{}, err error) {
-	cols, ok := result["columns"]
+func (p *PilosaKeyMapper) mapBitmapResult(field string, result map[string]interface{}) (mappedRes interface{}, err error) {
+	colkey := "columns"
+	cols, ok := result[colkey]
 	if !ok {
-		return result, errors.Errorf("columns key not in result: %#v", result)
+		colkey = "bits"
+		if cols, ok = result[colkey]; !ok {
+			return result, errors.Errorf("neither \"columns\" nor \"bits\" key in result: %#v", result)
+		}
 	}
 	colsSlice, ok := cols.([]interface{})
 	if !ok {
 		return result, errors.Errorf("columns should be a slice but is %T, %#v", cols, cols)
 	}
-	mappedCols, err := p.mapColumnSlice(frame, colsSlice)
+	mappedCols, err := p.mapColumnSlice(field, colsSlice)
 	if err != nil {
 		return result, errors.Wrap(err, "mapping column slice")
 	}
-	result["columns"] = mappedCols
+	result[colkey] = mappedCols
 	return result, nil
 }
 
-func (p *PilosaKeyMapper) mapSliceInterfaceResult(frame string, res []interface{}) (mappedRes interface{}, err error) {
+func (p *PilosaKeyMapper) mapSliceInterfaceResult(field string, res []interface{}) (mappedRes interface{}, err error) {
 	if len(res) == 0 {
 		return res, nil
 	}
 	switch res[0].(type) {
 	case map[string]interface{}:
-		return p.mapTopNResult(frame, res)
+		return p.mapTopNResult(field, res)
 	default:
 		return mappedRes, errors.Errorf("unexpected result type in slice: %T, %#v", res[0], res[0])
 	}
 }
 
-func (p *PilosaKeyMapper) mapColumnSlice(frame string, result []interface{}) (mappedRes interface{}, err error) {
+func (p *PilosaKeyMapper) mapColumnSlice(field string, result []interface{}) (mappedRes interface{}, err error) {
 	cols := make([]interface{}, len(result))
 	for i, icol := range result {
 		col, ok := icol.(float64)
 		if !ok {
-			return nil, errors.Errorf("expected uint64, but got %T %#v", icol, icol)
+			return nil, errors.Errorf("expected float64, but got %T %#v", icol, icol)
 		}
 		colV, err := p.c.Get(uint64(col))
 		if err != nil {
@@ -280,7 +294,7 @@ func (p *PilosaKeyMapper) mapColumnSlice(frame string, result []interface{}) (ma
 	return cols, nil
 }
 
-func (p *PilosaKeyMapper) mapTopNResult(frame string, result []interface{}) (mappedRes interface{}, err error) {
+func (p *PilosaKeyMapper) mapTopNResult(field string, result []interface{}) (mappedRes interface{}, err error) {
 	mr := make([]struct {
 		Key   interface{}
 		Count uint64
@@ -297,7 +311,7 @@ func (p *PilosaKeyMapper) mapTopNResult(frame string, result []interface{}) (map
 			if !(isKeyFloat && isCountFloat) {
 				return nil, fmt.Errorf("expected pilosa.Pair, but have wrong value types: got %v", pair)
 			}
-			keyVal, err := p.t.Get(frame, uint64(keyFloat))
+			keyVal, err := p.t.Get(field, uint64(keyFloat))
 			if err != nil {
 				return nil, errors.Wrap(err, "translator.Get")
 			}
@@ -319,6 +333,7 @@ func (p *PilosaKeyMapper) mapTopNResult(frame string, result []interface{}) (map
 
 // MapRequest takes a request body and returns a mapped version of that body.
 func (p *PilosaKeyMapper) MapRequest(body []byte) ([]byte, error) {
+	log.Printf("mapping request: '%s'", body)
 	query, err := pql.ParseString(string(body))
 	if err != nil {
 		return nil, errors.Wrap(err, "parsing string")
@@ -329,16 +344,29 @@ func (p *PilosaKeyMapper) MapRequest(body []byte) ([]byte, error) {
 			return nil, errors.Wrap(err, "mapping call")
 		}
 	}
+	log.Printf("mapped request: '%s'", query.String())
 	return []byte(query.String()), nil
 }
 
 func (p *PilosaKeyMapper) mapCall(call *pql.Call) error {
-	if call.Name == "Bitmap" {
-		id, err := p.t.GetID(call.Args["frame"].(string), call.Args["row"])
+	if call.Name == "Row" {
+		var field string
+		var value interface{}
+		for k, v := range call.Args {
+			if !strings.HasPrefix(k, "_") {
+				field = k
+				value = v
+				break
+			}
+		}
+		if value == nil {
+			return errors.Errorf("no field with non-nil value in Row call: %s", call)
+		}
+		id, err := p.t.GetID(field, value)
 		if err != nil {
 			return errors.Wrap(err, "getting ID")
 		}
-		call.Args["row"] = id
+		call.Args[field] = id
 		return nil
 	}
 	for _, child := range call.Children {
@@ -349,23 +377,23 @@ func (p *PilosaKeyMapper) mapCall(call *pql.Call) error {
 	return nil
 }
 
-// GetFrames interprets body as pql queries and then tries to determine the
-// frame of each. Some queries do not have frames, and the empty string will be
+// GetFields interprets body as pql queries and then tries to determine the
+// field of each. Some queries do not have fields, and the empty string will be
 // returned for these.
-func GetFrames(body []byte) ([]string, error) {
+func GetFields(body []byte) ([]string, error) {
 	query, err := pql.ParseString(string(body))
 	if err != nil {
 		return nil, fmt.Errorf("parsing query: %v", err.Error())
 	}
 
-	frames := make([]string, len(query.Calls))
+	fields := make([]string, len(query.Calls))
 
 	for i, call := range query.Calls {
-		if frame, ok := call.Args["frame"].(string); ok {
-			frames[i] = frame
+		if field, ok := call.Args["field"].(string); ok {
+			fields[i] = field
 		} else {
-			frames[i] = ""
+			fields[i] = ""
 		}
 	}
-	return frames, nil
+	return fields, nil
 }

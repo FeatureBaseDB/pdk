@@ -44,6 +44,9 @@ import (
 
 func TestEntitySubjecter(t *testing.T) {
 	es := SubjectPath([]string{"id"})
+	fake.GenEvent()
+	fake.GenEvent()
+	fake.GenEvent()
 	event := fake.GenEvent()
 	bytes, err := json.Marshal(event)
 	if err != nil {

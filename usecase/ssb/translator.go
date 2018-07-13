@@ -53,10 +53,10 @@ func newTranslator(storedir string) (*translator, error) {
 	}, nil
 }
 
-func (t *translator) Get(frame string, id uint64) (interface{}, error) {
-	switch frame {
+func (t *translator) Get(field string, id uint64) (interface{}, error) {
+	switch field {
 	case "c_city", "c_nation", "c_region", "s_city", "s_nation", "s_region", "p_mfgr", "p_category", "p_brand1":
-		val, err := t.lt.Get(frame, id)
+		val, err := t.lt.Get(field, id)
 		if err != nil {
 			return nil, errors.Wrap(err, "string from level translator")
 		}
@@ -66,14 +66,14 @@ func (t *translator) Get(frame string, id uint64) (interface{}, error) {
 	case "lo_weeknum", "lo_year", "lo_quantity_b", "lo_discount_b":
 		return id, nil
 	default:
-		return nil, errors.Errorf("Unimplemented in ssb.Translator.Get frame: %v, id: %v", frame, id)
+		return nil, errors.Errorf("Unimplemented in ssb.Translator.Get field: %v, id: %v", field, id)
 	}
 }
 
-func (t *translator) GetID(frame string, val interface{}) (uint64, error) {
-	switch frame {
+func (t *translator) GetID(field string, val interface{}) (uint64, error) {
+	switch field {
 	case "c_city", "c_nation", "c_region", "s_city", "s_nation", "s_region", "p_mfgr", "p_category", "p_brand1":
-		return t.lt.GetID(frame, []byte(val.(string)))
+		return t.lt.GetID(field, []byte(val.(string)))
 	case "lo_month":
 		valstring := val.(string)
 		m, ok := months[valstring]
@@ -94,7 +94,7 @@ func (t *translator) GetID(frame string, val interface{}) (uint64, error) {
 		}
 		return uint64(val16), nil
 	default:
-		return 0, fmt.Errorf("Unimplemented in ssb.Translator.GetID frame: %v, val: %v", frame, val)
+		return 0, fmt.Errorf("Unimplemented in ssb.Translator.GetID field: %v, val: %v", field, val)
 	}
 }
 

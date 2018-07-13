@@ -34,6 +34,7 @@ package kafka
 
 import (
 	"log"
+	"net/http"
 
 	"github.com/pilosa/pdk"
 	"github.com/pkg/errors"
@@ -41,16 +42,20 @@ import (
 
 // Main holds the options for running Pilosa ingestion from Kafka.
 type Main struct {
-	Hosts       []string `help:"Comma separated list of Kafka hosts and ports"`
-	Topics      []string `help:"Comma separated list of Kafka topics"`
-	Group       string   `help:"Kafka group"`
-	RegistryURL string   `help:"URL of the confluent schema registry. Pass an empty string to use JSON instead of Avro."`
-	Framer      pdk.DashFrame
-	PilosaHosts []string `help:"Comma separated list of Pilosa hosts and ports."`
-	Index       string   `help:"Pilosa index."`
-	BatchSize   uint     `help:"Batch size for Pilosa imports (latency/throughput tradeoff)."`
-	SubjectPath []string `help:"Comma separated path to value in each record that should be mapped to column ID. Blank gets a sequential ID"`
-	Proxy       string   `help:"Bind to this address to proxy and translate requests to Pilosa"`
+	Hosts         []string `help:"Comma separated list of Kafka hosts and ports"`
+	Topics        []string `help:"Comma separated list of Kafka topics"`
+	Group         string   `help:"Kafka group"`
+	RegistryURL   string   `help:"URL of the confluent schema registry. Pass an empty string to use JSON instead of Avro."`
+	Framer        pdk.DashField
+	PilosaHosts   []string `help:"Comma separated list of Pilosa hosts and ports."`
+	Index         string   `help:"Pilosa index."`
+	BatchSize     uint     `help:"Batch size for Pilosa imports (latency/throughput tradeoff)."`
+	SubjectPath   []string `help:"Comma separated path to value in each record that should be mapped to column ID. Blank gets a sequential ID"`
+	Proxy         string   `help:"Bind to this address to proxy and translate requests to Pilosa"`
+	AllowedFields []string `help:"If any are passed, only frame names in this comma separated list will be indexed."`
+	MaxRecords    int      `help:"Maximum number of records to ingest from kafka before stopping."`
+
+	proxy http.Server
 }
 
 // NewMain returns a new Main.
@@ -69,12 +74,14 @@ func NewMain() *Main {
 
 // Run begins indexing data from Kafka into Pilosa.
 func (m *Main) Run() error {
+	log.Printf("Running Main: %#v", m)
 	var src pdk.Source
 	if m.RegistryURL == "" {
 		isrc := NewSource()
 		isrc.Hosts = m.Hosts
 		isrc.Topics = m.Topics
 		isrc.Group = m.Group
+		isrc.MaxMsgs = m.MaxRecords
 		src = isrc
 		if err := isrc.Open(); err != nil {
 			return errors.Wrap(err, "opening kafka source")
@@ -85,6 +92,7 @@ func (m *Main) Run() error {
 		isrc.Topics = m.Topics
 		isrc.Group = m.Group
 		isrc.RegistryURL = m.RegistryURL
+		isrc.MaxMsgs = m.MaxRecords
 		src = isrc
 		if err := isrc.Open(); err != nil {
 			return errors.Wrap(err, "opening kafka source")
@@ -103,18 +111,37 @@ func (m *Main) Run() error {
 	mapper := pdk.NewCollapsingMapper()
 	mapper.Framer = &m.Framer
 	if translateColumns {
-		mapper.ColTranslator = pdk.NewMapFrameTranslator()
+		log.Println("translating columns")
+		mapper.ColTranslator = pdk.NewMapFieldTranslator()
+	} else {
+		log.Println("not translating columns")
 	}
 
-	indexer, err := pdk.SetupPilosa(m.PilosaHosts, m.Index, []pdk.FrameSpec{}, m.BatchSize)
+	indexer, err := pdk.SetupPilosa(m.PilosaHosts, m.Index, nil, m.BatchSize)
 	if err != nil {
 		return errors.Wrap(err, "setting up Pilosa")
 	}
 
 	ingester := pdk.NewIngester(src, parser, mapper, indexer)
+	if len(m.AllowedFields) > 0 {
+		ingester.AllowedFields = make(map[string]bool)
+		for _, fram := range m.AllowedFields {
+			ingester.AllowedFields[fram] = true
+		}
+	}
+	m.proxy = http.Server{
+		Addr:    m.Proxy,
+		Handler: pdk.NewPilosaForwarder(m.PilosaHosts[0], mapper.Translator, mapper.ColTranslator),
+	}
 	go func() {
-		err = pdk.StartMappingProxy(m.Proxy, pdk.NewPilosaForwarder(m.PilosaHosts[0], mapper.Translator, mapper.ColTranslator))
-		log.Fatal(errors.Wrap(err, "starting mapping proxy"))
+		err := m.proxy.ListenAndServe()
+		if err != nil {
+			log.Printf("proxy closed: %v", err)
+		}
 	}()
 	return errors.Wrap(ingester.Run(), "running ingester")
+}
+
+func (m *Main) Close() error {
+	return errors.Wrap(m.proxy.Close(), "closing proxy server")
 }

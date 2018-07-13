@@ -5,7 +5,7 @@
 
 ## Pilosa queries
 
-frames:
+fields:
 - cabType
 - dist_miles
 - dropDay
@@ -23,7 +23,7 @@ also need passenger_count
 
 
 1. count per cab_type
-tick ; q=""; for i in {0..10} ; do q="${q}Count(Bitmap(id=$i, frame=cabType))" ; done ; curl localhost:15000/query?db=taxi -d "$q" ; tock
+tick ; q=""; for i in {0..10} ; do q="${q}Count(Row(id=$i, field=cabType))" ; done ; curl localhost:15000/query?db=taxi -d "$q" ; tock
 
 
 2. avg(total_amount) per passenger_count
