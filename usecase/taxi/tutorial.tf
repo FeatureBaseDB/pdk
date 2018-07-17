@@ -196,7 +196,7 @@ resource "aws_security_group" "default" {
     from_port   = 0
     to_port     = 10101
     protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/16"]
+    cidr_blocks = ["0.0.0.0/0"]
   }
 
   # web demo access from anywhere
@@ -204,7 +204,7 @@ resource "aws_security_group" "default" {
     from_port   = 0
     to_port     = 8000
     protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/16"]
+    cidr_blocks = ["0.0.0.0/0"]
   }
 
   # outbound internet access
