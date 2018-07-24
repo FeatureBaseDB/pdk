@@ -144,6 +144,11 @@ func NewFieldTranslator(dirname string, field string) (*FieldTranslator, error) 
 	if err != nil {
 		return nil, errors.Wrapf(err, "opening leveldb at %v", dirname+"/"+field+"-id")
 	}
+	iter := mdbs.idMap.NewIterator(nil, nil)
+	if iter.Last() {
+		key := iter.Key()
+		*mdbs.curID = binary.BigEndian.Uint64(key) + 1
+	}
 	mdbs.valMap, err = leveldb.OpenFile(dirname+"/"+field+"-val", &opt.Options{})
 	if err != nil {
 		return nil, errors.Wrapf(err, "opening leveldb at %v", dirname+"/"+field+"-val")

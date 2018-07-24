@@ -39,6 +39,7 @@ import (
 	"io/ioutil"
 	"math/rand"
 	"net/http"
+	"os"
 	"reflect"
 	"sort"
 	"strconv"
@@ -225,8 +226,16 @@ func runMain(t *testing.T, allowedFields []string) {
 	m.Topics = []string{kafkaTopic}
 	m.Proxy = ":39485"
 	m.MaxRecords = 1000
+	var err error
+	m.TranslatorDir, err = ioutil.TempDir("", "")
+	if err != nil {
+		t.Fatalf("making temp dir for translation: %v", err)
+	}
+	defer func() {
+		os.RemoveAll(m.TranslatorDir)
+	}()
 
-	err := m.Run()
+	err = m.Run()
 	if err != nil {
 		t.Fatalf("error running: %v", err)
 	}
