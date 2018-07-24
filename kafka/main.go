@@ -33,10 +33,12 @@
 package kafka
 
 import (
+	"io/ioutil"
 	"log"
 	"net/http"
 
 	"github.com/pilosa/pdk"
+	"github.com/pilosa/pdk/leveldb"
 	"github.com/pkg/errors"
 )
 
@@ -54,6 +56,7 @@ type Main struct {
 	Proxy         string   `help:"Bind to this address to proxy and translate requests to Pilosa"`
 	AllowedFields []string `help:"If any are passed, only frame names in this comma separated list will be indexed."`
 	MaxRecords    int      `help:"Maximum number of records to ingest from kafka before stopping."`
+	TranslatorDir string   `help:"Directory for key/id mapping storage."`
 
 	proxy http.Server
 }
@@ -73,7 +76,7 @@ func NewMain() *Main {
 }
 
 // Run begins indexing data from Kafka into Pilosa.
-func (m *Main) Run() error {
+func (m *Main) Run() (err error) {
 	log.Printf("Running Main: %#v", m)
 	var src pdk.Source
 	if m.RegistryURL == "" {
@@ -99,6 +102,13 @@ func (m *Main) Run() error {
 		}
 	}
 
+	if m.TranslatorDir == "" {
+		m.TranslatorDir, err = ioutil.TempDir("", "pdk")
+		if err != nil {
+			return errors.Wrap(err, "creating temp directory")
+		}
+	}
+
 	translateColumns := true
 	parser := pdk.NewDefaultGenericParser()
 	if len(m.SubjectPath) == 0 {
@@ -109,10 +119,17 @@ func (m *Main) Run() error {
 	}
 
 	mapper := pdk.NewCollapsingMapper()
+	mapper.Translator, err = leveldb.NewTranslator(m.TranslatorDir)
+	if err != nil {
+		return errors.Wrap(err, "creating translator")
+	}
 	mapper.Framer = &m.Framer
 	if translateColumns {
 		log.Println("translating columns")
-		mapper.ColTranslator = pdk.NewMapFieldTranslator()
+		mapper.ColTranslator, err = leveldb.NewFieldTranslator(m.TranslatorDir, "__columns")
+		if err != nil {
+			return errors.Wrap(err, "creating column translator")
+		}
 	} else {
 		log.Println("not translating columns")
 	}

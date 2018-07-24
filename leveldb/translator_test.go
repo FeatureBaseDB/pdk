@@ -56,6 +56,10 @@ func TestTranslator(t *testing.T) {
 	if err != nil {
 		t.Fatalf("couldn't get id for hello f1: %v", err)
 	}
+	_, err = bt.GetID("f1", []byte("bloop"))
+	if err != nil {
+		t.Fatalf("getting another id for f1: %v", err)
+	}
 	id2, err := bt.GetID("f2", []byte("hello"))
 	if err != nil {
 		t.Fatalf("couldn't get id for hello in f2: %v", err)
@@ -91,6 +95,12 @@ func TestTranslator(t *testing.T) {
 	bt, err = NewTranslator(levelDir, "f1", "f2")
 	if err != nil {
 		t.Fatalf("couldn't get level translator after closing: %v", err)
+	}
+	// make sure a newly allocated value doesn't start back at id 0
+	idF1newval, err := bt.GetID("f1", []byte("newval"))
+	test.ErrNil(t, err, "get f1 newval")
+	if idF1newval != 2 {
+		t.Fatalf("Got %v for f1:newval", idF1newval)
 	}
 	val, err = bt.Get("f1", id1)
 	test.ErrNil(t, err, `Get("f1", id1)`)
