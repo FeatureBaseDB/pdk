@@ -84,22 +84,10 @@ func (m *Main) appendWeatherData() error {
 	startTime := time.Date(2009, 2, 1, 0, 0, 0, 0, time.UTC)
 	endTime := time.Date(2015, 12, 31, 0, 0, 0, 0, time.UTC)
 
-	pickup_year, err := m.index.Field("pickup_year")
-	if err != nil {
-		return err
-	}
-	pickup_month, err := m.index.Field("pickup_month")
-	if err != nil {
-		return err
-	}
-	pickup_mday, err := m.index.Field("pickup_mday")
-	if err != nil {
-		return err
-	}
-	pickup_time, err := m.index.Field("pickup_time")
-	if err != nil {
-		return err
-	}
+	pickup_year := m.index.Field("pickup_year")
+	pickup_month := m.index.Field("pickup_month")
+	pickup_mday := m.index.Field("pickup_mday")
+	pickup_time := m.index.Field("pickup_time")
 
 	for t := startTime; endTime.After(t); t = t.Add(time.Hour) {
 		timeBucket, _ := timeMapper.ID(t)
@@ -158,10 +146,7 @@ func (m *Main) Run() (err error) {
 	}()
 
 	schema := gopilosa.NewSchema()
-	m.index, err = schema.Index(m.Index)
-	if err != nil {
-		return errors.Wrap(err, fmt.Sprintf("describing index: %s", m.Index))
-	}
+	m.index = schema.Index(m.Index)
 	pdk.NewRankedField(m.index, "weather_condition", 0)
 	pdk.NewRankedField(m.index, "precipitation_type", 0)
 	pdk.NewRankedField(m.index, "precipitation_inches", 0)
@@ -187,10 +172,7 @@ func (m *Main) Run() (err error) {
 	readFieldNames := []string{"cab_type", "passenger_count", "total_amount_dollars", "pickup_time", "pickup_day", "pickup_mday", "pickup_month", "pickup_year", "drop_time", "drop_day", "drop_mday", "drop_month", "drop_year", "dist_miles", "duration_minutes", "speed_mph", "pickup_grid_id", "drop_grid_id"}
 
 	for _, fieldName := range readFieldNames {
-		_, err := m.index.Field(fieldName)
-		if err != nil {
-			return errors.Wrap(err, fmt.Sprintf("describing field: %s", fieldName))
-		}
+		m.index.Field(fieldName)
 	}
 	err = setupClient.SyncSchema(schema)
 	if err != nil {

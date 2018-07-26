@@ -255,10 +255,7 @@ func runMain(t *testing.T, allowedFields []string) {
 		t.Fatalf("getting schema: %v", err)
 	}
 
-	idx, err := schema.Index("pdk")
-	if err != nil {
-		t.Fatalf("getting index: %v", err)
-	}
+	idx := schema.Index("pdk")
 
 	fieldlist := []string{}
 	for name, field := range idx.Fields() {

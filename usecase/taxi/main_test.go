@@ -107,15 +107,8 @@ func GetField(t *testing.T, c *gopilosa.Client, index, field string) (*gopilosa.
 	if err != nil {
 		t.Fatalf("getting schema: %v", err)
 	}
-	idx, err := schema.Index(index)
-	if err != nil {
-		t.Fatalf("getting index: %v", err)
-	}
-
-	fram, err := idx.Field(field)
-	if err != nil {
-		t.Fatalf("getting field: %v", err)
-	}
+	idx := schema.Index(index)
+	fram := idx.Field(field)
 	err = c.SyncSchema(schema)
 	if err != nil {
 		t.Fatalf("syncing schema: %v", err)
