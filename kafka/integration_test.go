@@ -284,6 +284,11 @@ func runMain(t *testing.T, allowedFields []string) {
 		}
 	}
 
+	resp := mustQuery(t, "TopN(geoip-country_code, n=100)")
+	if !strings.Contains(resp, `","Count":2},{"Key":"`) {
+		t.Fatalf("unexpected result from TopN(geoip-country_code, n=10):\n%v", resp)
+	}
+
 	expFields := []string{"geoip-region", "geoip-city", "geoip-country_name", "timestamp", "aba", "geoip-country_code", "geoip-region_name", "db", "geoip-country_code3", "geoip-postal_code", "geoip-time_zone", "customer_id", "geoip-area_code", "geoip-dma_code", "geoip-latitude", "geoip-longitude", "geoip-metro_code"}
 	if len(allowedFields) > 0 {
 		expFields = allowedFields

@@ -142,7 +142,7 @@ func (p *pilosaForwarder) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		if fields[i] == "" {
 			mappedResult, err := p.km.MapResult(fields[i], result)
 			if err != nil {
-				log.Printf("mapping frameless result: %v", err)
+				log.Printf("mapping fieldless result: %v", err)
 				mappedResp.Results[i] = result
 			} else {
 				mappedResp.Results[i] = mappedResult
@@ -390,6 +390,8 @@ func GetFields(body []byte) ([]string, error) {
 
 	for i, call := range query.Calls {
 		if field, ok := call.Args["field"].(string); ok {
+			fields[i] = field
+		} else if field, ok := call.Args["_field"].(string); ok {
 			fields[i] = field
 		} else {
 			fields[i] = ""
