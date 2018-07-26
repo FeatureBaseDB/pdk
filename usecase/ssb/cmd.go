@@ -420,10 +420,7 @@ func (m *Main) setupEdgeTables() (cust map[int]customer, par map[int]part, supp 
 
 func (m *Main) schema() (*gopilosa.Schema, error) {
 	schema := gopilosa.NewSchema()
-	index, err := schema.Index(m.Index)
-	if err != nil {
-		return nil, err
-	}
+	index := schema.Index(m.Index)
 	// LO_
 	pdk.NewRankedField(index, "lo_year", 10)
 	pdk.NewRankedField(index, "lo_month", 12)

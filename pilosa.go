@@ -81,16 +81,12 @@ func (i *Index) addColumn(fieldName string, col uint64, row uint64, ts int64) {
 		i.lock.RUnlock()
 		i.lock.Lock()
 		defer i.lock.Unlock()
-		fieldType := gopilosa.OptFieldSet(gopilosa.CacheTypeRanked, 100000)
+		fieldType := gopilosa.OptFieldTypeSet(gopilosa.CacheTypeRanked, 100000)
 		if ts != 0 {
-			fieldType = gopilosa.OptFieldTime(gopilosa.TimeQuantumYearMonthDayHour)
+			fieldType = gopilosa.OptFieldTypeTime(gopilosa.TimeQuantumYearMonthDayHour)
 		}
-		field, err := i.index.Field(fieldName, fieldType)
-		if err != nil {
-			log.Println(errors.Wrapf(err, "addColumn: describing field: %v", fieldName))
-			return
-		}
-		err = i.setupField(field)
+		field := i.index.Field(fieldName, fieldType)
+		err := i.setupField(field)
 		if err != nil {
 			log.Println(errors.Wrapf(err, "setting up field '%s'", fieldName)) // TODO make AddBit/AddValue return err?
 			return
@@ -112,12 +108,8 @@ func (i *Index) AddValue(fieldName string, col uint64, val int64) {
 		i.lock.RUnlock()
 		i.lock.Lock()
 		defer i.lock.Unlock()
-		field, err := i.index.Field(fieldName, gopilosa.OptFieldInt(0, 1<<31-1))
-		if err != nil {
-			log.Println(errors.Wrap(err, "addValue: describing field"))
-			return
-		}
-		err = i.setupField(field)
+		field := i.index.Field(fieldName, gopilosa.OptFieldTypeInt(0, 1<<31-1))
+		err := i.setupField(field)
 		if err != nil {
 			log.Println(errors.Wrap(err, "setting up field"))
 			return
@@ -140,20 +132,11 @@ func (i *Index) Close() error {
 }
 
 func NewRankedField(index *gopilosa.Index, name string, size int) *gopilosa.Field {
-	field, err := index.Field(name, gopilosa.OptFieldSet(gopilosa.CacheTypeRanked, size))
-	if err != nil {
-		panic(err)
-	}
-	return field
+	return index.Field(name, gopilosa.OptFieldTypeSet(gopilosa.CacheTypeRanked, size))
 }
 
 func NewIntField(index *gopilosa.Index, name string, min, max int64) *gopilosa.Field {
-	field, err := index.Field(name, gopilosa.OptFieldInt(min, max))
-	if err != nil {
-		panic(err)
-	}
-	return field
-
+	return index.Field(name, gopilosa.OptFieldTypeInt(min, max))
 }
 
 // setupField ensures the existence of a field in Pilosa,
@@ -194,10 +177,7 @@ func SetupPilosa(hosts []string, indexName string, schema *gopilosa.Schema, batc
 		return nil, errors.Wrap(err, "creating pilosa cluster client")
 	}
 	indexer.client = client
-	indexer.index, err = schema.Index(indexName)
-	if err != nil {
-		return nil, errors.Wrap(err, "getting index")
-	}
+	indexer.index = schema.Index(indexName)
 	err = client.SyncSchema(schema)
 	if err != nil {
 		return nil, errors.Wrap(err, "synchronizing schema")

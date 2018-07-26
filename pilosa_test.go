@@ -49,14 +49,11 @@ func TestSetupPilosa(t *testing.T) {
 	}
 
 	schema := gopilosa.NewSchema()
-	index, err := schema.Index("newindex")
-	if err != nil {
-		t.Fatal(err)
-	}
-	index.Field("field1", gopilosa.OptFieldSet(gopilosa.CacheTypeRanked, 17))
-	index.Field("field2", gopilosa.OptFieldSet(gopilosa.CacheTypeLRU, 19))
-	index.Field("field3", gopilosa.OptFieldInt(0, 20000))
-	index.Field("fieldtime", gopilosa.OptFieldTime(gopilosa.TimeQuantumYearMonthDay))
+	index := schema.Index("newindex")
+	index.Field("field1", gopilosa.OptFieldTypeSet(gopilosa.CacheTypeRanked, 17))
+	index.Field("field2", gopilosa.OptFieldTypeSet(gopilosa.CacheTypeLRU, 19))
+	index.Field("field3", gopilosa.OptFieldTypeInt(0, 20000))
+	index.Field("fieldtime", gopilosa.OptFieldTypeTime(gopilosa.TimeQuantumYearMonthDay))
 
 	indexer, err := pdk.SetupPilosa(hosts, index.Name(), schema, 2)
 	if err != nil {
@@ -95,14 +92,8 @@ func TestSetupPilosa(t *testing.T) {
 		t.Fatalf("wrong number of fields: %v", idxs["newindex"].Fields())
 	}
 
-	idx, err := schema.Index("newindex")
-	if err != nil {
-		t.Fatalf("getting index: %v", err)
-	}
-	fieldtime, err := idx.Field("fieldtime")
-	if err != nil {
-		t.Fatalf("getting field: %v", err)
-	}
+	idx := schema.Index("newindex")
+	fieldtime := idx.Field("fieldtime")
 	resp, err := client.Query(fieldtime.Range(0, time.Date(2018, time.February, 21, 9, 0, 0, 0, time.UTC), time.Date(2018, time.February, 23, 9, 0, 0, 0, time.UTC)))
 	if err != nil {
 		t.Fatalf("executing range query: %v", err)
@@ -130,10 +121,7 @@ func TestSetupPilosa(t *testing.T) {
 		t.Fatalf("unexpected bits from empty range query: %v", bits)
 	}
 
-	field3, err := idx.Field("field3")
-	if err != nil {
-		t.Fatalf("getting field: %v", err)
-	}
+	field3 := idx.Field("field3")
 
 	resp, err = client.Query(field3.Equals(100))
 	if err != nil {
