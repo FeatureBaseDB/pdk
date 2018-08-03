@@ -33,9 +33,12 @@
 package http
 
 import (
+	"io/ioutil"
 	"log"
+	"net/http"
 
 	"github.com/pilosa/pdk"
+	"github.com/pilosa/pdk/leveldb"
 	"github.com/pkg/errors"
 )
 
@@ -46,13 +49,17 @@ type SubjecterOpts struct {
 
 // Main holds the config for the http command.
 type Main struct {
-	Bind        string   `help:"Listen for post requests on this address."`
-	PilosaHosts []string `help:"List of host:port pairs for Pilosa cluster."`
-	Index       string   `help:"Pilosa index to write to."`
-	BatchSize   uint     `help:"Batch size for Pilosa imports."`
-	Framer      pdk.DashField
-	Subjecter   SubjecterOpts
-	Proxy       string `help:"Bind to this address to proxy and translate requests to Pilosa"`
+	Bind          string   `help:"Listen for post requests on this address."`
+	PilosaHosts   []string `help:"List of host:port pairs for Pilosa cluster."`
+	Index         string   `help:"Pilosa index to write to."`
+	BatchSize     uint     `help:"Batch size for Pilosa imports."`
+	Framer        pdk.DashField
+	SubjectPath   []string `help:"Comma separated path to value in each record that should be mapped to column ID. Blank gets a sequential ID"`
+	Proxy         string   `help:"Bind to this address to proxy and translate requests to Pilosa"`
+	AllowedFields []string `help:"If any are passed, only frame names in this comma separated list will be indexed."`
+	TranslatorDir string   `help:"Directory for key/id mapping storage."`
+
+	proxy http.Server
 }
 
 // NewMain gets a new Main with default values.
@@ -63,7 +70,6 @@ func NewMain() *Main {
 		Index:       "jsonhttp",
 		BatchSize:   10,
 		Framer:      pdk.DashField{},
-		Subjecter:   SubjecterOpts{},
 		Proxy:       ":13131",
 	}
 }
@@ -75,41 +81,39 @@ func (m *Main) Run() error {
 		return errors.Wrap(err, "getting json source")
 	}
 
+	if m.TranslatorDir == "" {
+		m.TranslatorDir, err = ioutil.TempDir("", "pdk")
+		if err != nil {
+			return errors.Wrap(err, "creating temp directory")
+		}
+	}
+
 	log.Println("listening on", src.Addr())
 
+	translateColumns := true
 	parser := pdk.NewDefaultGenericParser()
-	parser.Subjecter = pdk.SubjectFunc(func(d interface{}) (string, error) {
-		dmap, ok := d.(map[string]interface{})
-		if !ok {
-			return "", errors.Errorf("couldn't get subject from %#v", d)
-		}
-		next := dmap
-		for i, key := range m.Subjecter.Path {
-			if i == len(m.Subjecter.Path)-1 {
-				val, ok := next[key]
-				if !ok {
-					return "", errors.Errorf("key #%d:'%s' not found in %#v", i, key, next)
-				}
-				valStr, ok := val.(string)
-				if !ok {
-					return "", errors.Errorf("subject value is not a string %#v", val)
-				}
-				return valStr, nil
-			}
-			nexti, ok := next[key]
-			if !ok {
-				return "", errors.Errorf("key #%d:'%s' not found in %#v", i, key, next)
-			}
-			next, ok = nexti.(map[string]interface{})
-			if !ok {
-				return "", errors.Errorf("map value of unexpected type %#v", nexti)
-			}
-		}
-		return "", nil // if there are no keys, return blank subject
-	})
+	if len(m.SubjectPath) == 0 {
+		parser.Subjecter = pdk.BlankSubjecter{}
+		translateColumns = false
+	} else {
+		parser.EntitySubjecter = pdk.SubjectPath(m.SubjectPath)
+	}
 
 	mapper := pdk.NewCollapsingMapper()
+	mapper.Translator, err = leveldb.NewTranslator(m.TranslatorDir)
+	if err != nil {
+		return errors.Wrap(err, "creating translator")
+	}
 	mapper.Framer = &m.Framer
+	if translateColumns {
+		log.Println("translating columns")
+		mapper.ColTranslator, err = leveldb.NewFieldTranslator(m.TranslatorDir, "__columns")
+		if err != nil {
+			return errors.Wrap(err, "creating column translator")
+		}
+	} else {
+		log.Println("not translating columns")
+	}
 
 	indexer, err := pdk.SetupPilosa(m.PilosaHosts, m.Index, nil, m.BatchSize)
 	if err != nil {
@@ -117,10 +121,21 @@ func (m *Main) Run() error {
 	}
 
 	ingester := pdk.NewIngester(src, parser, mapper, indexer)
+	if len(m.AllowedFields) > 0 {
+		ingester.AllowedFields = make(map[string]bool)
+		for _, fram := range m.AllowedFields {
+			ingester.AllowedFields[fram] = true
+		}
+	}
+	m.proxy = http.Server{
+		Addr:    m.Proxy,
+		Handler: pdk.NewPilosaForwarder(m.PilosaHosts[0], mapper.Translator, mapper.ColTranslator),
+	}
 	go func() {
-		err = pdk.StartMappingProxy(m.Proxy, pdk.NewPilosaForwarder(m.PilosaHosts[0], mapper.Translator))
-		log.Fatal(errors.Wrap(err, "starting mapping proxy"))
+		err := m.proxy.ListenAndServe()
+		if err != nil {
+			log.Printf("proxy closed: %v", err)
+		}
 	}()
-	log.Println("starting ingester")
 	return errors.Wrap(ingester.Run(), "running ingester")
 }
