@@ -1,4 +1,9 @@
 # pdk
+
+[![CircleCI](https://circleci.com/gh/pilosa/pdk.svg?style=shield)](https://circleci.com/gh/pilosa/pdk)
+[![Go Report Card](https://goreportcard.com/badge/github.com/pilosa/pdk)](https://goreportcard.com/report/github.com/pilosa/pdk)
+[![GoDoc](https://godoc.org/github.com/pilosa/pdk?status.svg)](https://godoc.org/github.com/pilosa/pdk)
+
 Pilosa Dev Kit - implementation tooling and use case examples are here!
 
 Documentation is here: https://www.pilosa.com/docs/pdk/
