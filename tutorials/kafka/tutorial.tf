@@ -20,7 +20,7 @@ resource "aws_instance" "gen" {
   }
 
   tags {
-    Name = "pdk-kafka-tutorial-generator"
+    Name = "${var.name}-pdk-kafka-tutorial-generator"
   }
 }
 
@@ -50,7 +50,7 @@ resource "aws_instance" "kafka" {
   }
 
   tags {
-    Name = "pdk-kafka-tutorial-kafka"
+    Name = "${var.name}-pdk-kafka-tutorial-kafka"
   }
 }
 
@@ -72,7 +72,7 @@ resource "aws_instance" "pdk" {
   }
 
   tags {
-    Name = "pdk-kafka-tutorial-pdk"
+    Name = "${var.name}-pdk-kafka-tutorial-pdk"
   }
 }
 
@@ -95,7 +95,7 @@ resource "aws_instance" "pilosa" {
   }
 
   tags {
-    Name = "pdk-kafka-tutorial-pilosa"
+    Name = "${var.name}-pdk-kafka-tutorial-pilosa"
   }
 }
 
@@ -129,7 +129,7 @@ resource "aws_vpc" "default" {
   cidr_block = "10.0.0.0/16"
 
   tags {
-    Name = "pdk-kafka-tutorial-vpc"
+    Name = "${var.name}-pdk-kafka-tutorial-vpc"
   }
 }
 
@@ -153,7 +153,7 @@ resource "aws_subnet" "default" {
 }
 
 resource "aws_security_group" "default" {
-  name        = "pdk_kafka_tutorial"
+  name        = "${var.name}_pdk_kafka_tutorial"
   description = "For the PDK Kafka Tutorial"
   vpc_id      = "${aws_vpc.default.id}"
 
@@ -220,6 +220,10 @@ resource "aws_key_pair" "auth" {
   public_key = "${file(var.public_key_path)}"
 }
 
+#################
+### VARIABLES ###
+#################
+
 variable "public_key_path" {
   description = <<DESCRIPTION
 Path to the SSH public key to be used for authentication.
@@ -227,5 +231,10 @@ Ensure this keypair is added to your local SSH agent so provisioners can
 connect.
 Example: ~/.ssh/terraform.pub
 DESCRIPTION
+}
+
+variable "name" {
+  description = "Name of your cluster and agents - used in tags and hostnames"
+  default = "default"
 }
 

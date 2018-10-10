@@ -21,9 +21,4 @@ sudo apt-get -y install make git
 
 git clone https://github.com/pilosa/pdk.git $GOPATH/src/github.com/pilosa/pdk
 cd $GOPATH/src/github.com/pilosa/pdk
-git remote add jaffee https://github.com/jaffee/pdk.git
-git fetch jaffee
-git checkout jaffee/kafka-tutorial
 make install
-
-
