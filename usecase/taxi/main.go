@@ -206,6 +206,10 @@ func (m *Main) Run() error {
 	wg2.Wait()
 	err = m.indexer.Close()
 	ticker.Stop()
+	// print stats one last time
+	bytes := m.bytesProcessed()
+	log.Printf("Rides: %d, Bytes: %s, Records: %v", m.nexter.Last(), pdk.Bytes(bytes), m.totalRecs.Get())
+	log.Printf("Skipped: %v, badLocs: %v, nullLocs: %v, badSpeeds: %v, badTotalAmnts: %v, badDurations: %v, badUnknowns: %v, badPassCounts: %v, badDist: %v", m.skippedRecs.Get(), m.badLocs.Get(), m.nullLocs.Get(), m.badSpeeds.Get(), m.badTotalAmnts.Get(), m.badDurations.Get(), m.badUnknowns.Get(), m.badPassCounts.Get(), m.badDist.Get())
 	return errors.Wrap(err, "closing indexer")
 }
 
