@@ -33,7 +33,6 @@
 package taxi_test
 
 import (
-	"fmt"
 	"testing"
 
 	gopilosa "github.com/pilosa/go-pilosa"
@@ -101,24 +100,6 @@ func TestRunMain(t *testing.T) {
 		t.Fatalf("wrong second item for Topn(cab_type): %v", items)
 	}
 
-	_, userField := GetField(t, client, "taxi", "user_id")
-	resp, err = client.Query(index.Count(userField.Row(0)))
-	if err != nil {
-		t.Fatalf("count user 0 query: %v", err)
-	}
-	fmt.Println("user0: ", resp.Result().Count())
-
-	resp, err = client.Query(index.Count(userField.Row(1)))
-	if err != nil {
-		t.Fatalf("count user 1 query: %v", err)
-	}
-	fmt.Println("user1: ", resp.Result().Count())
-
-	resp, err = client.Query(userField.TopN(10))
-	if err != nil {
-		t.Fatalf("count user 1 query: %v", err)
-	}
-	fmt.Println("usertopn: ", resp.Result().CountItems())
 }
 
 func GetField(t *testing.T, c *gopilosa.Client, index, field string) (*gopilosa.Index, *gopilosa.Field) {

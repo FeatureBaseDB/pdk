@@ -155,8 +155,6 @@ func (m *Main) Run() error {
 	pdk.NewRankedField(index, "pickup_elevation", 10000)
 	pdk.NewRankedField(index, "drop_elevation", 10000)
 
-	pdk.NewRankedField(index, "user_id", 100000)
-
 	m.indexer, err = pdk.SetupPilosa([]string{m.PilosaHost}, m.Index, schema, uint(m.BufferSize))
 	if err != nil {
 		return errors.Wrap(err, "setting up indexer")
@@ -199,7 +197,7 @@ func (m *Main) Run() error {
 	for i := 0; i < m.Concurrency; i++ {
 		wg2.Add(1)
 		go func() {
-			m.parseMapAndPost(records, i)
+			m.parseMapAndPost(records)
 			wg2.Done()
 		}()
 	}
@@ -365,8 +363,7 @@ type columnField struct {
 	Field  string
 }
 
-func (m *Main) parseMapAndPost(records <-chan record, num int) {
-	ug := newUserGetter(num)
+func (m *Main) parseMapAndPost(records <-chan record) {
 Records:
 	for record := range records {
 		fields, ok := record.clean()
@@ -389,7 +386,7 @@ Records:
 			continue
 		}
 		columnsToSet := make([]columnField, 0)
-		columnsToSet = append(columnsToSet, columnField{Column: cabType, Field: "cab_type"}, columnField{Column: ug.ID(), Field: "user_id"})
+		columnsToSet = append(columnsToSet, columnField{Column: cabType, Field: "cab_type"})
 		for _, bm := range bms {
 			if len(bm.Fields) != len(bm.Parsers) {
 				// TODO if len(pm.Parsers) == 1, use that for all fields
@@ -464,7 +461,6 @@ Records:
 				columnsToSet = append(columnsToSet, columnField{Column: uint64(id), Field: bm.Field})
 			}
 		}
-		columnsToSet = append(columnsToSet)
 		columnID := m.nexter.Next()
 		for _, bit := range columnsToSet {
 			m.indexer.AddColumn(bit.Field, columnID, bit.Column)
