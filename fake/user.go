@@ -74,7 +74,7 @@ func (u *UserGenerator) Record() *User {
 		FirstName: u.g.String(8, 10000),
 		LastName:  u.g.String(10, 50000),
 		Allergies: u.genAllergies(),
-		Title:     u.g.String(12, 1000),
+		Title:     titleList[u.r.Intn(len(titleList))],
 	}
 }
 
@@ -89,3 +89,5 @@ func (u *UserGenerator) genAllergies() []string {
 }
 
 var allergyList = []string{"Balsam of Peru", "Egg", "Fish", "Shellfish", "Fruit", "Garlic", "Hot Peppers", "Oats", "Meat", "Milk", "Peanut", "Rice", "Sesame", "Soy", "Sulfites", "Tartrazine", "Tree Nut", "Wheat", "Tetracycline", "Dilantin", "Tegretol", "Penicillin", "Cephalosporins", "Sulfonamides", "Cromolyn", "Sodium", "Nedocromil", "Pollen", "Cat", "Dog", "Insect Sting", "Mold", "Perfume", "Cosmetics", "Latex", "Water", "Nickel", "Gold", "Chromium", "Cobalt Chloride", "Formaldehyde", "Photographic Developers", "Fungicide"}
+
+var titleList = []string{"Specialist", "Director", "Designer", "Analyst", "Consultant", "Manager", "Assistant", "Copywriter", "Strategist", "VP", "Executive", "QC", "CEO", "HR", "Receptionist", "Secretary", "Clerk", "Auditor", "Bookkeeper", "Data Entry", "Computer Scientist", "IT Professional", "UX Designer", "SQL Developer", "Web Developer", "Software Engineer", "DevOps Engineer", "Computer Programmer", "Network Administrator", "Information Security Analyst", "Artificial Intelligence Engineer", "Cloud Architect", "IT Manager", "Technical Specialist", "Application Developer", "CTO", "CIO"}

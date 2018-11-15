@@ -33,7 +33,7 @@ func TestUserGenerator(t *testing.T) {
 		if rec.Age < 0 || rec.Age > 110 {
 			t.Errorf("Age: %d", rec.Age)
 		}
-		if len(rec.Title) > 12 || len(rec.Title) < 1 {
+		if len(rec.Title) < 1 {
 			t.Errorf("Title got: %s", rec.Title)
 		}
 		titles[rec.Title]++
