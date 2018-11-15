@@ -74,7 +74,7 @@ func (u *UserGenerator) Record() *User {
 		FirstName: u.g.String(8, 10000),
 		LastName:  u.g.String(10, 50000),
 		Allergies: u.genAllergies(),
-		Title:     titleList[u.r.Intn(len(titleList))],
+		Title:     titleList[u.g.Uint64(len(titleList))],
 	}
 }
 
