@@ -61,9 +61,9 @@ type RecordMapper interface {
 
 // Indexer puts stuff into Pilosa.
 type Indexer interface {
-	AddColumn(field string, col, row uint64)
+	AddColumn(field string, col, row uint64OrString)
 	AddColumnTimestamp(field string, col, row uint64, ts time.Time)
-	AddValue(field string, col uint64, val int64)
+	AddValue(field string, col uint64OrString, val int64)
 	// AddRowAttr(field string, row uint64, key string, value AttrVal)
 	// AddColAttr(col uint64, key string, value AttrVal)
 	Close() error

@@ -33,6 +33,7 @@
 package pdk
 
 import (
+	"fmt"
 	"io"
 	"log"
 	"sync"
@@ -69,11 +70,35 @@ func (i *Index) AddColumnTimestamp(field string, row, col uint64, ts time.Time) 
 }
 
 // AddColumn adds a column to be imported to Pilosa.
-func (i *Index) AddColumn(field string, col uint64, row uint64) {
+func (i *Index) AddColumn(field string, col, row uint64OrString) {
 	i.addColumn(field, col, row, 0)
 }
 
-func (i *Index) addColumn(fieldName string, col uint64, row uint64, ts int64) {
+type uint64OrString interface{}
+
+func uint64Cast(u uint64OrString) uint64 {
+	ret, _ := u.(uint64)
+	return ret
+}
+
+func stringCast(u uint64OrString) string {
+	ret, _ := u.(string)
+	return ret
+}
+
+func validUint64OrString(u uint64OrString) bool {
+	if _, ok := u.(uint64); !ok {
+		if _, ok := u.(string); !ok {
+			return false
+		}
+	}
+	return true
+}
+
+func (i *Index) addColumn(fieldName string, col uint64OrString, row uint64OrString, ts int64) {
+	if !validUint64OrString(col) || !validUint64OrString(row) {
+		panic(fmt.Sprintf("a %T and a %T were passed, both must be either uint64 or string", col, row))
+	}
 	var c chanRecordIterator
 	var ok bool
 	i.lock.RLock()
@@ -95,13 +120,20 @@ func (i *Index) addColumn(fieldName string, col uint64, row uint64, ts int64) {
 	} else {
 		i.lock.RUnlock()
 	}
-	c <- gopilosa.Column{RowID: row, ColumnID: col, Timestamp: ts}
+	c <- gopilosa.Column{
+		RowID: uint64Cast(row), ColumnID: uint64Cast(col),
+		RowKey: stringCast(row), ColumnKey: stringCast(col),
+		Timestamp: ts}
 }
 
 // AddValue adds a value to be imported to Pilosa.
-func (i *Index) AddValue(fieldName string, col uint64, val int64) {
+func (i *Index) AddValue(fieldName string, col uint64OrString, val int64) {
 	var c chanRecordIterator
 	var ok bool
+
+	if !validUint64OrString(col) {
+		panic(fmt.Sprintf("a %T was passed, must be eithe uint64 or string", col))
+	}
 
 	i.lock.RLock()
 	if c, ok = i.recordChans[fieldName]; !ok {
@@ -118,7 +150,7 @@ func (i *Index) AddValue(fieldName string, col uint64, val int64) {
 	} else {
 		i.lock.RUnlock()
 	}
-	c <- gopilosa.FieldValue{ColumnID: col, Value: val}
+	c <- gopilosa.FieldValue{ColumnID: uint64Cast(col), ColumnKey: stringCast(col), Value: val}
 }
 
 // Close ensures that all ongoing imports have finished and cleans up internal
