@@ -11,7 +11,7 @@ type userGetter struct {
 func newUserGetter(seed int) *userGetter {
 	r := rand.New(rand.NewSource(int64(seed)))
 	return &userGetter{
-		z: rand.NewZipf(r, 2, 1, 5000000), // zipfian distribution over 5 million users
+		z: rand.NewZipf(r, 1.1, 1024, 5000000), // zipfian distribution over 5 million users
 	}
 }
 
