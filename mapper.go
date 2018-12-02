@@ -194,7 +194,7 @@ func Int64ize(val Literal) int64 {
 // PilosaRecord represents a number of set columns and values in a single Column
 // in Pilosa.
 type PilosaRecord struct {
-	Col  uint64
+	Col  uint64OrString
 	Rows []Row
 	Vals []Val
 }
@@ -219,7 +219,7 @@ func (pr *PilosaRecord) AddRowTime(field string, id uint64, ts time.Time) {
 // PilosaRecord containg the Row).
 type Row struct {
 	Field string
-	ID    uint64
+	ID    uint64OrString
 
 	// Time is the timestamp for the column in Pilosa which is the intersection of
 	// this row and the Column in the PilosaRecord which holds this row.
