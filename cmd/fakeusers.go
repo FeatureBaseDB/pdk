@@ -28,7 +28,7 @@ func NewFakeusersCommand(stdin io.Reader, stdout, stderr io.Writer) *cobra.Comma
 				return err
 			}
 			log.Println("Done: ", time.Since(start))
-			select {}
+			return nil
 		},
 	}
 	flags := fakeusersCommand.Flags()

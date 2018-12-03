@@ -21,7 +21,7 @@ type Main struct {
 // NewMain returns a new Main.
 func NewMain() *Main {
 	return &Main{
-		Num:         0,
+		Num:         1000,
 		PilosaHosts: []string{"localhost:10101"},
 		Index:       "users",
 		BatchSize:   1000,

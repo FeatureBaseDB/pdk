@@ -68,8 +68,8 @@
     "service/s3",
     "service/sts"
   ]
-  revision = "ab1e4ad20b12ab0df8a825805de3e48ad6c59d28"
-  version = "v1.15.75"
+  revision = "ceab7b7ac6f535d1397f124620720b5145f1ad59"
+  version = "v1.15.88"
 
 [[projects]]
   name = "github.com/boltdb/bolt"
@@ -88,6 +88,12 @@
   packages = ["."]
   revision = "569f7c8abf1f58d9043ab804d364483cb1c853b6"
   version = "v1.1.0"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/codahale/hdrhistogram"
+  packages = ["."]
+  revision = "3a0bb77429bd3a61596f5e8a3172445844342120"
 
 [[projects]]
   name = "github.com/davecgh/go-spew"
@@ -264,8 +270,8 @@
 [[projects]]
   name = "github.com/miekg/dns"
   packages = ["."]
-  revision = "7064f7248f5fa5fd79382a76328b4e200b79e4ae"
-  version = "v1.0.15"
+  revision = "7586a3cbe8ccfc63f82de3ab2ceeb08c9939af72"
+  version = "v1.1.1"
 
 [[projects]]
   name = "github.com/mitchellh/mapstructure"
@@ -278,6 +284,16 @@
   name = "github.com/mmcloughlin/geohash"
   packages = ["."]
   revision = "f7f2bcae3294530249c63fcb6fb6d5e83eee4e73"
+
+[[projects]]
+  name = "github.com/opentracing/opentracing-go"
+  packages = [
+    ".",
+    "ext",
+    "log"
+  ]
+  revision = "1949ddbfd147afd4d964a9f00b24eb291e0e7c38"
+  version = "v1.0.2"
 
 [[projects]]
   name = "github.com/pelletier/go-toml"
@@ -295,13 +311,13 @@
   version = "v2.0.7"
 
 [[projects]]
-  branch = "master"
   name = "github.com/pilosa/go-pilosa"
   packages = [
     ".",
     "gopilosa_pbuf"
   ]
-  revision = "796d4f7d7f3b5a363be2562e4d1aab2fb6324404"
+  revision = "4e7807f5ad779407936744057cd17332046b6c3c"
+  version = "v1.1.0"
 
 [[projects]]
   branch = "master"
@@ -317,15 +333,18 @@
     "gossip",
     "http",
     "internal",
+    "logger",
     "lru",
     "pql",
     "roaring",
     "server",
+    "stats",
     "statsd",
     "test",
-    "toml"
+    "toml",
+    "tracing"
   ]
-  revision = "faac64dc999c744be11a8f808d38786f5353ea5d"
+  revision = "dfb748ec5b01df925ee78ae5a25f7b2d731b30c8"
 
 [[projects]]
   name = "github.com/pkg/errors"
@@ -354,13 +373,21 @@
 [[projects]]
   name = "github.com/shirou/gopsutil"
   packages = [
+    "cpu",
     "host",
     "internal/common",
     "mem",
+    "net",
     "process"
   ]
-  revision = "3ec50d2876a36047b2ca39f955ba88fb7a455e92"
-  version = "v2.18.10"
+  revision = "0f70a4a06f7a1039305ec9b3ba9c2800f8929fba"
+  version = "v2.18.11"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/shirou/w32"
+  packages = ["."]
+  revision = "bb4de0191aa41b5507caa14b0650cdbddcd9280b"
 
 [[projects]]
   name = "github.com/spf13/afero"
@@ -418,7 +445,31 @@
     "leveldb/table",
     "leveldb/util"
   ]
-  revision = "f9080354173f192dfc8821931eacf9cfd6819253"
+  revision = "b001fa50d6b27f3f0bb175a87d0cb55426d0a0ae"
+
+[[projects]]
+  name = "github.com/uber/jaeger-client-go"
+  packages = [
+    ".",
+    "internal/baggage",
+    "internal/spanlog",
+    "internal/throttler",
+    "log",
+    "thrift",
+    "thrift-gen/agent",
+    "thrift-gen/jaeger",
+    "thrift-gen/sampling",
+    "thrift-gen/zipkincore",
+    "utils"
+  ]
+  revision = "1a782e2da844727691fef1757c72eb190c2909f0"
+  version = "v2.15.0"
+
+[[projects]]
+  name = "github.com/uber/jaeger-lib"
+  packages = ["metrics"]
+  revision = "ed3a127ec5fef7ae9ea95b01b542c47fbd999ce5"
+  version = "v1.5.0"
 
 [[projects]]
   branch = "master"
@@ -427,19 +478,20 @@
     "ed25519",
     "ed25519/internal/edwards25519"
   ]
-  revision = "3d3f9f413869b949e48070b5bc593aa22cc2b8f2"
+  revision = "505ab145d0a99da450461ae2c1a9f6cd10d1f447"
 
 [[projects]]
   branch = "master"
   name = "golang.org/x/net"
   packages = [
     "bpf",
+    "context",
     "internal/iana",
     "internal/socket",
     "ipv4",
     "ipv6"
   ]
-  revision = "88d92db4c548972d942ac2a3531a8a9a34c82ca6"
+  revision = "351d144fa1fc0bd934e2408202be0c29f25e35a0"
 
 [[projects]]
   branch = "master"
@@ -454,7 +506,7 @@
     "unix",
     "windows"
   ]
-  revision = "66b7b1311ac80bbafcd2daeef9a5e6e2cd1e2399"
+  revision = "4ed8d59d0b35e1e29334a206d1b3f38b1e5dfb31"
 
 [[projects]]
   name = "golang.org/x/text"
@@ -472,12 +524,12 @@
 [[projects]]
   name = "gopkg.in/yaml.v2"
   packages = ["."]
-  revision = "5420a8b6744d3b0345ab293f6fcba19c978f1183"
-  version = "v2.2.1"
+  revision = "51d6538a90f86fe93ac480b35f37b2be17fef232"
+  version = "v2.2.2"
 
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "7365024a990d857b00dded209e4363bf071312c2953baf8329407607ef229447"
+  inputs-digest = "7fb39ce3f599baad78d415107c1bc77d61f7323d6d3b42a70bb163d7f2cbf68b"
   solver-name = "gps-cdcl"
   solver-version = 1
