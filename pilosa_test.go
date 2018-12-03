@@ -60,11 +60,11 @@ func TestSetupPilosa(t *testing.T) {
 		t.Fatalf("SetupPilosa: %v", err)
 	}
 
-	indexer.AddColumn("field1", 0, 0)
-	indexer.AddValue("field3", 0, 97)
-	indexer.AddColumnTimestamp("fieldtime", 0, 0, time.Date(2018, time.February, 22, 9, 0, 0, 0, time.UTC))
-	indexer.AddColumnTimestamp("fieldtime", 2, 0, time.Date(2018, time.February, 24, 9, 0, 0, 0, time.UTC))
-	indexer.AddValue("field3", 0, 100)
+	indexer.AddColumn("field1", uint64(0), uint64(0))
+	indexer.AddValue("field3", uint64(0), 97)
+	indexer.AddColumnTimestamp("fieldtime", uint64(0), uint64(0), time.Date(2018, time.February, 22, 9, 0, 0, 0, time.UTC))
+	indexer.AddColumnTimestamp("fieldtime", uint64(2), uint64(0), time.Date(2018, time.February, 24, 9, 0, 0, 0, time.UTC))
+	indexer.AddValue("field3", uint64(0), 100)
 
 	err = indexer.Close()
 	if err != nil {
@@ -88,8 +88,11 @@ func TestSetupPilosa(t *testing.T) {
 		t.Fatalf("index with wrong name: %v", idx)
 	}
 
-	if len(idxs["newindex"].Fields()) != 4 {
-		t.Fatalf("wrong number of fields: %v", idxs["newindex"].Fields())
+	if len(idxs["newindex"].Fields()) != 5 {
+		t.Errorf("wrong number of fields: %v. Fields:in", len(idxs["newindex"].Fields()))
+		for _, field := range idxs["newindex"].Fields() {
+			t.Logf("%#v\n", field)
+		}
 	}
 
 	idx := schema.Index("newindex")
