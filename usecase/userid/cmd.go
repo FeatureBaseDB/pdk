@@ -16,15 +16,17 @@ type Main struct {
 	PilosaHosts []string `help:"Comma separated list of Pilosa hosts and ports."`
 	Index       string   `help:"Pilosa index."`
 	BatchSize   uint     `help:"Batch size for Pilosa imports (latency/throughput tradeoff)."`
+	Field       string   `help:"Field to put user IDs into."`
 }
 
 // NewMain returns a new Main.
 func NewMain() *Main {
 	return &Main{
-		Num:         1266087512,
+		Num:         1266087512, // size of full taxi dataset
 		PilosaHosts: []string{"localhost:10101"},
 		Index:       "taxi",
 		BatchSize:   100000,
+		Field:       "user_id",
 	}
 }
 
@@ -36,7 +38,7 @@ func (m *Main) Run() error {
 
 	schema := gopilosa.NewSchema()
 	idx := schema.Index(m.Index)
-	idx.Field("user_id2", gopilosa.OptFieldTypeSet(gopilosa.CacheTypeRanked, 50000))
+	idx.Field(m.Field, gopilosa.OptFieldTypeSet(gopilosa.CacheTypeRanked, 50000))
 	indexer, err := pdk.SetupPilosa(m.PilosaHosts, m.Index, schema, m.BatchSize)
 	if err != nil {
 		return errors.Wrap(err, "setting up Pilosa")
@@ -45,7 +47,7 @@ func (m *Main) Run() error {
 	ug := newUserGetter(m.Seed)
 
 	for i := uint64(0); i < m.Num; i++ {
-		indexer.AddColumn("user_id2", i, ug.ID())
+		indexer.AddColumn(m.Field, i, ug.ID())
 	}
 
 	return errors.Wrap(indexer.Close(), "closing indexer")

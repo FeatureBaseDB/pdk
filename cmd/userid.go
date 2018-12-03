@@ -19,7 +19,7 @@ func NewUseridCommand(stdin io.Reader, stdout, stderr io.Writer) *cobra.Command 
 	UseridMain = userid.NewMain()
 	useridCommand := &cobra.Command{
 		Use:   "userid",
-		Short: "Adds a user ID field to an existing index and associates an ID with each record.",
+		Short: "Adds a user ID field to an existing index and associates an ID with each column.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			start := time.Now()
 			err = UseridMain.Run()
