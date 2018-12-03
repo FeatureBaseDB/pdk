@@ -198,10 +198,10 @@ func (m *Main) Run() error {
 	var wg2 sync.WaitGroup
 	for i := 0; i < m.Concurrency; i++ {
 		wg2.Add(1)
-		go func() {
+		go func(i int) {
 			m.parseMapAndPost(records, i)
 			wg2.Done()
-		}()
+		}(i)
 	}
 	wg.Wait()
 	close(records)
