@@ -19,8 +19,7 @@ func NewFakeusersCommand(stdin io.Reader, stdout, stderr io.Writer) *cobra.Comma
 	FakeusersMain = fakeusers.NewMain()
 	fakeusersCommand := &cobra.Command{
 		Use:   "fakeusers",
-		Short: "generate and index fake user data",
-		Long:  `TODO`,
+		Short: "Generate and index fake user data.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			start := time.Now()
 			err = FakeusersMain.Run()

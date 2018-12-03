@@ -50,8 +50,7 @@ func NewSSBCommand(stdin io.Reader, stdout, stderr io.Writer) *cobra.Command {
 	SSBMain, err = ssb.NewMain()
 	ssbCommand := &cobra.Command{
 		Use:   "ssb",
-		Short: "run star schema benchmark",
-		Long:  `TODO`,
+		Short: "Run star schema benchmark.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err != nil {
 				return err

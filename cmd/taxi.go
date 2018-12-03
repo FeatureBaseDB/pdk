@@ -49,8 +49,7 @@ func NewTaxiCommand(stdin io.Reader, stdout, stderr io.Writer) *cobra.Command {
 	TaxiMain = taxi.NewMain()
 	taxiCommand := &cobra.Command{
 		Use:   "taxi",
-		Short: "import taxi data to pilosa",
-		Long:  `TODO`,
+		Short: "Import taxi data to Pilosa.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			start := time.Now()
 			err := TaxiMain.Run()

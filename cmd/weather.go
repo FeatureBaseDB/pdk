@@ -49,8 +49,7 @@ func NewWeatherCommand(stdin io.Reader, stdout, stderr io.Writer) *cobra.Command
 	WeatherMain = weather.NewMain()
 	weatherCommand := &cobra.Command{
 		Use:   "weather",
-		Short: "add weather data to taxi index",
-		Long:  `TODO`,
+		Short: "Add weather data to taxi index.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			start := time.Now()
 			err := WeatherMain.Run()

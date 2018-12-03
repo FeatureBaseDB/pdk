@@ -19,8 +19,7 @@ func NewFileCommand(stdin io.Reader, stdout, stderr io.Writer) *cobra.Command {
 	FileMain = file.NewMain()
 	fileCommand := &cobra.Command{
 		Use:   "file",
-		Short: "index line separated json from objects from a file or all files in a directory",
-		Long:  `TODO`,
+		Short: "Index line separated json from objects from a file or all files in a directory.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			start := time.Now()
 			err = FileMain.Run()
