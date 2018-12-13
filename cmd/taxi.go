@@ -59,7 +59,7 @@ func NewTaxiCommand(stdin io.Reader, stdout, stderr io.Writer) *cobra.Command {
 			}
 			dt := time.Since(start)
 			log.Println("Done: ", dt)
-			fmt.Printf("{\"taxi-import\": %f}\n", dt.Seconds())
+			fmt.Printf("{\"duration\": %f}\n", dt.Seconds())
 			return nil
 		},
 	}
