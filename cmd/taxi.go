@@ -33,6 +33,7 @@
 package cmd
 
 import (
+	"fmt"
 	"io"
 	"log"
 	"time"
@@ -56,8 +57,10 @@ func NewTaxiCommand(stdin io.Reader, stdout, stderr io.Writer) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			log.Println("Done: ", time.Since(start))
-			select {}
+			dt := time.Since(start)
+			log.Println("Done: ", dt)
+			fmt.Printf("{\"duration\": %f}\n", dt.Seconds())
+			return nil
 		},
 	}
 	flags := taxiCommand.Flags()
