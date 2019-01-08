@@ -79,7 +79,7 @@ func TestRunMain(t *testing.T) {
 		t.Fatalf("count querying: %v", err)
 	}
 	if resp.Result().Count() != 87793 {
-		t.Fatalf("cab_type 0 should have 87793, but got %d", resp.Result().Count())
+		t.Errorf("cab_type 0 should have 87793, but got %d", resp.Result().Count())
 	}
 
 	// The cache needs to be refreshed before querying TopN.
@@ -87,18 +87,46 @@ func TestRunMain(t *testing.T) {
 
 	resp, err = client.Query(cabTypeField.TopN(5))
 	if err != nil {
-		t.Fatalf("topn query: %v", err)
+		t.Errorf("topn query: %v", err)
 	}
 	items := resp.Result().CountItems()
 	if len(items) != 2 {
-		t.Fatalf("wrong number of results for Topn(cab_type): %v", items)
+		t.Errorf("wrong number of results for Topn(cab_type): %v", items)
 	}
 	if items[0].ID != 1 || items[0].Count != 87793 {
-		t.Fatalf("wrong first item for Topn(cab_type): %v", items)
+		t.Errorf("wrong first item for Topn(cab_type): %v", items)
 	}
 
-	if items[1].ID != 0 || items[1].Count != 34221 {
-		t.Fatalf("wrong second item for Topn(cab_type): %v", items)
+	if len(items) < 2 || items[1].ID != 0 || items[1].Count != 34221 {
+		t.Errorf("wrong second item for Topn(cab_type): %v", items)
+	}
+
+	_, centsField := GetField(t, client, "taxi", "cost_cents")
+
+	resp, err = client.Query(centsField.Sum(cabTypeField.Row(0)))
+	if err != nil {
+		t.Fatalf("querying for cents sum: %v", err)
+	}
+	val := resp.ResultList[0].Value()
+	if val != 24070186 {
+		t.Errorf("%d is wrong for sum of cost_cents for green", val)
+	}
+
+	resp, err = client.Query(centsField.Sum(cabTypeField.Row(1)))
+	if err != nil {
+		t.Fatalf("querying for cents sum: %v", err)
+	}
+	val = resp.ResultList[0].Value()
+	if val != 120887728 {
+		t.Errorf("%d is wrong for sum of cost_cents for yellow", val)
+	}
+
+	resp, err = client.Query(index.RawQuery("Sum(field=cost_cents)"))
+	if err != nil {
+		t.Fatalf("raw querying: %v", err)
+	}
+	if resp.ResultList[0].Value() != 144957914 {
+		t.Errorf("%d is wrong for total sum of cost_cents", resp.ResultList[0].Value())
 	}
 
 	_, userField := GetField(t, client, "taxi", "user_id")

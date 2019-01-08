@@ -44,15 +44,12 @@ import (
 
 // GenericParser tries to make no assumptions about the value passed to its
 // Parse method. At the top level it accepts a map or struct (or pointer or
-// interface holding one of these).
+// interface holding one of these). It will only parse exported fields on
+// structs.
 type GenericParser struct {
 	Subjecter       Subjecter
 	EntitySubjecter EntitySubjecter
 	SubjectAll      bool
-
-	// IncludeUnexportedFields controls whether unexported struct fields will be
-	// included when parsing.
-	IncludeUnexportedFields bool // TODO: I don't think this actually works
 
 	// Strict controls whether failure to parse a single value or key will cause
 	// the entire record to fail.
@@ -219,7 +216,7 @@ func (m *GenericParser) parseStruct(val reflect.Value) (*Entity, error) {
 
 	for i := 0; i < val.NumField(); i++ {
 		field := val.Type().Field(i)
-		if field.PkgPath != "" && !m.IncludeUnexportedFields {
+		if field.PkgPath != "" {
 			continue // this field is unexported, so we ignore it.
 		}
 		fieldv := val.Field(i)

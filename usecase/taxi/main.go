@@ -156,6 +156,7 @@ func (m *Main) Run() error {
 	pdk.NewRankedField(index, "drop_elevation", 10000)
 
 	pdk.NewRankedField(index, "user_id", 100000)
+	pdk.NewIntField(index, "cost_cents", 0, 524000)
 
 	m.indexer, err = pdk.SetupPilosa([]string{m.PilosaHost}, m.Index, schema, uint(m.BufferSize))
 	if err != nil {
@@ -365,6 +366,12 @@ type columnField struct {
 	Field  string
 }
 
+type valField struct {
+	Val   int64
+	Frame string
+	Field string
+}
+
 func (m *Main) parseMapAndPost(records <-chan record, num int) {
 	ug := newUserGetter(num)
 Records:
@@ -388,6 +395,7 @@ Records:
 			m.skippedRecs.Add(1)
 			continue
 		}
+		valsToSet := make([]valField, 0)
 		columnsToSet := make([]columnField, 0)
 		columnsToSet = append(columnsToSet, columnField{Column: cabType, Field: "cab_type"}, columnField{Column: ug.ID(), Field: "user_id"})
 		for _, bm := range bms {
@@ -460,6 +468,15 @@ Records:
 				m.badUnknowns.Add(1)
 				continue Records
 			}
+			// begin quick hack to extract cost for setting in a BSI field.
+			if bm.Field == "total_amount_dollars" {
+				cents := parsed[0].(float64) * 100.0
+				if cents > 0 { // guard against bad data.
+					valsToSet = append(valsToSet, valField{Val: int64(cents), Frame: "cost_cents", Field: "cost_cents"})
+				}
+			}
+			// end quick cost hack
+
 			for _, id := range ids {
 				columnsToSet = append(columnsToSet, columnField{Column: uint64(id), Field: bm.Field})
 			}
@@ -468,6 +485,9 @@ Records:
 		columnID := m.nexter.Next()
 		for _, bit := range columnsToSet {
 			m.indexer.AddColumn(bit.Field, columnID, bit.Column)
+		}
+		for _, val := range valsToSet {
+			m.indexer.AddValue(val.Field, columnID, val.Val)
 		}
 	}
 }
