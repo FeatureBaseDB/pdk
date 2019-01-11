@@ -132,7 +132,7 @@ func (m *Main) Run() error {
 	}
 
 	schema := gopilosa.NewSchema()
-	index := schema.Index(m.Index)
+	index := schema.Index(m.Index, gopilosa.OptIndexTrackExistence(false))
 
 	pdk.NewRankedField(index, "cab_type", 10)
 	pdk.NewRankedField(index, "passenger_count", 1000)
