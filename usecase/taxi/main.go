@@ -662,7 +662,7 @@ func getBitMappers(fields map[string]int) []pdk.ColumnMapper {
 			Field:   "pickup_elevation",
 			Mapper:  gfm,
 			Parsers: []pdk.Parser{pdk.FloatParser{}, pdk.FloatParser{}},
-			Fields:  []int{fields["dropoff_longitude"], fields["dropoff_latitude"]},
+			Fields:  []int{fields["pickup_longitude"], fields["pickup_latitude"]},
 		},
 		pdk.ColumnMapper{
 			Field:   "drop_elevation",
