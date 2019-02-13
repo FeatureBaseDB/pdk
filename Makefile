@@ -1,6 +1,5 @@
-.PHONY: dep pdk vendor-update docker pdk crossbuild install test test-all gometalinter
+.PHONY: pdk vendor-update pdk crossbuild install test test-all gometalinter
 
-DEP := $(shell command -v dep 2>/dev/null)
 PROTOC := $(shell command -v protoc 2>/dev/null)
 VERSION := $(shell git describe --tags 2> /dev/null || echo unknown)
 IDENTIFIER := $(VERSION)-$(GOOS)-$(GOARCH)
@@ -8,24 +7,15 @@ CLONE_URL=github.com/pilosa/pdk
 PKGS := $(shell cd $(GOPATH)/src/$(CLONE_URL); go list ./... | grep -v vendor)
 BUILD_TIME=`date -u +%FT%T%z`
 LDFLAGS=-ldflags "-X github.com/pilosa/pdk/cmd.Version=$(VERSION) -X github.com/pilosa/pdk/cmd.BuildTime=$(BUILD_TIME)"
+export GO111MODULE=on
 
 default: test pdk
 
 $(GOPATH)/bin:
 	mkdir $(GOPATH)/bin
 
-dep: $(GOPATH)/bin
-	go get -u github.com/golang/dep/cmd/dep
-
-vendor: Gopkg.toml
-ifndef DEP
-	make dep
-endif
-	dep ensure -vendor-only
-	touch vendor
-
-Gopkg.lock: dep Gopkg.toml
-	dep ensure
+vendor: go.mod
+	go mod vendor
 
 test: vendor
 	go test $(PKGS) -short $(TESTFLAGS) ./...
@@ -44,7 +34,7 @@ install: vendor
 	go install $(LDFLAGS) $(FLAGS) $(CLONE_URL)/cmd/pdk
 
 gometalinter: vendor
-	gometalinter --vendor --disable-all \
+	GO111MODULE=off gometalinter --vendor --disable-all \
 		--deadline=120s \
 		--enable=deadcode \
 		--enable=goimports \
