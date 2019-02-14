@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - http subpackage which defines http.Source which listens for POSTed data
 
 ### Changed
+- Changed from `dep` to go modules. Dropped support for Go 1.10.
 - Moved bolt translator to subpackage - BoltTranslator is now boltdb.Translator
 - Moved level translator to subpackage - LevelTranslator is now leveldb.Translator
 - Translator interface, both funcs now return errors
