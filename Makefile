@@ -49,3 +49,8 @@ gometalinter: vendor
 		--exclude "^internal/.*\.pb\.go" \
 		--exclude "^pql/pql.peg.go" \
 		./...
+
+install-gometalinter:
+	GO111MODULE=off go get -u github.com/alecthomas/gometalinter
+	GO111MODULE=off gometalinter --install
+	GO111MODULE=off go get github.com/remyoudompheng/go-misc/deadcode
