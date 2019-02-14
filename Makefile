@@ -1,4 +1,4 @@
-.PHONY: pdk vendor-update pdk crossbuild install test test-all gometalinter
+.PHONY: pdk crossbuild install test test-all gometalinter
 
 PROTOC := $(shell command -v protoc 2>/dev/null)
 VERSION := $(shell git describe --tags 2> /dev/null || echo unknown)
@@ -17,20 +17,20 @@ $(GOPATH)/bin:
 vendor: go.mod
 	go mod vendor
 
-test: vendor
+test:
 	go test $(PKGS) -short $(TESTFLAGS) ./...
 
 test-all:
 	go test $(PKGS) $(TESTFLAGS) ./...
 
-pdk: vendor
+pdk:
 	go build $(LDFLAGS) $(FLAGS) $(CLONE_URL)/cmd/pdk
 
-crossbuild: vendor
+crossbuild:
 	mkdir -p build/pdk-$(IDENTIFIER)
 	make pdk FLAGS="-o build/pdk-$(IDENTIFIER)/pdk"
 
-install: vendor
+install:
 	go install $(LDFLAGS) $(FLAGS) $(CLONE_URL)/cmd/pdk
 
 gometalinter: vendor
