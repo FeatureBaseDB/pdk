@@ -177,10 +177,6 @@ func NewIntField(index *gopilosa.Index, name string, min, max int64) *gopilosa.F
 // exclusive access to Index before calling.
 func (i *Index) setupField(field *gopilosa.Field) error {
 	fieldName := field.Name()
-	// TODO: implement a more elegant way of ignoring reserved (i.e. internal) fields
-	if fieldName == "exists" {
-		return nil
-	}
 	if _, ok := i.recordChans[fieldName]; !ok {
 		err := i.client.EnsureField(field)
 		if err != nil {

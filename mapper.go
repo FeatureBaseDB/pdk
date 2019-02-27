@@ -216,7 +216,7 @@ func (pr *PilosaRecord) AddRowTime(field string, id uint64, ts time.Time) {
 }
 
 // Row represents a column to set in Pilosa sans column id (which is held by the
-// PilosaRecord containg the Row).
+// PilosaRecord containing the Row).
 type Row struct {
 	Field string
 	ID    uint64OrString
