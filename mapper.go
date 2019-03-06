@@ -129,11 +129,15 @@ func (m *CollapsingMapper) mapLit(val Literal, pr *PilosaRecord, path []string) 
 		if field == "" {
 			return nil
 		}
-		id, err := m.Translator.GetID(field, tval)
-		if err != nil {
-			return errors.Wrapf(err, "getting id from %v", val)
+		if m.Translator != nil {
+			id, err := m.Translator.GetID(field, tval)
+			if err != nil {
+				return errors.Wrapf(err, "getting id from %v", val)
+			}
+			pr.AddRow(field, id)
+		} else {
+			pr.AddRow(field, string(tval))
 		}
-		pr.AddRow(field, id)
 	case B:
 		// for bools, use the last path element as the row name - only set if val is true
 		if !tval {
@@ -150,11 +154,15 @@ func (m *CollapsingMapper) mapLit(val Literal, pr *PilosaRecord, path []string) 
 			}
 		}
 		rowname := path[len(path)-1]
-		id, err := m.Translator.GetID(field, rowname)
-		if err != nil {
-			return errors.Wrapf(err, "getting bool id from %v", field)
+		if m.Translator != nil {
+			id, err := m.Translator.GetID(field, rowname)
+			if err != nil {
+				return errors.Wrapf(err, "getting bool id from %v", field)
+			}
+			pr.AddRow(field, id)
+		} else {
+			pr.AddRow(field, rowname)
 		}
-		pr.AddRow(field, id)
 	}
 	return nil
 }
@@ -206,8 +214,8 @@ func (pr *PilosaRecord) AddVal(field string, value int64) {
 }
 
 // AddRow adds a new column to be set to the PilosaRecord.
-func (pr *PilosaRecord) AddRow(field string, id uint64) {
-	pr.Rows = append(pr.Rows, Row{Field: field, ID: id})
+func (pr *PilosaRecord) AddRow(field string, idOrKey uint64OrString) {
+	pr.Rows = append(pr.Rows, Row{Field: field, ID: idOrKey})
 }
 
 // AddRowTime adds a new column to be set with a timestamp to the PilosaRecord.

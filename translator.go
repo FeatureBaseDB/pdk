@@ -99,7 +99,7 @@ func (m *MapTranslator) GetID(field string, val interface{}) (id uint64, err err
 	return m.getFieldTranslator(field).GetID(val)
 }
 
-// MapFieldTranslator is an in-memory implementation of FrameTranslator using
+// MapFieldTranslator is an in-memory implementation of FieldTranslator using
 // sync.Map and a slice.
 type MapFieldTranslator struct {
 	m sync.Map
@@ -110,7 +110,7 @@ type MapFieldTranslator struct {
 	s []interface{}
 }
 
-// NewMapFieldTranslator creates a new MapFrameTranslator.
+// NewMapFieldTranslator creates a new MapFieldTranslator.
 func NewMapFieldTranslator() *MapFieldTranslator {
 	return &MapFieldTranslator{
 		n: NewNexter(),
@@ -159,7 +159,7 @@ func (m *MapFieldTranslator) GetID(val interface{}) (id uint64, err error) {
 	return nextid, nil
 }
 
-// NexterFrameTranslator satisfies the FrameTranslator interface, but simply
+// NexterFrameTranslator satisfies the FieldTranslator interface, but simply
 // allocates a new contiguous id every time GetID(val) is called. It does not
 // store any mapping and Get(id) always returns an error. Pilosa requires column
 // ids regardless of whether we actually require tracking what each individual

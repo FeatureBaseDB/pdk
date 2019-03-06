@@ -59,7 +59,7 @@ type Proxy interface {
 	ProxyRequest(orig *http.Request, origbody []byte) (*http.Response, error)
 }
 
-// StartMappingProxy listens for incoming http connections on `bind` and
+// StartMappingProxy listens for incoming http connections on `bind`
 // and uses h to handle all requests.
 // This function does not return unless there is a problem (like
 // http.ListenAndServe).
