@@ -65,17 +65,17 @@ func NewCollapsingMapper() *CollapsingMapper {
 // Map implements the RecordMapper interface.
 func (m *CollapsingMapper) Map(e *Entity) (PilosaRecord, error) {
 	pr := PilosaRecord{}
-	var col uint64
-	var err error
 	if m.ColTranslator != nil {
-		col, err = m.ColTranslator.GetID(string(e.Subject))
+		col, err := m.ColTranslator.GetID(string(e.Subject))
 		if err != nil {
 			return pr, errors.Wrap(err, "getting column id from subject")
 		}
+		pr.Col = col
+	} else if m.Nexter != nil {
+		pr.Col = m.Nexter.Next()
 	} else {
-		col = m.Nexter.Next()
+		pr.Col = string(e.Subject)
 	}
-	pr.Col = col
 	return pr, m.mapObj(e, &pr, []string{})
 }
 
