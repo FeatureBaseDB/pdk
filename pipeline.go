@@ -44,6 +44,12 @@ type Source interface {
 	Record() (interface{}, error)
 }
 
+// SourcePeeker is an interface for peeking ahead at the next record
+// to be returned by Source.Record().
+type SourcePeeker interface {
+	Peek() (interface{}, error)
+}
+
 // RecordParser is the interface for turning raw records from Source into Go
 // objects. Implementations of Parser should be thread safe.
 type RecordParser interface {

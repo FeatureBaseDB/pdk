@@ -37,6 +37,8 @@ package s3
 import (
 	"io"
 	"testing"
+
+	"github.com/pilosa/pdk"
 )
 
 func TestNewSource(t *testing.T) {
@@ -97,5 +99,65 @@ func TestNewSource(t *testing.T) {
 	widg := recs[0]["widget"].(map[string]interface{})
 	if _, ok := widg["window"]; !ok {
 		t.Fatalf("unexpected value does not have widget.window: %#v", recs[0])
+	}
+}
+
+func TestSourcePeek(t *testing.T) {
+	baseSrc, err := NewSource(
+		OptSrcBucket("pdk-test-bucket"),
+		OptSrcRegion("us-east-1"),
+		OptSrcBufSize(9191),
+		OptSrcSubjectAt("#@!pdksubj"),
+		OptSrcPrefix("myfile"),
+	)
+	if err != nil {
+		t.Fatalf("getting new source: %v", err)
+	}
+
+	src := &pdk.PeekingSource{Source: baseSrc}
+
+	// firstImageName is the value at the first widget.image.name.
+	firstImageName := "sun1"
+
+	// Ensure that Peek gets the first record.
+	peekRec, err := src.Peek()
+	if err != nil {
+		t.Fatalf("peeking at first record: %v", err)
+	}
+	prec, ok := peekRec.(map[string]interface{})
+	if !ok {
+		t.Fatalf("unexpected peek record type: %v", err)
+	}
+	pwidg, ok := prec["widget"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("getting widget: %v", err)
+	}
+	pimg, ok := pwidg["image"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("getting image: %v", err)
+	}
+	if pimg["name"] != firstImageName {
+		t.Fatalf("getting image name, expected: %s, but got: %s", firstImageName, pimg["name"])
+	}
+
+	// Ensure that Record also gets the first record.
+	trueRec, err := src.Record()
+	if err != nil {
+		t.Fatalf("getting first record: %v", err)
+	}
+	rec, ok := trueRec.(map[string]interface{})
+	if !ok {
+		t.Fatalf("unexpected record type: %v", err)
+	}
+	widg, ok := rec["widget"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("getting widget: %v", err)
+	}
+	img, ok := widg["image"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("getting image: %v", err)
+	}
+	if img["name"] != firstImageName {
+		t.Fatalf("getting image name, expected: %s, but got: %s", firstImageName, img["name"])
 	}
 }
