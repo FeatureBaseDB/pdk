@@ -65,7 +65,7 @@ func (i *Index) Client() *gopilosa.Client {
 }
 
 // AddColumnTimestamp adds a column to be imported to Pilosa with a timestamp.
-func (i *Index) AddColumnTimestamp(field string, row, col uint64, ts time.Time) {
+func (i *Index) AddColumnTimestamp(field string, row, col uint64OrString, ts time.Time) {
 	i.addColumn(field, row, col, ts.UnixNano())
 }
 
@@ -110,7 +110,12 @@ func (i *Index) addColumn(fieldName string, col uint64OrString, row uint64OrStri
 		if ts != 0 {
 			fieldType = gopilosa.OptFieldTypeTime(gopilosa.TimeQuantumYearMonthDayHour)
 		}
-		field := i.index.Field(fieldName, fieldType)
+		fieldOpts := []gopilosa.FieldOption{fieldType}
+		// If row value is a string then configure the field to use row keys.
+		if _, ok := row.(string); ok {
+			fieldOpts = append(fieldOpts, gopilosa.OptFieldKeys(true))
+		}
+		field := i.index.Field(fieldName, fieldOpts...)
 		err := i.setupField(field)
 		if err != nil {
 			log.Println(errors.Wrapf(err, "setting up field '%s'", fieldName)) // TODO make AddBit/AddValue return err?
