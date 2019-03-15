@@ -86,7 +86,7 @@ func TestMockSource(t *testing.T) {
 
 func TestSourcePeek(t *testing.T) {
 	ms := &mockSource{items: []interface{}{0, 1}}
-	source := &pdk.PeekingSource{Source: ms}
+	source := pdk.NewPeekingSource(ms)
 
 	i, err := source.Peek()
 	if err != nil {

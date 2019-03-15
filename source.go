@@ -75,3 +75,7 @@ func (p *PeekingSource) Record() (interface{}, error) {
 	}
 	return p.recordFn()
 }
+
+func NewPeekingSource(source Source) *PeekingSource {
+	return &PeekingSource{Source: source}
+}
