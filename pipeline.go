@@ -44,9 +44,9 @@ type Source interface {
 	Record() (interface{}, error)
 }
 
-// SourcePeeker is an interface for peeking ahead at the next record
+// Peeker is an interface for peeking ahead at the next record
 // to be returned by Source.Record().
-type SourcePeeker interface {
+type Peeker interface {
 	Peek() (interface{}, error)
 }
 

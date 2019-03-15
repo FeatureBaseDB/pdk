@@ -39,7 +39,7 @@ import (
 )
 
 // PeekingSource is a wrapper for Source which implements the
-// SourcePeeker interface by reading the next record from Source
+// Peeker interface by reading the next record from Source
 // and caching it for the next call to Record().
 type PeekingSource struct {
 	Source
