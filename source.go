@@ -44,36 +44,52 @@ import (
 type PeekingSource struct {
 	Source
 
-	mu       sync.RWMutex
-	rec      interface{}
-	recordFn func() (interface{}, error)
+	mu  sync.RWMutex
+	rec interface{}
 }
 
 func (p *PeekingSource) Peek() (interface{}, error) {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-
+	p.mu.RLock()
 	var err error
-	p.rec, err = p.Source.Record()
-	if err != nil {
-		return nil, errors.Wrap(err, "getting next record for peeking")
-	}
-	p.recordFn = p.cachedRecord
-	return p.rec, nil
-}
 
-func (p *PeekingSource) cachedRecord() (interface{}, error) {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	p.recordFn = p.Source.Record
-	return p.rec, nil
+	if p.rec != nil {
+		defer p.mu.RUnlock()
+		return p.rec, nil
+	} else {
+		p.mu.RUnlock()
+		p.mu.Lock()
+		if p.rec != nil {
+			p.mu.Unlock()
+			return p.Peek()
+		}
+		p.rec, err = p.Source.Record()
+		p.mu.Unlock()
+		if err != nil {
+			return nil, errors.Wrap(err, "getting next record for peeking")
+		} else {
+			return p.rec, nil
+		}
+	}
 }
 
 func (p *PeekingSource) Record() (interface{}, error) {
-	if p.recordFn == nil {
-		p.recordFn = p.Source.Record
+	p.mu.RLock()
+	var rec interface{}
+	if p.rec == nil {
+		defer p.mu.RUnlock()
+		return p.Source.Record()
+	} else {
+		p.mu.RUnlock()
+		p.mu.Lock()
+		if p.rec == nil {
+			p.mu.Unlock()
+			return p.Record()
+		}
+		rec = p.rec
+		p.rec = nil
+		p.mu.Unlock()
+		return rec, nil
 	}
-	return p.recordFn()
 }
 
 func NewPeekingSource(source Source) *PeekingSource {
