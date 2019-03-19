@@ -48,6 +48,9 @@ type PeekingSource struct {
 	rec interface{}
 }
 
+// Peek returns a copy of the next record in the underlying source, without
+// discarding it, so the following call to Record() will return the same data
+// as if Peek had not been called.
 func (p *PeekingSource) Peek() (interface{}, error) {
 	p.mu.RLock()
 	var err error
@@ -56,6 +59,7 @@ func (p *PeekingSource) Peek() (interface{}, error) {
 		defer p.mu.RUnlock()
 		return p.rec, nil
 	} else {
+		// Exchange read lock for write lock and recheck p.rec
 		p.mu.RUnlock()
 		p.mu.Lock()
 		if p.rec != nil {
@@ -63,7 +67,7 @@ func (p *PeekingSource) Peek() (interface{}, error) {
 			return p.Peek()
 		}
 		p.rec, err = p.Source.Record()
-		p.mu.Unlock()
+		defer p.mu.Unlock()
 		if err != nil {
 			return nil, errors.Wrap(err, "getting next record for peeking")
 		} else {
@@ -72,6 +76,8 @@ func (p *PeekingSource) Peek() (interface{}, error) {
 	}
 }
 
+// Record returns the next record in the underlying source, first checking if a
+// cached record from Peek() has been set.
 func (p *PeekingSource) Record() (interface{}, error) {
 	p.mu.RLock()
 	var rec interface{}
@@ -79,6 +85,7 @@ func (p *PeekingSource) Record() (interface{}, error) {
 		defer p.mu.RUnlock()
 		return p.Source.Record()
 	} else {
+		// Exchange read lock for write lock and recheck p.rec
 		p.mu.RUnlock()
 		p.mu.Lock()
 		if p.rec == nil {
@@ -92,6 +99,7 @@ func (p *PeekingSource) Record() (interface{}, error) {
 	}
 }
 
+// NewPeekingSource returns a new peeking source.
 func NewPeekingSource(source Source) *PeekingSource {
 	return &PeekingSource{Source: source}
 }
