@@ -78,7 +78,7 @@ func TestMockSource(t *testing.T) {
 		t.Fatal("Record should be 1")
 	}
 
-	i, err = source.Record()
+	_, err = source.Record()
 	if err == nil {
 		t.Fatal("Error expected")
 	}
@@ -112,7 +112,7 @@ func TestSourcePeek(t *testing.T) {
 		t.Fatal("Record should be 1")
 	}
 
-	i, err = source.Record()
+	_, err = source.Record()
 	if err == nil {
 		t.Fatal("Error expected")
 	}
