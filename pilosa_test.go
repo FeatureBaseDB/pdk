@@ -88,7 +88,7 @@ func TestSetupPilosa(t *testing.T) {
 		t.Fatalf("index with wrong name: %v", idx)
 	}
 
-	if len(idxs["newindex"].Fields()) != 5 {
+	if len(idxs["newindex"].Fields()) != 4 {
 		t.Errorf("wrong number of fields: %v. Fields:in", len(idxs["newindex"].Fields()))
 		for _, field := range idxs["newindex"].Fields() {
 			t.Logf("%#v\n", field)

@@ -191,7 +191,7 @@ func (i *Index) setupField(field *gopilosa.Field) error {
 		i.importWG.Add(1)
 		go func(fram *gopilosa.Field, cbi chanRecordIterator) {
 			defer i.importWG.Done()
-			err := i.client.ImportField(fram, cbi, gopilosa.OptImportBatchSize(int(i.batchSize)))
+			err := i.client.ImportField(fram, cbi, gopilosa.OptImportBatchSize(int(i.batchSize)), gopilosa.OptImportRoaring(true))
 			if err != nil {
 				log.Println(errors.Wrapf(err, "starting field import for %v", fieldName))
 			}
