@@ -97,7 +97,7 @@ func TestSetupPilosa(t *testing.T) {
 
 	idx := schema.Index("newindex")
 	fieldtime := idx.Field("fieldtime")
-	resp, err := client.Query(fieldtime.Range(0, time.Date(2018, time.February, 21, 9, 0, 0, 0, time.UTC), time.Date(2018, time.February, 23, 9, 0, 0, 0, time.UTC)))
+	resp, err := client.Query(fieldtime.RowRange(0, time.Date(2018, time.February, 21, 9, 0, 0, 0, time.UTC), time.Date(2018, time.February, 23, 9, 0, 0, 0, time.UTC)))
 	if err != nil {
 		t.Fatalf("executing range query: %v", err)
 	}
@@ -106,7 +106,7 @@ func TestSetupPilosa(t *testing.T) {
 		t.Fatalf("unexpected bits from range query: %v", bits)
 	}
 
-	resp, err = client.Query(fieldtime.Range(0, time.Date(2018, time.February, 20, 9, 0, 0, 0, time.UTC), time.Date(2018, time.February, 21, 9, 0, 0, 0, time.UTC)))
+	resp, err = client.Query(fieldtime.RowRange(0, time.Date(2018, time.February, 20, 9, 0, 0, 0, time.UTC), time.Date(2018, time.February, 21, 9, 0, 0, 0, time.UTC)))
 	if err != nil {
 		t.Fatalf("executing range query: %v", err)
 	}
@@ -115,7 +115,7 @@ func TestSetupPilosa(t *testing.T) {
 		t.Fatalf("unexpected bits from empty range query: %v", bits)
 	}
 
-	resp, err = client.Query(fieldtime.Range(0, time.Date(2018, time.February, 20, 9, 0, 0, 0, time.UTC), time.Date(2018, time.February, 25, 9, 0, 0, 0, time.UTC)))
+	resp, err = client.Query(fieldtime.RowRange(0, time.Date(2018, time.February, 20, 9, 0, 0, 0, time.UTC), time.Date(2018, time.February, 25, 9, 0, 0, 0, time.UTC)))
 	if err != nil {
 		t.Fatalf("executing range query: %v", err)
 	}

@@ -24,7 +24,7 @@ require (
 	github.com/onsi/gomega v1.4.3 // indirect
 	github.com/pierrec/lz4 v0.0.0-20181005164709-635575b42742 // indirect
 	github.com/pilosa/go-pilosa v1.2.1-0.20190321212254-72b91a013211
-	github.com/pilosa/pilosa v1.2.1-0.20190326161037-4955dff22f76
+	github.com/pilosa/pilosa v1.2.1-0.20190401200108-927e8b89425e
 	github.com/pkg/errors v0.8.1
 	github.com/rcrowley/go-metrics v0.0.0-20181016184325-3113b8401b8a // indirect
 	github.com/shirou/w32 v0.0.0-20160930032740-bb4de0191aa4 // indirect
