@@ -122,6 +122,8 @@ github.com/pilosa/go-pilosa v1.2.0 h1:EgokWNJt/yYRX1P09+uDy7QI3jUKa42iu6pe8hB6um
 github.com/pilosa/go-pilosa v1.2.0/go.mod h1:uli4HiTymHocSAXJ9XpDbkH6kS63P8Yc0xyWDzooouc=
 github.com/pilosa/go-pilosa v1.2.1-0.20190321212254-72b91a013211 h1:2NZOJBJoB2TjeSP1LkMYQfttqWyTHXRdAez+Mn4qDa4=
 github.com/pilosa/go-pilosa v1.2.1-0.20190321212254-72b91a013211/go.mod h1:0kiAAME+mLvrmVX2YVo4kmIwtKsV16Re442mheTVqoE=
+github.com/pilosa/go-pilosa v1.2.1-0.20190411142335-f4e04bc9733d h1:NsWUuT4LTqyWH5pPZHXALZu6CX8ij74d1nmcCIq5aHQ=
+github.com/pilosa/go-pilosa v1.2.1-0.20190411142335-f4e04bc9733d/go.mod h1:rMziran1UW7p6kkKQTdYB+DCP9ZHbsQpGNmc4fF4PTY=
 github.com/pilosa/pilosa v0.0.0-20181130171212-dfb748ec5b01 h1:gtkt282G8/+8XN0D9+934/3zpUiEtsFINjqCs+vZs04=
 github.com/pilosa/pilosa v0.0.0-20181130171212-dfb748ec5b01/go.mod h1:NgpkJkefqUKUHV7O3TqBOu89tsao3ksth2wzTNe8CPQ=
 github.com/pilosa/pilosa v0.0.0-20190104143002-8c4b1548bc4b h1:2H/+JUxL4dv0uJ4G4i+C83S1yq/+pUrHHjsF8TEY85I=
@@ -130,6 +132,8 @@ github.com/pilosa/pilosa v1.2.1-0.20190326161037-4955dff22f76 h1:nwrmAMzbSIq99Tt
 github.com/pilosa/pilosa v1.2.1-0.20190326161037-4955dff22f76/go.mod h1:yTXtQGchazlKds24RYax8+N9lIlpisspMj4ZD4loMU0=
 github.com/pilosa/pilosa v1.2.1-0.20190401200108-927e8b89425e h1:leJjlNm0+3Vbbp7qA+NdmDaWxQKivN3T2rVaVCNHpTk=
 github.com/pilosa/pilosa v1.2.1-0.20190401200108-927e8b89425e/go.mod h1:rRLglQ1zRxKarDMyHhsLR+0XhacXWUNrNXaAs69b1LQ=
+github.com/pilosa/pilosa v1.2.1-0.20190410162749-b973f8c96356 h1:jDxhpV4l+CpKqVVgld73e9/EyogdCcO1ftbCvifrhSc=
+github.com/pilosa/pilosa v1.2.1-0.20190410162749-b973f8c96356/go.mod h1:QN7EwQwoQHNPVsd7CHXFDasPznLDA6DPswmnLr4eJ6o=
 github.com/pkg/errors v0.8.0 h1:WdK/asTD0HN+q6hsWO3/vpuAkAr+tw6aNJNDFFf0+qw=
 github.com/pkg/errors v0.8.0/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
 github.com/pkg/errors v0.8.1 h1:iURUrRGxPUNPdy5/HRSm+Yj6okJ6UtLINN0Q9M4+h3I=
