@@ -209,7 +209,8 @@ func SetupPilosa(hosts []string, indexName string, schema *gopilosa.Schema, batc
 	indexer.batchSize = batchsize
 	client, err := gopilosa.NewClient(hosts,
 		gopilosa.OptClientSocketTimeout(time.Minute*60),
-		gopilosa.OptClientConnectTimeout(time.Second*60))
+		gopilosa.OptClientConnectTimeout(time.Second*60),
+		gopilosa.OptClientRetries(5))
 	if err != nil {
 		return nil, errors.Wrap(err, "creating pilosa cluster client")
 	}
