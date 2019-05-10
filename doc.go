@@ -55,14 +55,14 @@
 //    to several different sources. Secondly, you may require different
 //    concurrency or scaling properties from fetching the data vs parsing it.
 //    For example, if you are interacting with an HTTP endpoint at significant
-//    latency, you way want many routines issuing concurrent calls in order to
+//    latency, you may want many routines issuing concurrent calls in order to
 //    achieve the desired throughput, but parsing is relatively lightweight, and
 //    a single routine is sufficient to process the load.
 //
 // 2. Parser
 //
 //    The Parser does the heavy lifting for turning some arbitrary type of data
-//    into something slightly more structured, recognizeable, and type-safe.
+//    into something slightly more structured, recognizable, and type-safe.
 //    There are many choices to be made when indexing data in Pilosa around
 //    tradeoffs like speed vs precision, or storage size. When to use bucketing
 //    vs range encoding, when time quantum support is needed and at what
@@ -78,7 +78,7 @@
 //
 // 2.5. Transformer
 //
-//    One may optional provide a number of Transformers which do in-place
+//    One may optionally provide a number of Transformers which do in-place
 //    operations on the Entity before it is passed to the Mapper.
 //
 // 3. Mapper
@@ -95,5 +95,5 @@
 // 4. Indexer
 //
 //    The Indexer is responsible for getting data into Pilosa. Primarily, there
-//    is a latency/throuput tradeoff depending on the batch size selected.
+//    is a latency/throughput tradeoff depending on the batch size selected.
 package pdk
