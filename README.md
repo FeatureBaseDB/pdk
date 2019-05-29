@@ -46,7 +46,7 @@ If you want to try out the full data set, run this:
 
 `pdk taxi -i taxi-big -f usecase/taxi/greenAndYellowUrls.txt`
 
-There are a number of other options you can tweak to affect the speed and memory usage of the import (or point it to a remote pilosa instance). Use `pdk taxi -help` to see all the options.
+There are a number of other options you can tweak to affect the speed and memory usage of the import (or point it to a remote pilosa instance). Use `pdk taxi --help` to see all the options.
 
 Note that this url file represents 1+ billion columns of data - depending on your hardware this will probably take well over 3 hours, and consume quite a bit of memory (and CPU). You can make a file with fewer URLs if you just want to get a sample.
 
