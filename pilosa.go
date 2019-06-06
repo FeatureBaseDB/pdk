@@ -215,6 +215,16 @@ func (i *Index) setupField(field *gopilosa.Field) error {
 }
 
 // SetupPilosa returns a new Indexer after creating the given fields and starting importers.
+// You can pass options to the underlying go-pilosa client using the following functions:
+// - pdk.OptPilosaImportOptions: Pass import options. See: https://github.com/pilosa/go-pilosa/blob/master/docs/server-interaction.md#pilosa-client for the list of options you can pass.
+// - pdk.OptPilosaClientOptions: Pass client options. See: https://github.com/pilosa/go-pilosa/blob/master/docs/imports-exports.md#advanced-usage for the list of options you can pass.
+// Note that each of the functions above should be specified at most once.
+// Example:
+// pdk.SetupPilosa(...,
+//    pdk.OptPilosaImportOptions(gopilosa.OptImportThreadCount(4)),
+//    pdkOptPilosaClientOptions(gopilosa.OptClientRetries(5), gopilosa.OptClientConnectTimeout(time.Second * 60))
+// )
+
 func SetupPilosa(hosts []string, indexName string, schema *gopilosa.Schema, batchsize uint, options ...PilosaOption) (Indexer, error) {
 	if schema == nil {
 		schema = gopilosa.NewSchema()
