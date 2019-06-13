@@ -57,7 +57,6 @@ func NewWeatherCommand(stdin io.Reader, stdout, stderr io.Writer) *cobra.Command
 				return err
 			}
 			log.Println("Done: ", time.Since(start))
-			// select {} // only difference between other .gos
 			return nil
 		},
 	}
