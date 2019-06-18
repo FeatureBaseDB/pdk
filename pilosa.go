@@ -222,7 +222,7 @@ func (i *Index) setupField(field *gopilosa.Field) error {
 // Example:
 // pdk.SetupPilosa(...,
 //    pdk.OptPilosaImportOptions(gopilosa.OptImportThreadCount(4)),
-//    pdkOptPilosaClientOptions(gopilosa.OptClientRetries(5), gopilosa.OptClientConnectTimeout(time.Second * 60))
+//    pdk.OptPilosaClientOptions(gopilosa.OptClientRetries(5), gopilosa.OptClientConnectTimeout(time.Second * 60))
 // )
 
 func SetupPilosa(hosts []string, indexName string, schema *gopilosa.Schema, batchsize uint, options ...PilosaOption) (Indexer, error) {
