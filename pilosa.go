@@ -46,6 +46,7 @@ import (
 type Index struct {
 	client    *gopilosa.Client
 	batchSize uint
+	options   *pilosaOptions
 
 	lock        sync.RWMutex
 	index       *gopilosa.Index
@@ -53,8 +54,9 @@ type Index struct {
 	recordChans map[string]chanRecordIterator
 }
 
-func newIndex() *Index {
+func newIndex(options *pilosaOptions) *Index {
 	return &Index{
+		options:     options,
 		recordChans: make(map[string]chanRecordIterator),
 	}
 }
@@ -189,9 +191,21 @@ func (i *Index) setupField(field *gopilosa.Field) error {
 		}
 		i.recordChans[fieldName] = newChanRecordIterator()
 		i.importWG.Add(1)
+		var importOptions []gopilosa.ImportOption
+		if i.options != nil {
+			importOptions = i.options.importOptions
+		}
+		if importOptions == nil {
+			// We don't mutate pilosaOptions.importOptions since the default
+			// may be different elsewhere.
+			importOptions = []gopilosa.ImportOption{
+				gopilosa.OptImportBatchSize(int(i.batchSize)),
+				gopilosa.OptImportRoaring(true),
+			}
+		}
 		go func(fram *gopilosa.Field, cbi chanRecordIterator) {
 			defer i.importWG.Done()
-			err := i.client.ImportField(fram, cbi, gopilosa.OptImportBatchSize(int(i.batchSize)), gopilosa.OptImportRoaring(true))
+			err := i.client.ImportField(fram, cbi, importOptions...)
 			if err != nil {
 				log.Println(errors.Wrapf(err, "starting field import for %v", fieldName))
 			}
@@ -201,16 +215,40 @@ func (i *Index) setupField(field *gopilosa.Field) error {
 }
 
 // SetupPilosa returns a new Indexer after creating the given fields and starting importers.
-func SetupPilosa(hosts []string, indexName string, schema *gopilosa.Schema, batchsize uint) (Indexer, error) {
+// You can pass options to the underlying go-pilosa client using the following functions:
+// - pdk.OptPilosaImportOptions: Pass import options. See: https://github.com/pilosa/go-pilosa/blob/master/docs/server-interaction.md#pilosa-client for the list of options you can pass.
+// - pdk.OptPilosaClientOptions: Pass client options. See: https://github.com/pilosa/go-pilosa/blob/master/docs/imports-exports.md#advanced-usage for the list of options you can pass.
+// Note that each of the functions above should be specified at most once.
+// Example:
+// pdk.SetupPilosa(...,
+//    pdk.OptPilosaImportOptions(gopilosa.OptImportThreadCount(4)),
+//    pdkOptPilosaClientOptions(gopilosa.OptClientRetries(5), gopilosa.OptClientConnectTimeout(time.Second * 60))
+// )
+
+func SetupPilosa(hosts []string, indexName string, schema *gopilosa.Schema, batchsize uint, options ...PilosaOption) (Indexer, error) {
 	if schema == nil {
 		schema = gopilosa.NewSchema()
 	}
-	indexer := newIndex()
+	pilosaOptions := &pilosaOptions{}
+	for _, opt := range options {
+		if err := opt(pilosaOptions); err != nil {
+			return nil, errors.Wrap(err, "applying options")
+		}
+	}
+	clientOptions := pilosaOptions.clientOptions
+	if clientOptions == nil {
+		// We don't mutate pilosaOptions.clientOptions since the default
+		// may be different elsewhere.
+		clientOptions = []gopilosa.ClientOption{
+			gopilosa.OptClientSocketTimeout(time.Minute * 60),
+			gopilosa.OptClientConnectTimeout(time.Second * 60),
+			gopilosa.OptClientRetries(5),
+		}
+	}
+
+	indexer := newIndex(pilosaOptions)
 	indexer.batchSize = batchsize
-	client, err := gopilosa.NewClient(hosts,
-		gopilosa.OptClientSocketTimeout(time.Minute*60),
-		gopilosa.OptClientConnectTimeout(time.Second*60),
-		gopilosa.OptClientRetries(5))
+	client, err := gopilosa.NewClient(hosts, clientOptions...)
 	if err != nil {
 		return nil, errors.Wrap(err, "creating pilosa cluster client")
 	}
@@ -241,4 +279,25 @@ func (c chanRecordIterator) NextRecord() (gopilosa.Record, error) {
 		return b, io.EOF
 	}
 	return b, nil
+}
+
+type pilosaOptions struct {
+	importOptions []gopilosa.ImportOption
+	clientOptions []gopilosa.ClientOption
+}
+
+type PilosaOption func(opt *pilosaOptions) error
+
+func OptPilosaImportOptions(options ...gopilosa.ImportOption) PilosaOption {
+	return func(pilosaOpt *pilosaOptions) error {
+		pilosaOpt.importOptions = options
+		return nil
+	}
+}
+
+func OptPilosaClientOptions(options ...gopilosa.ClientOption) PilosaOption {
+	return func(pilosaOpt *pilosaOptions) error {
+		pilosaOpt.clientOptions = options
+		return nil
+	}
 }
