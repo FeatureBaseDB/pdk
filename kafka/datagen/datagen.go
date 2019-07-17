@@ -14,9 +14,11 @@ import (
 
 // KafkaTopic sets the kafka topic
 var KafkaTopic = "testtopic"
+
+// RestProxyURL sets the URL of the REST proxy
 var RestProxyURL = "localhost:8082"
 
-// PostData generates data to be used by kafka's rest proxy
+// PostData generates data and sends it to kafka's rest proxy
 func PostData(restProxyURL string, kafkaTopic string) (response map[string]interface{}, err error) {
 	postURL := fmt.Sprintf("http://%s/topics/%s", restProxyURL, kafkaTopic)
 	data := struct {
@@ -42,7 +44,7 @@ func PostData(restProxyURL string, kafkaTopic string) (response map[string]inter
 	}
 
 	if resp.StatusCode >= 300 || resp.StatusCode < 200 {
-		return nil, errors.Errorf("unexpected status posting data: %v, body: %s", resp.StatusCode, respBody)
+		return nil, errors.Errorf("unexpected status posting data: %d, body: %s", resp.StatusCode, respBody)
 	}
 
 	respMap := make(map[string]interface{})

@@ -44,10 +44,10 @@ import (
 
 // Main holds the execution state for the kafka generator.
 type Main struct {
-	Hosts       []string
-	Topic       string
-	Group       string
-	RegistryURL string
+	Hosts        []string
+	Topic        string
+	Group        string
+	RestProxyURL string
 
 	Rate time.Duration
 }
@@ -55,10 +55,10 @@ type Main struct {
 // NewMain returns a new Main.
 func NewMain() *Main {
 	return &Main{
-		Hosts:       []string{"localhost:9092"},
-		Topic:       "test",
-		Group:       "group0",
-		RegistryURL: "localhost:8081",
+		Hosts:        []string{"localhost:9092"},
+		Topic:        "test",
+		Group:        "group0",
+		RestProxyURL: "localhost:8082",
 
 		Rate: time.Second * 1,
 	}
@@ -91,7 +91,7 @@ func (m *Main) Run() error {
 
 	for ticker := time.NewTicker(m.Rate); true; <-ticker.C {
 		for i := 0; i < 1000; i++ {
-			_, err := datagen.PostData(m.RegistryURL, m.Topic)
+			_, err := datagen.PostData(m.RestProxyURL, m.Topic)
 			if err != nil {
 				return errors.Wrap(err, "creating and loading data")
 			}
