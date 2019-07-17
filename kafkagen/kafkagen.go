@@ -38,7 +38,6 @@ import (
 
 	"github.com/Shopify/sarama"
 	"github.com/pilosa/pdk/fake"
-	kafka "github.com/pilosa/pdk/kafka"
 	"github.com/pilosa/pdk/kafka/datagen"
 	"github.com/pkg/errors"
 )
@@ -92,7 +91,7 @@ func (m *Main) Run() error {
 
 	for ticker := time.NewTicker(m.Rate); true; <-ticker.C {
 		for i := 0; i < 1000; i++ {
-			_, err := datagen.PostData(m.Hosts, m.RegistryURL)
+			_, err := datagen.PostData(m.RegistryURL, m.Topic)
 			if err != nil {
 				return errors.Wrap(err, "creating and loading data")
 			}
