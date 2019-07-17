@@ -130,6 +130,8 @@ github.com/pilosa/go-pilosa v1.2.1-0.20190416174400-de264d55e76f h1:faokUYJ6BwIK
 github.com/pilosa/go-pilosa v1.2.1-0.20190416174400-de264d55e76f/go.mod h1:x18hYx4nI0bHzQSFyanUEB7pmja1HMAZAb3PPhUpOZc=
 github.com/pilosa/go-pilosa v1.3.1-0.20190503193736-ad53edf56c18 h1:uUA588w4MeX0dFxhr0rj1XazSxaSwqL3qnG2MmTZRb8=
 github.com/pilosa/go-pilosa v1.3.1-0.20190503193736-ad53edf56c18/go.mod h1:9ECbvb0EQJvjxBups5CUCzeLh8KrLgQVY9/1zSoQHQE=
+github.com/pilosa/go-pilosa v1.3.1-0.20190612142550-e616c1393660 h1:0UUfONtKBe4n1yIRLshVPNCJbtXdg/WKNLDqmCxu/uw=
+github.com/pilosa/go-pilosa v1.3.1-0.20190612142550-e616c1393660/go.mod h1:9ECbvb0EQJvjxBups5CUCzeLh8KrLgQVY9/1zSoQHQE=
 github.com/pilosa/pilosa v0.0.0-20181130171212-dfb748ec5b01 h1:gtkt282G8/+8XN0D9+934/3zpUiEtsFINjqCs+vZs04=
 github.com/pilosa/pilosa v0.0.0-20181130171212-dfb748ec5b01/go.mod h1:NgpkJkefqUKUHV7O3TqBOu89tsao3ksth2wzTNe8CPQ=
 github.com/pilosa/pilosa v0.0.0-20190104143002-8c4b1548bc4b h1:2H/+JUxL4dv0uJ4G4i+C83S1yq/+pUrHHjsF8TEY85I=
