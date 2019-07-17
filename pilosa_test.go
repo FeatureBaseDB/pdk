@@ -33,6 +33,8 @@
 package pdk_test
 
 import (
+	"io/ioutil"
+	"os"
 	"testing"
 	"time"
 
@@ -55,7 +57,12 @@ func TestSetupPilosa(t *testing.T) {
 	index.Field("field3", gopilosa.OptFieldTypeInt(0, 20000))
 	index.Field("fieldtime", gopilosa.OptFieldTypeTime(gopilosa.TimeQuantumYearMonthDay))
 
-	indexer, err := pdk.SetupPilosa(hosts, index.Name(), schema, 2)
+	logfile, err := ioutil.TempFile("", "")
+	if err != nil {
+		t.Fatalf("getting temp file for import log: %v", err)
+	}
+
+	indexer, err := pdk.SetupPilosa(hosts, index.Name(), schema, 2, pdk.OptPilosaImportOptions(gopilosa.OptImportThreadCount(4)), pdk.OptPilosaClientOptions(gopilosa.ExperimentalOptClientLogImports(logfile)))
 	if err != nil {
 		t.Fatalf("SetupPilosa: %v", err)
 	}
@@ -69,6 +76,18 @@ func TestSetupPilosa(t *testing.T) {
 	err = indexer.Close()
 	if err != nil {
 		t.Fatalf("closing indexer: %v", err)
+	}
+	logfile.Close()
+	f, err := os.Open(logfile.Name())
+	if err != nil {
+		t.Fatalf("reopening log file: %v", err)
+	}
+	data, err := ioutil.ReadAll(f)
+	if err != nil {
+		t.Fatalf("reading log file: %v", err)
+	}
+	if len(data) < 100 {
+		t.Errorf("small amount of data in replay file: %s", data)
 	}
 
 	client, err := gopilosa.NewClient(hosts)
