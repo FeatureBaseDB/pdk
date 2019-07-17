@@ -42,7 +42,7 @@ func PostData() (response map[string]interface{}, err error) {
 	}
 
 	if resp.StatusCode >= 300 || resp.StatusCode < 200 {
-		return nil, errors.New("unexpected status posting data")
+		return nil, errors.Errorf("unexpected status posting data: %v, body: %s", resp.StatusCode, respBody)
 	}
 
 	respMap := make(map[string]interface{})
