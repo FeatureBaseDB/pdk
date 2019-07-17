@@ -14,11 +14,11 @@ import (
 
 // KafkaTopic sets the kafka topic
 var KafkaTopic = "testtopic"
+var RestProxyURL = "localhost:8082"
 
 // PostData generates data to be used by kafka's rest proxy
-func PostData() (response map[string]interface{}, err error) {
-	krpURL := "localhost:8082"
-	postURL := fmt.Sprintf("http://%s/topics/%s", krpURL, KafkaTopic)
+func PostData(restProxyURL string, kafkaTopic string) (response map[string]interface{}, err error) {
+	postURL := fmt.Sprintf("http://%s/topics/%s", restProxyURL, kafkaTopic)
 	data := struct {
 		Schema  string  `json:"value_schema"`
 		Records []Value `json:"records"`

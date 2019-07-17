@@ -50,13 +50,15 @@ import (
 )
 
 var kafkaGroup = "testgroup"
+var kafkaTopic = "testtopic"
+var restProxyURL = "localhost:8082"
 
 func TestSource(t *testing.T) {
 	if testing.Short() {
 		t.Skip("integration test")
 	}
 	for i := 0; i < 10; i++ {
-		_, err := datagen.PostData()
+		_, err := datagen.PostData(restProxyURL, kafkaTopic)
 		if err != nil {
 			t.Fatalf(err.Error())
 		}
@@ -202,7 +204,7 @@ func runMain(t *testing.T, allowedFields []string) {
 		t.Skip("integration test")
 	}
 	for i := 0; i < 1000; i++ {
-		_, err := datagen.PostData()
+		_, err := datagen.PostData(restProxyURL, kafkaTopic)
 		if err != nil {
 			t.Fatalf(err.Error())
 		}
