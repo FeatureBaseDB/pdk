@@ -34,11 +34,11 @@ package kafkagen
 
 import (
 	"encoding/json"
-	"log"
 	"time"
 
 	"github.com/Shopify/sarama"
 	"github.com/pilosa/pdk/fake"
+	"github.com/pilosa/pdk/kafka/datagen"
 	"github.com/pkg/errors"
 )
 
@@ -90,12 +90,11 @@ func (m *Main) Run() error {
 	defer producer.Close()
 
 	for ticker := time.NewTicker(m.Rate); true; <-ticker.C {
-		ev := fake.GenEvent()
-		msg := &sarama.ProducerMessage{Topic: m.Topic, Value: JSONEvent(*ev)}
-		_, _, err := producer.SendMessage(msg)
-		if err != nil {
-			log.Printf("Error sending message: '%v', backing off", err)
-			time.Sleep(time.Second * 10)
+		for i := 0; i < 1000; i++ {
+			_, err := datagen.PostData()
+			if err != nil {
+				return errors.Wrap(err, "creating and laoding data")
+			}
 		}
 	}
 	return nil
