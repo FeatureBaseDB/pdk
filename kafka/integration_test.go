@@ -228,7 +228,6 @@ func runMain(t *testing.T, allowedFields []string) {
 	m.AllowedFields = allowedFields
 	m.SubjectPath = []string{"user_id"}
 	m.Topics = []string{datagen.KafkaTopic}
-	m.Proxy = ":39485"
 	m.MaxRecords = 1000
 	var err error
 	m.TranslatorDir, err = ioutil.TempDir("", "")
