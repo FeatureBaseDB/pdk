@@ -4,11 +4,13 @@ Pilosa supports a Kafka interface. For complete documentation on Kafka, please v
 
 ## Overview
 
-Pilosa's `pdk kafkagen` is a Kafka Producer. It generates random data and uses the REST proxy to load the data into the Schema-Registry and Kafka. The REST proxy converts the JSON data produced by the `pdk kafkagen` into an Avro format, which is then loaded into an Avro schema, where it gains access to the schema-registry. The schema-registry stores keys that decode the Avro data into Kafka messages. These messages are then sent into Kafka. Producers other than `pdk kafkagen` can send data straight to Kafka or to the Avro schema as long as they are formatted correctly.
+Pilosa's `pdk kafkagen` is a Kafka Producer. It generates random data and uses the REST proxy to load the data into Kafka. The REST proxy converts the JSON data produced by the `pdk kafkagen` into an Avro ID and message that Kafka can interpret. Each JSON schema has a corresponding Avro ID and message. The REST proxy acquires the Avro ID by querying the schema-registry,which is only queried for every new schema. After the REST proxy receives the Avro ID, it can decode the JSON message and send both to Kafka. Producers other than `pdk kafkagen` can send data straight to Kafka or query the schema-registry directly,as long as they are formatted correctly.
 
-Once the data is in Kafka, Pilosa can use `pdk kafka`, which is a Kafka Consumer, to access the data and ingest it into Pilosa. Reflecting how the data was loaded, the schema-repository accesses the Kafka message stored in Kafka, recodes the Avro data, and sends it to the Avro schema. The Avro schema then sends the Avro data to the REST proxy, where the Avro data is converted back into a JSON format and sent to `pdk kafka`. From `pdk kafka`, the JSON data is then loaded into Pilosa in the form of an index and its respective fields.
+Once the data is in Kafka, Pilosa can use `pdk kafka`, which is a Kafka Consumer, to access the data and ingest it into Pilosa. `pdk kafka` queries Kafka and receives the Avro ID and message that will be inputted into Pilosa. After recieving the Avro ID and message, the `pdk kafka` will query the schema-registry and procure the JSON schema that corresponds to the Avro ID. Similar to the REST proxy, `pdk kafka` will only query the schema-registry for new schema. Once `pdk kafka` has the JSON schema, it can send decode the message and send both to Pilosa for ingest. Consumers other than `pdk kafka` operate in a similar manner, although they may add complexity.
 
-// THE DIAGRAM
+<p>
+    <img src="https://docs.google.com/drawings/d/e/2PACX-1vS3VApcN8dhZkxlM4bIngy069Pjd6Cx1KtxYkTrwNYcCFVLPM9D_eqdycGBk6lLregWtwNa-XeMnq-4/pub?w=804&h=739" width="50%">
+</p>
 
 For more information regarding REST proxy, please Confluent's [documentation](https://docs.confluent.io/current/kafka-rest/index.html). For more information regarding the Schema-Registry, please see Confluent's [documentation](https://docs.confluent.io/current/schema-registry/index.html). For more information regarding Pilosa's data model, please see the Pilosa [documentation](https://www.pilosa.com/docs/latest/data-model/).
 
