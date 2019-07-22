@@ -8,7 +8,7 @@ Pilosa's `pdk kafkagen` is a Kafka Producer. It generates random data and uses t
 
 Once the data is in Kafka, Pilosa can use `pdk kafka`, which is a Kafka Consumer, to access the data and ingest it into Pilosa. `pdk kafka` queries Kafka and receives the Avro ID and message that will be ingested into Pilosa. After receiving the Avro ID and message, the `pdk kafka` command will query the Schema Registry and procure the JSON object that corresponds to the Avro ID. Similar to the REST proxy, `pdk kafka` will only query the Schema Registry for new schema. Once `pdk kafka` has the JSON object, it can decode the message and send both to Pilosa for ingest. Consumers other than `pdk kafka` operate in a similar manner, although they may add complexity.
 
-![pdk kafka diagram](pdkKafkaDiagram.svg)
+![pdk kafka diagram](pdkKafkaDiagram.png)
 
 Please see Confluent's documentation for more information regarding:
 * [REST proxy](https://docs.confluent.io/current/kafka-rest/index.html)
