@@ -19,7 +19,7 @@ Please see Pilosa's documentation regarding the Pilosa [data model](https://www.
 
 ## Loading Data From Kafka Into Pilosa
 
-In order to load data that is already stored in Kafka into Pilosa, it is as simple as running `pdk kafka` while both Kafka (along with Confluent's Schema Registry and REST proxy) and Pilosa are running. To ensure that the Kafka components are running, Kafka can be started using:
+To load data from Kafka into Pilosa, simply run `pdk kafka` while both Kafka (along with Confluent's Schema Registry and REST proxy) and Pilosa are running. To ensure that the Kafka components are running, Kafka can be started using:
 
 ```
 <confluent directory>/bin/confluent start
@@ -29,7 +29,7 @@ For more information about gettting started with Confluent and Kafka, please see
 
 ## Querying the Data
 
-Once the data in Kafka is ingested by Pilosa, normal Pilosa operations can be used. For a complete guide to the query operations in the official Pilosa clients, please see the following:
+Once the data in Kafka is ingested by Pilosa, Pilosa can be operated as usual. For a complete guide to the query operations in the official Pilosa clients, please see the following:
 
 * [Go](https://github.com/pilosa/go-pilosa)
 
