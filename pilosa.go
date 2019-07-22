@@ -147,7 +147,7 @@ func (i *Index) AddValue(fieldName string, col uint64OrString, val int64) {
 		i.lock.RUnlock()
 		i.lock.Lock()
 		defer i.lock.Unlock()
-		field := i.index.Field(fieldName, gopilosa.OptFieldTypeInt(0, 1<<31-1))
+		field := i.index.Field(fieldName, gopilosa.OptFieldTypeInt())
 		err := i.setupField(field)
 		if err != nil {
 			log.Println(errors.Wrap(err, "setting up field"))

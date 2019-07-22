@@ -33,40 +33,41 @@
 package kafka_test
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"math/rand"
 	"net/http"
 	"os"
 	"reflect"
 	"sort"
-	"strconv"
 	"strings"
 	"testing"
 	"time"
 
 	gopilosa "github.com/pilosa/go-pilosa"
 	"github.com/pilosa/pdk/kafka"
+	datagen "github.com/pilosa/pdk/kafka/datagen"
 	"github.com/pilosa/pilosa/test"
 )
 
-var kafkaTopic = "testtopic"
 var kafkaGroup = "testgroup"
+var kafkaTopic = "testtopic"
+var restProxyURL = "localhost:8082"
 
 func TestSource(t *testing.T) {
 	if testing.Short() {
 		t.Skip("integration test")
 	}
 	for i := 0; i < 10; i++ {
-		postData(t)
+		_, err := datagen.PostData(restProxyURL, kafkaTopic)
+		if err != nil {
+			t.Fatalf(err.Error())
+		}
 	}
 
 	src := kafka.NewConfluentSource()
 	src.Hosts = []string{"localhost:9092"}
 	src.Group = kafkaGroup
-	src.Topics = []string{kafkaTopic}
+	src.Topics = []string{datagen.KafkaTopic}
 	src.RegistryURL = "localhost:8081"
 	src.Type = "raw"
 	err := src.Open()
@@ -203,7 +204,10 @@ func runMain(t *testing.T, allowedFields []string) {
 		t.Skip("integration test")
 	}
 	for i := 0; i < 1000; i++ {
-		postData(t)
+		_, err := datagen.PostData(restProxyURL, kafkaTopic)
+		if err != nil {
+			t.Fatalf(err.Error())
+		}
 	}
 
 	m := kafka.NewMain()
@@ -223,8 +227,7 @@ func runMain(t *testing.T, allowedFields []string) {
 	m.BatchSize = 300
 	m.AllowedFields = allowedFields
 	m.SubjectPath = []string{"user_id"}
-	m.Topics = []string{kafkaTopic}
-	m.Proxy = ":39485"
+	m.Topics = []string{datagen.KafkaTopic}
 	m.MaxRecords = 1000
 	var err error
 	m.TranslatorDir, err = ioutil.TempDir("", "")
@@ -338,451 +341,3 @@ func mustHTTP(t *testing.T, host, path string) string {
 	}
 	return string(bod)
 }
-
-func postData(t *testing.T) (response map[string]interface{}) {
-	krpURL := "localhost:8082"
-	postURL := fmt.Sprintf("http://%s/topics/%s", krpURL, kafkaTopic)
-	data := struct {
-		Schema  string  `json:"value_schema"`
-		Records []Value `json:"records"`
-	}{
-		Schema:  schema,
-		Records: []Value{{Value: map[string]interface{}{"com.pi.Stuff": GenRecord()}}},
-	}
-	dataBytes, err := json.MarshalIndent(data, "", "  ")
-	if err != nil {
-		t.Fatalf("marshalling schema: %v", err)
-	}
-
-	resp, err := http.Post(postURL, "application/vnd.kafka.avro.v2+json", bytes.NewBuffer(dataBytes))
-	if err != nil {
-		t.Fatalf("posting schema: %v", err)
-	}
-
-	respBody, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		t.Fatalf("reading response body: %v", err)
-	}
-
-	if resp.StatusCode >= 300 || resp.StatusCode < 200 {
-		t.Fatalf("unexpected status posting data: %v, body: %s", resp.StatusCode, respBody)
-	}
-
-	respMap := make(map[string]interface{})
-	err = json.Unmarshal(respBody, &respMap)
-	if err != nil {
-		t.Fatalf("decoding post data response: %v", err)
-	}
-	return respMap
-}
-
-type Value struct {
-	Value map[string]interface{} `json:"value"`
-}
-
-func GenRecord() *Record {
-	geo := GeoIP{
-		TimeZone:     TimeZone(),
-		Longitude:    Longitude(),
-		Latitude:     Latitude(),
-		CountryName:  CountryName(),
-		DmaCode:      DmaCode(),
-		City:         City(),
-		Region:       Region(),
-		MetroCode:    MetroCode(),
-		PostalCode:   PostalCode(),
-		AreaCode:     AreaCode(),
-		RegionName:   RegionName(),
-		CountryCode3: CountryCode3(),
-		CountryCode:  CountryCode(),
-	}
-	return &Record{
-		ABA:        ABA(),
-		Db:         Db(),
-		UserID:     UserID(),
-		CustomerID: CustomerID(),
-		GeoIP:      geo,
-	}
-}
-
-func Db() string {
-	return text(1, 6, true, true, true, true)
-}
-
-func UserID() int {
-	return rand.Intn(10000000) // 10 mil
-}
-
-func CustomerID() int {
-	return rand.Intn(1000000) // 1 mil
-}
-
-func TimeZone() string {
-	idx := rand.Intn(len(tzs))
-	return tzs[idx]
-}
-
-func Longitude() float64 {
-	ran := rand.ExpFloat64() * 10.0
-	for ran > 360.0 {
-		ran = rand.ExpFloat64() * 10.0
-	}
-	return ran - 180.0
-}
-
-func Latitude() float64 {
-	ran := rand.ExpFloat64() * 10.0
-	for ran > 180.0 {
-		ran = rand.ExpFloat64() * 5.0
-	}
-	return ran - 90.0
-}
-
-func CountryName() string {
-	base := text(1, 3, true, false, false, false)
-	return base + base
-}
-
-func DmaCode() int {
-	return rand.Intn(100000)
-}
-
-func City() string {
-	base := text(1, 4, true, false, false, false)
-	return base + base
-}
-
-func Region() string {
-	base := text(1, 3, false, true, false, false)
-	return base
-}
-
-func MetroCode() int {
-	return rand.Intn(10000)
-}
-
-func PostalCode() string {
-	return strconv.Itoa(rand.Intn(98999) + 10000)
-}
-
-func AreaCode() int {
-	return rand.Intn(899) + 100
-}
-
-func RegionName() string {
-	return ""
-}
-
-func CountryCode3() string {
-	return ""
-}
-
-func CountryCode() string {
-	return text(3, 3, false, true, false, false)
-}
-
-// ABA returns a random 9 numeric digit string with about 27000 possible values.
-func ABA() string {
-	num := rand.Intn(27000) + 22213
-	num2 := num/10 - 1213
-	numstr := strconv.Itoa(num)
-	num2str := strconv.Itoa(num2)
-	numstrbytes := append([]byte(numstr), num2str[3], numstr[0], numstr[1], numstr[2])
-	return string(numstrbytes)
-}
-
-var lowerLetters = []rune("abcdefghijklmnopqrstuvwxyz")
-var upperLetters = []rune("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
-var numeric = []rune("0123456789")
-var specialChars = []rune(`!'@#$%^&*()_+-=[]{};:",./?`)
-var hexDigits = []rune("0123456789abcdef")
-
-func text(atLeast, atMost int, allowLower, allowUpper, allowNumeric, allowSpecial bool) string {
-	allowedChars := []rune{}
-	if allowLower {
-		allowedChars = append(allowedChars, lowerLetters...)
-	}
-	if allowUpper {
-		allowedChars = append(allowedChars, upperLetters...)
-	}
-	if allowNumeric {
-		allowedChars = append(allowedChars, numeric...)
-	}
-	if allowSpecial {
-		allowedChars = append(allowedChars, specialChars...)
-	}
-
-	result := []rune{}
-	nTimes := rand.Intn(atMost-atLeast+1) + atLeast
-	for i := 0; i < nTimes; i++ {
-		result = append(result, allowedChars[rand.Intn(len(allowedChars))])
-	}
-	return string(result)
-}
-
-// DigitsN returns n digits as a string
-func DigitsN(n int) string {
-	digits := make([]rune, n)
-	for i := 0; i < n; i++ {
-		digits[i] = numeric[rand.Intn(len(numeric))]
-	}
-	return string(digits)
-}
-
-// Digits returns from 1 to 5 digits as a string
-func Digits() string {
-	return DigitsN(rand.Intn(5) + 1)
-}
-
-func hexDigitsStr(n int) string {
-	var num []rune
-	for i := 0; i < n; i++ {
-		num = append(num, hexDigits[rand.Intn(len(hexDigits))])
-	}
-	return string(num)
-}
-
-// HexColor generates hex color name
-func HexColor() string {
-	return hexDigitsStr(6)
-}
-
-// HexColorShort generates short hex color name
-func HexColorShort() string {
-	return hexDigitsStr(3)
-}
-
-var tzs = []string{
-	"ACDT", "ACST", "ACT", "ACT", "ACWST", "ADT", "AEDT", "AEST", "AFT", "AKDT",
-	"AKST", "AMST", "AMT", "AMT", "ART", "AST", "AST", "AWST", "AZOST", "AZOT",
-	"AZT", "BDT", "BIOT", "BIT", "BOT", "BRST", "BRT", "BST", "BST", "BST",
-	"BTT", "CAT", "CCT", "CDT", "CDT", "CEST", "CET", "CHADT", "CHAST", "CHOT",
-	"CHOST", "CHST", "CHUT", "CIST", "CIT", "CKT", "CLST", "CLT", "COST", "COT",
-	"CST", "CST", "ACST", "ACDT", "CST", "CT", "CVT", "CWST", "CXT", "DAVT",
-	"DDUT", "DFT", "EASST", "EAST", "EAT", "ECT", "ECT", "EDT", "AEDT", "EEST",
-	"EET", "EGST", "EGT", "EIT", "EST", "AEST", "FET", "FJT", "FKST", "FKT",
-	"FNT", "GALT", "GAMT", "GET", "GFT", "GILT", "GIT", "GMT", "GST", "GST",
-	"GYT", "HDT", "HAEC", "HST", "HKT", "HMT", "HOVST", "HOVT", "ICT", "IDT",
-	"IOT", "IRDT", "IRKT", "IRST", "IST", "IST", "IST", "JST", "KGT", "KOST",
-	"KRAT", "KST", "LHST", "LHST", "LINT", "MAGT", "MART", "MAWT", "MDT", "MET",
-	"MEST", "MHT", "MIST", "MIT", "MMT", "MSK", "MST", "MST", "MUT", "MVT",
-	"MYT", "NCT", "NDT", "NFT", "NPT", "NST", "NT", "NUT", "NZDT", "NZST",
-	"OMST", "ORAT", "PDT", "PET", "PETT", "PGT", "PHOT", "PHT", "PKT", "PMDT",
-	"PMST", "PONT", "PST", "PST", "PYST", "PYT", "RET", "ROTT", "SAKT", "SAMT",
-	"SAST", "SBT", "SCT", "SDT", "SGT", "SLST", "SRET", "SRT", "SST", "SST",
-	"SYOT", "TAHT", "THA", "TFT", "TJT", "TKT", "TLT", "TMT", "TRT", "TOT",
-	"TVT", "ULAST", "ULAT", "USZ1", "UTC", "UYST", "UYT", "UZT", "VET", "VLAT",
-	"VOLT", "VOST", "VUT", "WAKT", "WAST", "WAT", "WEST", "WET", "WIT", "WST",
-	"YAKT", "YEKT"}
-
-type Record struct {
-	ABA        string `json:"aba"`
-	Db         string `json:"db"`
-	UserID     int    `json:"user_id"`
-	CustomerID int    `json:"customer_id"`
-	Timestamp  string `json:"timestamp"`
-	GeoIP      GeoIP  `json:"geoip"`
-}
-
-type GeoIP struct {
-	TimeZone     string  `json:"time_zone"`
-	Longitude    float64 `json:"longitude"`
-	Latitude     float64 `json:"latitude"`
-	CountryName  string  `json:"country_name"`
-	DmaCode      int     `json:"dma_code"`
-	City         string  `json:"city"`
-	Region       string  `json:"region"`
-	MetroCode    int     `json:"metro_code"`
-	PostalCode   string  `json:"postal_code"`
-	AreaCode     int     `json:"area_code"`
-	RegionName   string  `json:"region_name"`
-	CountryCode3 string  `json:"country_code3"`
-	CountryCode  string  `json:"country_code"`
-}
-
-type stringThing struct {
-	String string `json:"string"`
-}
-
-type doubleThing struct {
-	Double float64 `json:"double"`
-}
-
-type intThing struct {
-	Int int `json:"int"`
-}
-
-// avroJSONGeoIP exists because the JSON to avro converter in Confluent requires
-// a somewhat wacky json encoding in order to differentiate between types in
-// unions in the case where json would be ambiguous.
-// https://stackoverflow.com/a/27499930/2088767
-type avroJSONGeoIP struct {
-	GeoIP ajgip `json:"com.pi.GeoIPResult"`
-}
-
-type ajgip struct {
-	TimeZone     stringThing `json:"time_zone"`
-	Longitude    doubleThing `json:"longitude"`
-	Latitude     doubleThing `json:"latitude"`
-	CountryName  stringThing `json:"country_name"`
-	DmaCode      intThing    `json:"dma_code"`
-	City         stringThing `json:"city"`
-	Region       stringThing `json:"region"`
-	MetroCode    intThing    `json:"metro_code"`
-	PostalCode   stringThing `json:"postal_code"`
-	AreaCode     intThing    `json:"area_code"`
-	RegionName   stringThing `json:"region_name"`
-	CountryCode3 stringThing `json:"country_code3"`
-	CountryCode  stringThing `json:"country_code"`
-}
-
-func (g GeoIP) MarshalJSON() ([]byte, error) {
-	return json.Marshal(avroJSONGeoIP{
-		GeoIP: ajgip{
-			TimeZone:     stringThing{g.TimeZone},
-			Longitude:    doubleThing{g.Longitude},
-			Latitude:     doubleThing{g.Latitude},
-			CountryName:  stringThing{g.CountryName},
-			DmaCode:      intThing{g.DmaCode},
-			City:         stringThing{g.City},
-			Region:       stringThing{g.Region},
-			MetroCode:    intThing{g.MetroCode},
-			PostalCode:   stringThing{g.PostalCode},
-			AreaCode:     intThing{g.AreaCode},
-			RegionName:   stringThing{g.RegionName},
-			CountryCode3: stringThing{g.CountryCode3},
-			CountryCode:  stringThing{g.CountryCode},
-		},
-	})
-}
-
-var schema = `[{
-    "fields": [
-        {
-            "name": "aba",
-            "type": "string"
-        },
-        {
-            "name": "db",
-            "type": "string"
-        },
-        {
-            "name": "user_id",
-            "type": "int"
-        },
-        {
-            "name": "customer_id",
-            "type": "int"
-        },
-        {
-            "name": "timestamp",
-            "type": "string"
-        },
-        {
-            "name": "geoip",
-            "type": [
-                "null",
-                {
-                    "name": "GeoIPResult",
-                    "type": "record",
-                    "fields": [
-                       {
-                            "name": "time_zone",
-                            "type": [
-                                "null",
-                                "string"
-                            ]
-                        },
-                        {
-                            "name": "longitude",
-                            "type": [
-                                "null",
-                                "double"
-                            ]
-                        },
-                        {
-                            "name": "country_code3",
-                            "type": [
-                                "null",
-                                "string"
-                            ]
-                        },
-                        {
-                            "name": "country_name",
-                            "type": [
-                                "null",
-                                "string"
-                            ]
-                        },
-                        {
-                            "name": "dma_code",
-                            "type": [
-                                "null",
-                                "int"
-                            ]
-                        },
-                        {
-                            "name": "city",
-                            "type": [
-                                "null",
-                                "string"
-                            ]
-                        },
-                        {
-                            "name": "region",
-                            "type": [
-                                "null",
-                                "string"
-                            ]
-                        },
-                        {
-                            "name": "country_code",
-                            "type": [
-                                "null",
-                                "string"
-                            ]
-                        },
-                        {
-                            "name": "metro_code",
-                            "type": [
-                                "null",
-                                "int"
-                            ]
-                        },
-                        {
-                            "name": "latitude",
-                            "type": [
-                                "null",
-                                "double"
-                            ]
-                        },
-                        {
-                            "name": "region_name",
-                            "type": [
-                                "null",
-                                "string"
-                            ]
-                        },
-                        {
-                            "name": "postal_code",
-                            "type": [
-                                "null",
-                                "string"
-                            ]
-                        },
-                        {
-                            "name": "area_code",
-                            "type": [
-                                "null",
-                                "int"
-                            ]
-                        }
-                    ]
-                }
-            ]
-        }
-    ],
-    "name": "Stuff",
-    "namespace": "com.pi",
-    "type": "record"
-}]`

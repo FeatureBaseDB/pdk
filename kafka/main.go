@@ -38,7 +38,6 @@ import (
 	"net/http"
 
 	"github.com/pilosa/pdk"
-	"github.com/pilosa/pdk/leveldb"
 	"github.com/pkg/errors"
 )
 
@@ -53,7 +52,6 @@ type Main struct {
 	Index         string   `help:"Pilosa index."`
 	BatchSize     uint     `help:"Batch size for Pilosa imports (latency/throughput tradeoff)."`
 	SubjectPath   []string `help:"Comma separated path to value in each record that should be mapped to column ID. Blank gets a sequential ID"`
-	Proxy         string   `help:"Bind to this address to proxy and translate requests to Pilosa"`
 	AllowedFields []string `help:"If any are passed, only frame names in this comma separated list will be indexed."`
 	MaxRecords    int      `help:"Maximum number of records to ingest from kafka before stopping."`
 	TranslatorDir string   `help:"Directory for key/id mapping storage."`
@@ -71,7 +69,6 @@ func NewMain() *Main {
 		PilosaHosts: []string{"localhost:10101"},
 		Index:       "pdk",
 		BatchSize:   1000,
-		Proxy:       ":13131",
 	}
 }
 
@@ -109,30 +106,17 @@ func (m *Main) Run() (err error) {
 		}
 	}
 
-	translateColumns := true
 	parser := pdk.NewDefaultGenericParser()
 	if len(m.SubjectPath) == 0 {
 		parser.Subjecter = pdk.BlankSubjecter{}
-		translateColumns = false
 	} else {
 		parser.EntitySubjecter = pdk.SubjectPath(m.SubjectPath)
 	}
 
 	mapper := pdk.NewCollapsingMapper()
-	mapper.Translator, err = leveldb.NewTranslator(m.TranslatorDir)
-	if err != nil {
-		return errors.Wrap(err, "creating translator")
-	}
-	mapper.Framer = &m.Framer
-	if translateColumns {
-		log.Println("translating columns")
-		mapper.ColTranslator, err = leveldb.NewFieldTranslator(m.TranslatorDir, "__columns")
-		if err != nil {
-			return errors.Wrap(err, "creating column translator")
-		}
-	} else {
-		log.Println("not translating columns")
-	}
+	mapper.Translator = nil
+	mapper.ColTranslator = nil
+	mapper.Nexter = nil
 
 	indexer, err := pdk.SetupPilosa(m.PilosaHosts, m.Index, nil, m.BatchSize)
 	if err != nil {
@@ -146,19 +130,10 @@ func (m *Main) Run() (err error) {
 			ingester.AllowedFields[fram] = true
 		}
 	}
-	m.proxy = http.Server{
-		Addr:    m.Proxy,
-		Handler: pdk.NewPilosaForwarder(m.PilosaHosts[0], mapper.Translator, mapper.ColTranslator),
-	}
-	go func() {
-		err := m.proxy.ListenAndServe()
-		if err != nil {
-			log.Printf("proxy closed: %v", err)
-		}
-	}()
+
 	return errors.Wrap(ingester.Run(), "running ingester")
 }
 
 func (m *Main) Close() error {
-	return errors.Wrap(m.proxy.Close(), "closing proxy server")
+	return nil
 }
