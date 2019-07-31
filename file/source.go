@@ -6,14 +6,17 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
+	"path/filepath"
+	"sync/atomic"
 
+	"github.com/pilosa/pdk"
 	"github.com/pilosa/pdk/json"
 	"github.com/pkg/errors"
 )
 
 // Source is a pdk.Source which reads json objects from files on disk.
 type Source struct {
-	files     []string
+	rawSource *RawSource
 	records   chan record
 	subjectAt string
 }
@@ -33,35 +36,19 @@ func OptSrcSubjectAt(key string) SrcOption {
 // OptSrcPath sets the path name for the file or directory to use for source
 // data.
 func OptSrcPath(pathname string) SrcOption {
-	return func(s *Source) error {
-		info, err := os.Stat(pathname)
+	return func(s *Source) (err error) {
+		s.rawSource, err = NewRawSource(pathname)
 		if err != nil {
-			return errors.Wrap(err, "statting path")
-		}
-		if info.IsDir() {
-			infos, err := ioutil.ReadDir(pathname)
-			if err != nil {
-				return errors.Wrap(err, "reading directory")
-			}
-			s.files = make([]string, 0, len(infos))
-			for _, info = range infos {
-				s.files = append(s.files, path.Join(pathname, info.Name()))
-			}
-		} else {
-			s.files = []string{pathname}
+			return errors.Wrap(err, "getting raw source")
 		}
 		return nil
 	}
 }
 
 func (s *Source) run() {
-	for _, pathname := range s.files {
-		file, err := os.Open(pathname)
-		if err != nil {
-			s.records <- record{err: errors.Wrap(err, "opening file")}
-			continue
-		}
-		src := json.NewSource(file)
+	reader, err := s.rawSource.NextReader()
+	for ; err == nil; reader, err = s.rawSource.NextReader() {
+		src := json.NewSource(reader)
 		r := record{}
 		for i := 0; true; i++ {
 			r.data, r.err = src.Record()
@@ -69,11 +56,15 @@ func (s *Source) run() {
 				break
 			}
 			if s.subjectAt != "" {
-				r.data.(map[string]interface{})[s.subjectAt] = fmt.Sprintf("%s#%d", pathname, i)
+				r.data.(map[string]interface{})[s.subjectAt] = fmt.Sprintf("%s#%d", reader.Name(), i)
 			}
 			s.records <- r
 		}
 	}
+	if err != nil {
+		s.records <- record{err: errors.Wrap(err, "getting next reader")}
+	}
+
 	close(s.records)
 }
 
@@ -106,4 +97,58 @@ func (s *Source) Record() (interface{}, error) {
 type record struct {
 	data interface{}
 	err  error
+}
+
+type RawSource struct {
+	files   []string
+	fileIdx *uint64
+}
+
+func NewRawSource(pathname string) (*RawSource, error) {
+	fileIdx := uint64(0)
+	s := &RawSource{
+		fileIdx: &fileIdx,
+	}
+	info, err := os.Stat(pathname)
+	if err != nil {
+		return nil, errors.Wrap(err, "statting path")
+	}
+	if info.IsDir() {
+		infos, err := ioutil.ReadDir(pathname)
+		if err != nil {
+			return nil, errors.Wrap(err, "reading directory")
+		}
+		s.files = make([]string, 0, len(infos))
+		for _, info = range infos {
+			s.files = append(s.files, path.Join(pathname, info.Name()))
+		}
+	} else {
+		s.files = []string{pathname}
+	}
+	return s, nil
+}
+
+type metaFile struct {
+	*os.File
+}
+
+func (m *metaFile) Name() string {
+	return filepath.Base(m.File.Name())
+}
+
+func (m *metaFile) Meta() map[string]interface{} { return nil }
+
+func (s *RawSource) NextReader() (pdk.NamedReadCloser, error) {
+	idx := atomic.AddUint64(s.fileIdx, 1) - 1
+	if int(idx) >= len(s.files) {
+		return nil, io.EOF
+	}
+
+	file, err := os.Open(s.files[idx])
+	if err != nil {
+		return nil, errors.Wrapf(err, "opening %s", s.files[idx])
+	}
+
+	mf := metaFile{file}
+	return &mf, nil
 }
