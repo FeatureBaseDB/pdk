@@ -33,10 +33,37 @@
 package pdk
 
 import (
+	"io"
 	"time"
 
 	gopilosa "github.com/pilosa/go-pilosa"
 )
+
+// NamedReadCloser adds the ability to associate a name and other
+// arbitrary metdata with a ReadCloser. This is used by RawSource for
+// e.g. a directory reading source to associate the file name of each
+// reader it returns. This might be needed to generate the identifier
+// for each record within the file, or to help build a recovery
+// mechanism in the case of process crash (tracking which files have
+// and have not been read yet).
+type NamedReadCloser interface {
+	io.ReadCloser
+	Name() string
+	Meta() map[string]interface{} // not sure if we need this
+}
+
+// RawSource is the interface for getting actual raw data from a data
+// source. The returned ReadCloser may have multiple individual
+// records—how it's interpreted will depend on the adapter which
+// converts the bytes read into Go objects. As an example, a RawSource
+// for S3 might return each object in an S3 bucket as a reader. Each
+// object might be a CSV file with many individual records which a
+// separate CSV parser could then turn into a
+// pdk.Source. Alternatively, an optimized implementation might read
+// the CSV and convert it directly to PilosaRecord objects.
+type RawSource interface {
+	NextReader() (NamedReadCloser, error)
+}
 
 // Source is the interface for getting raw data one record at a time.
 // Implementations of Source should be thread safe.

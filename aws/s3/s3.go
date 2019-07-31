@@ -35,10 +35,12 @@ package s3
 import (
 	"fmt"
 	"io"
+	"sync/atomic"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/pilosa/pdk"
 	"github.com/pilosa/pdk/json"
 	"github.com/pkg/errors"
 )
@@ -86,9 +88,11 @@ func OptSrcPrefix(prefix string) SrcOption {
 
 // Source is a pdk.Source which reads data from S3.
 type Source struct {
-	bucket    string
-	prefix    string
-	region    string
+	bucket string
+	prefix string
+	region string
+
+	rs        *RawSource
 	subjectAt string
 
 	s3      *s3.S3
@@ -99,28 +103,22 @@ type Source struct {
 	errors  chan error
 }
 
-// NewSource returns a new Source with the options applied.
-func NewSource(opts ...SrcOption) (*Source, error) {
-	s := &Source{
+// NewSource returns a new Source with the options applied. It is
+// hardcoded to read line separated json objects. This is
+// deprecated... consider using RawSource and feeding that to (e.g)
+// json.NewSourceFromRawSource.
+func NewSource(opts ...SrcOption) (s *Source, err error) {
+	s = &Source{
 		records: make(chan map[string]interface{}, 100),
 		errors:  make(chan error),
 	}
 	for _, opt := range opts {
 		opt(s)
 	}
-	var err error
-	s.sess, err = session.NewSession(&aws.Config{
-		Region: aws.String(s.region)},
-	)
+	s.rs, err = NewRawSource(s.region, s.bucket, s.prefix)
 	if err != nil {
-		return nil, errors.Wrap(err, "getting new source")
+		return nil, errors.Wrap(err, "getting raw s3 source")
 	}
-	s.s3 = s3.New(s.sess)
-	resp, err := s.s3.ListObjects(&s3.ListObjectsInput{Bucket: aws.String(s.bucket), Prefix: aws.String(s.prefix)})
-	if err != nil {
-		return nil, errors.Wrap(err, "listing objects")
-	}
-	s.objects = resp.Contents
 
 	go s.populateRecords()
 
@@ -128,21 +126,15 @@ func NewSource(opts ...SrcOption) (*Source, error) {
 }
 
 func (s *Source) populateRecords() {
-	for _, obj := range s.objects {
-		result, err := s.s3.GetObject(&s3.GetObjectInput{
-			Bucket: aws.String(s.bucket),
-			Key:    aws.String(*obj.Key),
-		})
-		if err != nil {
-			s.errors <- errors.Wrapf(err, "fetching %v", *obj.Key)
-			continue
-		}
-		jsource := json.NewSource(result.Body)
+	var err error
+	var reader pdk.NamedReadCloser
+	for reader, err = s.rs.NextReader(); err == nil; reader, err = s.rs.NextReader() {
+		jsource := json.NewSource(reader)
 		var resi interface{}
 		for i := 0; err != io.EOF; i++ {
 			resi, err = jsource.Record()
 			if err != nil && err != io.EOF {
-				s.errors <- errors.Wrapf(err, "decoding json from %s", *obj.Key)
+				s.errors <- errors.Wrapf(err, "decoding json from %s", reader.Name())
 				break
 			}
 			if resi == nil {
@@ -150,10 +142,13 @@ func (s *Source) populateRecords() {
 			}
 			res := resi.(map[string]interface{})
 			if s.subjectAt != "" {
-				res[s.subjectAt] = fmt.Sprintf("%s.%s#%d", s.bucket, *obj.Key, i)
+				res[s.subjectAt] = fmt.Sprintf("%s.%s#%d", s.bucket, reader.Name(), i)
 			}
 			s.records <- res
 		}
+	}
+	if err != io.EOF {
+		s.errors <- errors.Wrap(err, "getting next object")
 	}
 	close(s.errors)
 	close(s.records)
@@ -184,4 +179,79 @@ func (s *Source) Record() (rec interface{}, err error) {
 		}
 		return rec, nil
 	}
+}
+
+type RawSource struct {
+	bucket string
+	prefix string
+	region string
+
+	s3      *s3.S3
+	sess    *session.Session
+	objects []*s3.Object
+	objIdx  *uint64
+}
+
+func NewRawSource(region, bucket, prefix string) (*RawSource, error) {
+	idx := uint64(0)
+	rs := &RawSource{
+		region: region,
+		bucket: bucket,
+		prefix: prefix,
+
+		objIdx: &idx,
+	}
+	var err error
+	rs.sess, err = session.NewSession(&aws.Config{
+		Region: aws.String(rs.region)},
+	)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting new source")
+	}
+	rs.s3 = s3.New(rs.sess)
+	resp, err := rs.s3.ListObjects(&s3.ListObjectsInput{Bucket: aws.String(rs.bucket), Prefix: aws.String(rs.prefix)})
+	if err != nil {
+		return nil, errors.Wrap(err, "listing objects")
+	}
+	rs.objects = resp.Contents
+
+	return rs, nil
+}
+
+type objReader struct {
+	name string
+	body io.ReadCloser
+}
+
+func (o *objReader) Read(buf []byte) (n int, err error) {
+	return o.body.Read(buf)
+}
+
+func (o *objReader) Close() error {
+	return o.body.Close()
+}
+
+func (o *objReader) Name() string {
+	return o.name
+}
+
+func (o *objReader) Meta() map[string]interface{} {
+	return nil
+}
+
+func (rs *RawSource) NextReader() (pdk.NamedReadCloser, error) {
+	idx := atomic.AddUint64(rs.objIdx, 1) - 1
+	if int(idx) >= len(rs.objects) {
+		return nil, io.EOF
+	}
+	obj := rs.objects[idx]
+
+	result, err := rs.s3.GetObject(&s3.GetObjectInput{
+		Bucket: aws.String(rs.bucket),
+		Key:    aws.String(*obj.Key),
+	})
+	if err != nil {
+		return nil, errors.Wrapf(err, "fetching %v", *obj.Key)
+	}
+	return &objReader{name: *obj.Key, body: result.Body}, nil
 }
