@@ -3,6 +3,9 @@ package json
 import (
 	"encoding/json"
 	"io"
+
+	"github.com/pilosa/pdk"
+	"github.com/pkg/errors"
 )
 
 // Source is a pdk.Source for reading json data.
@@ -27,4 +30,34 @@ func (s *Source) Record() (rec interface{}, err error) {
 		return nil, err
 	}
 	return res, nil
+}
+
+type rawSourceSource struct {
+	rs pdk.RawSource
+
+	s *Source
+}
+
+func NewSourceFromRawSource(rs pdk.RawSource) pdk.Source {
+	return &rawSourceSource{rs: rs}
+}
+
+func (r *rawSourceSource) Record() (rec interface{}, err error) {
+	if r.s == nil {
+		reader, err := r.rs.NextReader()
+		if err != nil && err != io.EOF {
+			return nil, errors.Wrap(err, "getting next reader")
+		} else if err == io.EOF {
+			return nil, err
+		}
+		r.s = NewSource(reader)
+	}
+	rec, err = r.s.Record()
+	if err == io.EOF {
+		r.s = nil
+		return r.Record()
+	} else if err != nil {
+		return rec, err
+	}
+	return rec, err
 }

@@ -30,18 +30,21 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH
 // DAMAGE.
 
-// +build integration
-
 package s3
 
 import (
 	"io"
+	"io/ioutil"
+	"reflect"
 	"testing"
 
 	"github.com/pilosa/pdk"
 )
 
 func TestNewSource(t *testing.T) {
+	if testing.Short() {
+		t.Skip()
+	}
 	src, err := NewSource(
 		OptSrcBucket("pdk-test-bucket"),
 		OptSrcRegion("us-east-1"),
@@ -103,6 +106,9 @@ func TestNewSource(t *testing.T) {
 }
 
 func TestSourcePeek(t *testing.T) {
+	if testing.Short() {
+		t.Skip()
+	}
 	baseSrc, err := NewSource(
 		OptSrcBucket("pdk-test-bucket"),
 		OptSrcRegion("us-east-1"),
@@ -160,4 +166,34 @@ func TestSourcePeek(t *testing.T) {
 	if img["name"] != firstImageName {
 		t.Fatalf("getting image name, expected: %s, but got: %s", firstImageName, img["name"])
 	}
+}
+
+func TestNewRawSource(t *testing.T) {
+	if testing.Short() {
+		t.Skip()
+	}
+	src, err := NewRawSource("us-east-1", "pdk-test-bucket", "myfile")
+	if err != nil {
+		t.Fatalf("getting raw s3 source: %v", err)
+	}
+
+	var reader pdk.NamedReadCloser
+	names := make([]string, 0, 2)
+	for reader, err = src.NextReader(); err == nil; reader, err = src.NextReader() {
+		names = append(names, reader.Name())
+		bod, err := ioutil.ReadAll(reader)
+		if err != nil {
+			t.Fatalf("err reading body: %v", err)
+		}
+		t.Logf("%s\n", bod)
+
+	}
+	if err != io.EOF {
+		t.Fatalf("unexpected err: %v", err)
+	}
+
+	if !reflect.DeepEqual(names, []string{"myfile1", "myfile2"}) {
+		t.Fatalf("unexpected names: %v", names)
+	}
+
 }
