@@ -53,6 +53,7 @@ func (s *Source) run() {
 		for i := 0; true; i++ {
 			r.data, r.err = src.Record()
 			if r.err == io.EOF {
+				reader.Close()
 				break
 			}
 			if s.subjectAt != "" {
