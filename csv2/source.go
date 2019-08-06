@@ -2,7 +2,6 @@ package csv2
 
 import (
 	"bufio"
-	"fmt"
 	"io"
 	"log"
 	"strings"
@@ -59,9 +58,6 @@ func (s *Source) Record() (record interface{}, err error) {
 		if err != nil {
 			return nil, errors.Wrapf(err, "parsing")
 		}
-		// add file and line number under the comma header since that can't
-		// be a header from the csv file.
-		recordMap[","] = fmt.Sprintf("%s:line%d", s.cur.Name(), s.line)
 		return recordMap, nil
 	}
 	return nil, io.EOF
