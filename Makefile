@@ -32,6 +32,7 @@ crossbuild:
 
 install:
 	go install $(LDFLAGS) $(FLAGS) $(CLONE_URL)/cmd/pdk
+	go install $(LDFLAGS) $(FLAGS) $(CLONE_URL)/cmd/picsv
 
 gometalinter: vendor
 	GO111MODULE=off gometalinter --vendor --disable-all \

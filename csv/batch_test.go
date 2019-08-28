@@ -1,4 +1,4 @@
-package main_test
+package csv_test
 
 import (
 	"fmt"
@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"github.com/pilosa/go-pilosa"
-	picsv "github.com/pilosa/pdk/cmd/picsv"
+	picsv "github.com/pilosa/pdk/csv"
 	"github.com/pkg/errors"
 )
 

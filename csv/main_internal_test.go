@@ -1,18 +1,20 @@
-package main
+package csv
 
 import (
+	"encoding/csv"
 	"strings"
 	"testing"
 )
 
 func TestProcessHeader(t *testing.T) {
 	config := NewConfig()
-	headerRow := []string{"a", "b", "c"}
-
+	file := `a,b,c
+`
+	reader := csv.NewReader(strings.NewReader(file))
 	t.Run("invalid IDType", func(t *testing.T) {
 		config.IDField = "a"
 		config.IDType = "nope"
-		_, _, _, err := processHeader(config, nil, headerRow)
+		_, _, err := processHeader(config, nil, nil, reader, 10)
 		if err == nil || !strings.Contains(err.Error(), "unknown IDType") {
 			t.Fatalf("unknown IDType gave: %v", err)
 		}
