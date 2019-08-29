@@ -14,7 +14,7 @@ func TestProcessHeader(t *testing.T) {
 	t.Run("invalid IDType", func(t *testing.T) {
 		config.IDField = "a"
 		config.IDType = "nope"
-		_, _, err := processHeader(config, nil, nil, reader, 10)
+		_, _, err := processHeader(config, nil, nil, reader, 10, nil)
 		if err == nil || !strings.Contains(err.Error(), "unknown IDType") {
 			t.Fatalf("unknown IDType gave: %v", err)
 		}

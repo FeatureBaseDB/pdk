@@ -12,15 +12,17 @@ import (
 
 	"github.com/pilosa/go-pilosa"
 	"github.com/pilosa/go-pilosa/gpexp"
+	"github.com/pilosa/pdk"
 	"github.com/pkg/errors"
 )
 
 type Main struct {
-	Pilosa     []string
-	File       string
-	Index      string
-	BatchSize  int
-	ConfigFile string
+	Pilosa         []string `help:"Comma separated list of host:port describing Pilosa cluster."`
+	File           string
+	Index          string `help:"Name of index to ingest data into."`
+	BatchSize      int    `help:"Number of records to put in a batch before importing to Pilosa."`
+	ConfigFile     string `help:"JSON configuration describing source fields, and how to parse and map them to Pilosa fields."`
+	RangeAllocator string `help:"Designates where to retrieve unused ranged of record IDs (if generating ids). If left blank, generate locally starting from 0."`
 
 	Config *Config `flag:"-"`
 }
@@ -67,6 +69,12 @@ func (m *Main) Run() error {
 		opts = append(opts, pilosa.OptIndexKeys(true))
 	}
 	index := schema.Index(m.Index, opts...)
+	shardWidth := index.ShardWidth()
+	if shardWidth == 0 {
+		shardWidth = pilosa.DefaultShardWidth
+	}
+	// TODO currently ignoring m.RangeAllocator
+	ra := pdk.NewLocalRangeAllocator(shardWidth)
 
 	///////////////////////////////////////////////////////
 	// for each file to process (just one right now)
@@ -77,7 +85,13 @@ func (m *Main) Run() error {
 	defer f.Close()
 	reader := csv.NewReader(f)
 
-	batch, parseConfig, err := processHeader(m.Config, client, index, reader, m.BatchSize)
+	nexter, err := pdk.NewRangeNexter(ra)
+	if err != nil {
+		return errors.Wrap(err, "getting nexter")
+	}
+	defer nexter.Return()
+
+	batch, parseConfig, err := processHeader(m.Config, client, index, reader, m.BatchSize, nexter)
 	if err != nil {
 		return errors.Wrap(err, "processing header")
 	}
@@ -101,7 +115,10 @@ func processFile(reader *csv.Reader, batch *gpexp.Batch, pc *parseConfig) (n uin
 	recsImported := numRecords
 	var row []string
 	for row, err = reader.Read(); err == nil; row, err = reader.Read() {
-		record.ID = pc.getID(row, numRecords)
+		record.ID, err = pc.getID(row)
+		if err != nil {
+			return recsImported, errors.Wrap(err, "getting record ID")
+		}
 		numRecords++
 		for _, meta := range pc.fieldConfig {
 			record.Values[meta.recordIndex] = meta.valGetter(row[meta.srcIndex])
@@ -131,9 +148,11 @@ func processFile(reader *csv.Reader, batch *gpexp.Batch, pc *parseConfig) (n uin
 }
 
 type parseConfig struct {
-	getID func(row []string, numRecords uint64) interface{}
+	getID func(row []string) (interface{}, error)
 	// terrible name
 	fieldConfig map[string]valueMeta
+
+	r pdk.IDRange
 }
 
 // terrible name
@@ -144,7 +163,7 @@ type valueMeta struct {
 	valGetter func(val string) interface{}
 }
 
-func processHeader(config *Config, client *pilosa.Client, index *pilosa.Index, reader *csv.Reader, batchSize int) (*gpexp.Batch, *parseConfig, error) {
+func processHeader(config *Config, client *pilosa.Client, index *pilosa.Index, reader *csv.Reader, batchSize int, n pdk.RangeNexter) (*gpexp.Batch, *parseConfig, error) {
 	headerRow, err := reader.Read()
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "reading CSV header")
@@ -153,8 +172,12 @@ func processHeader(config *Config, client *pilosa.Client, index *pilosa.Index, r
 	pc := &parseConfig{
 		fieldConfig: make(map[string]valueMeta),
 	}
-	pc.getID = func(row []string, numRecords uint64) interface{} {
-		return numRecords
+	pc.getID = func(row []string) (interface{}, error) {
+		next, err := n.Next()
+		if err != nil {
+			return nil, err
+		}
+		return next, nil
 	}
 
 	fields := make([]*pilosa.Field, 0, len(headerRow))
@@ -163,16 +186,16 @@ func processHeader(config *Config, client *pilosa.Client, index *pilosa.Index, r
 			idIndex := i
 			switch config.IDType {
 			case "uint64":
-				pc.getID = func(row []string, numRecords uint64) interface{} {
+				pc.getID = func(row []string) (interface{}, error) {
 					uintVal, err := strconv.ParseUint(row[idIndex], 0, 64)
 					if err != nil {
-						return nil
+						return nil, nil // we don't want to stop because we couldn't parse an ID here... but really it should be up to the caller to determine whether or not it should stop. TODO fix.
 					}
-					return uintVal
+					return uintVal, nil
 				}
 			case "string":
-				pc.getID = func(row []string, numRecords uint64) interface{} {
-					return row[idIndex]
+				pc.getID = func(row []string) (interface{}, error) {
+					return row[idIndex], nil
 				}
 			default:
 				return nil, nil, errors.Errorf("unknown IDType: %s", config.IDType)
