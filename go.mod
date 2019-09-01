@@ -1,6 +1,6 @@
 module github.com/pilosa/pdk
 
-replace github.com/pilosa/go-pilosa => /Users/jaffee/go/src/github.com/pilosa/go-pilosa
+replace github.com/pilosa/go-pilosa => github.com/jaffee/go-pilosa v0.4.1-0.20190831210635-c2b019c94ab7
 
 require (
 	github.com/Shopify/sarama v1.19.0

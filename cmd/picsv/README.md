@@ -96,10 +96,10 @@ won't be a good interface for workloads with lots of fields (hundreds
 or thousands) where many of them are often nil for any given record.
 
 If you want to see example usage of the Batch interface, check out the
-code right [here](./batch.go) in the PDK's CSV tooling. The `picsv`
-tool takes in CSV files and does it's best to ingest them to Pilosa
-performantly with minimal supervision. It does, however, have an
-optional configuration which allows one to do basic things like
+code right [here](../../csv/batch.go) in the PDK's CSV tooling. The
+`picsv` tool takes in CSV files and does it's best to ingest them to
+Pilosa performantly with minimal supervision. It does, however, have
+an optional configuration which allows one to do basic things like
 specify which fields are ints vs strings, and how the CSV field names
 map on to Pilosa fields. There are some examples of this in the
 [tests](./batch_test.go), and be on the look out for a more complete
