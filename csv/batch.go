@@ -8,31 +8,36 @@ import (
 	"log"
 	"os"
 	"strconv"
+	"strings"
+	"sync"
 	"time"
 
 	"github.com/pilosa/go-pilosa"
 	"github.com/pilosa/go-pilosa/gpexp"
 	"github.com/pilosa/pdk"
 	"github.com/pkg/errors"
+	"golang.org/x/sync/errgroup"
 )
 
 type Main struct {
 	Pilosa         []string `help:"Comma separated list of host:port describing Pilosa cluster."`
-	File           string
+	Files          []string
 	Index          string `help:"Name of index to ingest data into."`
 	BatchSize      int    `help:"Number of records to put in a batch before importing to Pilosa."`
 	ConfigFile     string `help:"JSON configuration describing source fields, and how to parse and map them to Pilosa fields."`
 	RangeAllocator string `help:"Designates where to retrieve unused ranged of record IDs (if generating ids). If left blank, generate locally starting from 0."`
+	Concurrency    int    `help:"Number of goroutines to run processing files."`
 
 	Config *Config `flag:"-"`
 }
 
 func NewMain() *Main {
 	return &Main{
-		Pilosa:    []string{"localhost:10101"},
-		File:      "data.csv",
-		Index:     "picsvtest",
-		BatchSize: 1000,
+		Pilosa:      []string{"localhost:10101"},
+		Files:       []string{"data.csv"},
+		Index:       "picsvtest",
+		BatchSize:   1000,
+		Concurrency: 4,
 
 		Config: NewConfig(),
 	}
@@ -53,8 +58,8 @@ func (m *Main) Run() error {
 			return errors.Wrap(err, "decoding config file")
 		}
 	}
-	log.Printf("Flags: %+v\n", *m)
-	log.Printf("Config: %+v\n", *m.Config)
+	// log.Printf("Flags: %+v\n", *m)
+	// log.Printf("Config: %+v\n", *m.Config)
 
 	client, err := pilosa.NewClient(m.Pilosa)
 	if err != nil {
@@ -76,38 +81,99 @@ func (m *Main) Run() error {
 	// TODO currently ignoring m.RangeAllocator
 	ra := pdk.NewLocalRangeAllocator(shardWidth)
 
+	jobs := make(chan fileJob, 0)
+	stats := make(chan jobReport, 0)
+	eg := errgroup.Group{}
+	for i := 0; i < m.Concurrency; i++ {
+		eg.Go(func() error {
+			fileProcessor(jobs, stats)
+			return nil
+		})
+	}
+
+	totalRecords := uint64(0)
+	mu := &sync.Mutex{}
+	mu.Lock()
+	go func() {
+		for stat := range stats {
+			// TODO add file name to stats
+			log.Printf("processed %s\n", stat)
+			totalRecords += stat.n
+		}
+		mu.Unlock()
+	}()
+
 	///////////////////////////////////////////////////////
 	// for each file to process (just one right now)
-	f, err := os.Open(m.File)
-	if err != nil {
-		return errors.Wrap(err, "opening file")
-	}
-	defer f.Close()
-	reader := csv.NewReader(f)
+	for _, filename := range m.Files {
+		f, err := os.Open(filename)
+		if err != nil {
+			return errors.Wrap(err, "opening file")
+		}
+		defer f.Close()
+		reader := csv.NewReader(f)
+		reader.ReuseRecord = true
+		reader.FieldsPerRecord = -1
 
-	nexter, err := pdk.NewRangeNexter(ra)
-	if err != nil {
-		return errors.Wrap(err, "getting nexter")
-	}
-	defer nexter.Return()
+		nexter, err := pdk.NewRangeNexter(ra)
+		if err != nil {
+			return errors.Wrap(err, "getting nexter")
+		}
 
-	batch, parseConfig, err := processHeader(m.Config, client, index, reader, m.BatchSize, nexter)
-	if err != nil {
-		return errors.Wrap(err, "processing header")
-	}
-	// this has a non-obvious dependence on processHeader which sets up fields. TODO Do this inside processHeader?
-	client.SyncSchema(schema)
+		batch, parseConfig, err := processHeader(m.Config, client, index, reader, m.BatchSize, nexter)
+		if err != nil {
+			return errors.Wrap(err, "processing header")
+		}
+		// this has a non-obvious dependence on processHeader which sets up fields. TODO Do this inside processHeader?
+		client.SyncSchema(schema)
 
-	// TODO send actual file processing to worker pool.
-	num, err := processFile(reader, batch, parseConfig)
-	if err != nil {
-		return errors.Wrapf(err, "processing %s", f.Name())
+		jobs <- fileJob{
+			reader: reader,
+			batch:  batch,
+			pc:     parseConfig,
+		}
 	}
-	log.Printf("Num: %d, Duration: %s", num, time.Since(start))
+	close(jobs)
+	eg.Wait()
+	close(stats)
+	mu.Lock()
+	log.Printf("Processed %d records in %v", totalRecords, time.Since(start))
 	return nil
 }
 
+type jobReport struct {
+	n        uint64
+	err      error
+	duration time.Duration
+}
+
+func (j jobReport) String() string {
+	if j.err != nil {
+		return fmt.Sprintf("{n:%d duration:%s err:'%s'}", j.n, j.duration, j.err)
+	}
+	return fmt.Sprintf("{n:%d duration:%s}", j.n, j.duration)
+}
+
+type fileJob struct {
+	reader *csv.Reader
+	batch  *gpexp.Batch
+	pc     *parseConfig
+}
+
+func fileProcessor(jobs <-chan fileJob, stats chan<- jobReport) {
+	for fj := range jobs {
+		start := time.Now()
+		n, err := processFile(fj.reader, fj.batch, fj.pc)
+		stats <- jobReport{
+			n:        n,
+			err:      err,
+			duration: time.Since(start),
+		}
+	}
+}
+
 func processFile(reader *csv.Reader, batch *gpexp.Batch, pc *parseConfig) (n uint64, err error) {
+	defer pc.nexter.Return()
 	record := gpexp.Row{
 		Values: make([]interface{}, len(pc.fieldConfig)),
 	}
@@ -121,6 +187,9 @@ func processFile(reader *csv.Reader, batch *gpexp.Batch, pc *parseConfig) (n uin
 		}
 		numRecords++
 		for _, meta := range pc.fieldConfig {
+			if meta.srcIndex > len(row)-1 {
+				log.Printf("row: %v\nis not long enough %d is less than %d\n", row, len(row), len(pc.fieldConfig))
+			}
 			record.Values[meta.recordIndex] = meta.valGetter(row[meta.srcIndex])
 		}
 		err := batch.Add(record)
@@ -143,7 +212,6 @@ func processFile(reader *csv.Reader, batch *gpexp.Batch, pc *parseConfig) (n uin
 		return recsImported, errors.Wrap(err, "final import")
 	}
 	recsImported = numRecords
-
 	return recsImported, nil
 }
 
@@ -152,7 +220,8 @@ type parseConfig struct {
 	// terrible name
 	fieldConfig map[string]valueMeta
 
-	r pdk.IDRange
+	r      pdk.IDRange
+	nexter pdk.RangeNexter
 }
 
 // terrible name
@@ -163,7 +232,7 @@ type valueMeta struct {
 	valGetter func(val string) interface{}
 }
 
-func processHeader(config *Config, client *pilosa.Client, index *pilosa.Index, reader *csv.Reader, batchSize int, n pdk.RangeNexter) (*gpexp.Batch, *parseConfig, error) {
+func processHeader(config *Config, client *pilosa.Client, index *pilosa.Index, reader *csv.Reader, batchSize int, nexter pdk.RangeNexter) (*gpexp.Batch, *parseConfig, error) {
 	headerRow, err := reader.Read()
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "reading CSV header")
@@ -171,9 +240,10 @@ func processHeader(config *Config, client *pilosa.Client, index *pilosa.Index, r
 
 	pc := &parseConfig{
 		fieldConfig: make(map[string]valueMeta),
+		nexter:      nexter,
 	}
 	pc.getID = func(row []string) (interface{}, error) {
-		next, err := n.Next()
+		next, err := pc.nexter.Next() // this is kind of weird... wish each fileProcessor had a nexter instead TODO
 		if err != nil {
 			return nil, err
 		}
@@ -181,8 +251,8 @@ func processHeader(config *Config, client *pilosa.Client, index *pilosa.Index, r
 	}
 
 	fields := make([]*pilosa.Field, 0, len(headerRow))
-	for i, fieldName := range headerRow {
-		if fieldName == config.IDField {
+	for i, srcFieldName := range headerRow {
+		if srcFieldName == config.IDField {
 			idIndex := i
 			switch config.IDType {
 			case "uint64":
@@ -204,13 +274,21 @@ func processHeader(config *Config, client *pilosa.Client, index *pilosa.Index, r
 		}
 
 		var valGetter func(val string) interface{}
-		srcField, ok := config.SourceFields[fieldName]
+		srcField, ok := config.SourceFields[srcFieldName]
 		if !ok {
-			srcField = SourceField{
-				TargetField: fieldName,
-				Type:        "string",
+			name := strings.ToLower(srcFieldName)
+			name = strings.TrimSpace(name)
+			name = strings.ReplaceAll(name, " ", "_")
+			// check if there is a normalized version of this name stored
+			srcField, ok = config.SourceFields[name]
+			// if not, create a new config for it
+			if !ok {
+				srcField = SourceField{
+					TargetField: name,
+					Type:        "string",
+				}
 			}
-			config.SourceFields[fieldName] = srcField
+			config.SourceFields[srcFieldName] = srcField
 		}
 		pilosaField, ok := config.PilosaFields[srcField.TargetField]
 		if !ok {
@@ -220,10 +298,10 @@ func processHeader(config *Config, client *pilosa.Client, index *pilosa.Index, r
 				CacheSize: 100000,
 				Keys:      true,
 			}
-			config.PilosaFields[fieldName] = pilosaField
+			config.PilosaFields[srcField.TargetField] = pilosaField
 		}
 
-		fieldName = srcField.TargetField
+		fieldName := srcField.TargetField
 		switch srcField.Type {
 		case "ignore":
 			continue
@@ -263,7 +341,7 @@ func processHeader(config *Config, client *pilosa.Client, index *pilosa.Index, r
 				return val
 			}
 			fields = append(fields, index.Field(fieldName, pilosaField.MakeOptions()...))
-		case "uint64":
+		case "uint64", "rowID":
 			valGetter = func(val string) interface{} {
 				uintVal, err := strconv.ParseUint(val, 0, 64)
 				if err != nil {
@@ -272,6 +350,21 @@ func processHeader(config *Config, client *pilosa.Client, index *pilosa.Index, r
 				return uintVal
 			}
 			fields = append(fields, index.Field(fieldName, pilosaField.MakeOptions()...))
+		case "time":
+			if srcField.TimeFormat == "" {
+				return nil, nil, errors.Errorf("need time format for source field %s of type time", srcFieldName)
+			}
+			valGetter = func(val string) interface{} {
+				tim, err := time.Parse(srcField.TimeFormat, val)
+				if err != nil {
+					// TODO some kind of logging or stats around failures in here.
+					return nil
+				}
+				return tim.Unix()
+			}
+			fields = append(fields, index.Field(fieldName, pilosaField.MakeOptions()...))
+		default:
+			return nil, nil, errors.Errorf("unknown source type '%s'", srcField.Type)
 		}
 		pc.fieldConfig[fieldName] = valueMeta{
 			valGetter:   valGetter,
@@ -338,11 +431,15 @@ type SourceField struct {
 	TargetField string `json:"target-field"`
 
 	// Type denotes how the source field should be parsed. (string,
-	// int, rowID, float, or ignore). rowID means that the field will
-	// be parsed as a uint64 and then used directly as a rowID for a
-	// set field. If "string", key translation must be on for that
-	// Pilosa field, and it must be a set field. If int or float, it
-	// must be a Pilosa int field.
+	// int, rowID, float, time, or ignore). rowID means that the field
+	// will be parsed as a uint64 and then used directly as a rowID
+	// for a set field. If "string", key translation must be on for
+	// that Pilosa field, and it must be a set field. If int or float,
+	// it must be a Pilosa int field. If time, a TimeFormat should be
+	// provided in the Go style using the reference date
+	// 2006-01-02T15:04:05Z07:00, and the target field type should be
+	// int - time will be stored as the time since Unix epoch in
+	// seconds.
 	Type string `json:"type"`
 
 	// Multiplier is for float fields. Because Pilosa does not support
@@ -350,6 +447,7 @@ type SourceField struct {
 	// Pilosa as an integer, but first multiplied by some constant
 	// factor to preserve some amount of precision. If 0 this field won't be used.
 	Multiplier float64 `json:"multiplier"`
+	TimeFormat string  `json:"time-format"`
 }
 
 // TODO we should validate the Config once it is constructed.

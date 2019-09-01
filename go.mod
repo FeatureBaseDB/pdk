@@ -28,5 +28,6 @@ require (
 	github.com/spf13/viper v1.4.0
 	github.com/stretchr/testify v1.3.0 // indirect
 	github.com/syndtr/goleveldb v0.0.0-20181128100959-b001fa50d6b2
+	golang.org/x/sync v0.0.0-20190423024810-112230192c58
 	gopkg.in/linkedin/goavro.v1 v1.0.5 // indirect
 )

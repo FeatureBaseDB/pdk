@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/pilosa/go-pilosa"
@@ -16,8 +17,8 @@ func BenchmarkImportCSV(b *testing.B) {
 	m := picsv.NewMain()
 	m.BatchSize = 1 << 20
 	m.Index = "picsvbench"
-	m.File = "marketing-200k.csv"
-	getRawData(b, m.File)
+	m.Files = []string{"testdata/marketing-200k.csv"}
+	getRawData(b, m.Files[0])
 	client, err := pilosa.NewClient(m.Pilosa)
 	if err != nil {
 		b.Fatalf("getting client: %v", err)
@@ -69,82 +70,224 @@ func getRawData(t testing.TB, file string) {
 
 }
 
-func TestImportCSV(t *testing.T) {
+func TestImportMarketingCSV(t *testing.T) {
+	cases := []struct {
+		name    string
+		idField string
+		idType  string
+	}{
+		{
+			name:    "stringID",
+			idField: "id",
+			idType:  "string",
+		},
+		{
+			name:    "uint64",
+			idField: "id",
+			idType:  "string",
+		},
+		{
+			name:    "generatedID",
+			idField: "",
+			idType:  "",
+		},
+	}
+	for _, tst := range cases {
+		t.Run(tst.name, func(t *testing.T) {
+			m := picsv.NewMain()
+			m.BatchSize = 99999
+			m.Index = "testpicsv"
+			m.Files = []string{"marketing-200k.csv"}
+			m.Config.SourceFields["age"] = picsv.SourceField{TargetField: "age", Type: "float"}
+			m.Config.PilosaFields["age"] = picsv.Field{Type: "int"}
+			m.Config.IDField = tst.idField
+			m.Config.IDType = tst.idType
+			getRawData(t, m.Files[0])
+			client, err := pilosa.NewClient(m.Pilosa)
+			if err != nil {
+				t.Fatalf("getting client: %v", err)
+			}
+
+			defer func() {
+				err = client.DeleteIndexByName(m.Index)
+				if err != nil {
+					t.Fatalf("deleting index: %v", err)
+				}
+			}()
+			err = m.Run()
+			if err != nil {
+				t.Fatalf("running ingest: %v", err)
+			}
+
+			schema, err := client.Schema()
+			if err != nil {
+				t.Fatalf("getting schema: %v", err)
+			}
+
+			index := schema.Index(m.Index)
+			marital := index.Field("marital")
+			converted := index.Field("converted")
+			age := index.Field("age")
+			education := index.Field("education")
+
+			tests := []struct {
+				query *pilosa.PQLRowQuery
+				bash  string
+				exp   int64
+			}{
+				{
+					query: marital.Row("married"),
+					bash:  `awk -F, '/married/ {print $1,$4}' marketing-200k.csv | sort | uniq | wc`,
+					exp:   125514,
+				},
+				{
+					query: converted.Row("no"),
+					bash:  `awk -F, '{print $1,$17}' marketing-200k.csv | grep "no" |sort | uniq | wc`,
+					exp:   199999,
+				},
+				{
+					query: age.Equals(55),
+					bash:  `awk -F, '{print $1,$2}' marketing-200k.csv | grep " 55.0" |sort | uniq | wc`,
+					exp:   3282,
+				},
+				{
+					query: education.Row("professional course"),
+					bash:  `awk -F, '/professional course/ {print $1,$5}' marketing-200k.csv | sort | uniq | wc`,
+					exp:   25374,
+				},
+			}
+
+			for i, test := range tests {
+				t.Run(fmt.Sprintf("%d", i), func(t *testing.T) {
+					q := index.Count(test.query)
+					resp, err := client.Query(q)
+					if err != nil {
+						t.Fatalf("running query '%s': %v", q.Serialize(), err)
+					}
+					if resp.Result().Count() != test.exp {
+						t.Fatalf("Got unexpected result %d instead of %d for\nquery: %s\nbash: %s", resp.Result().Count(), test.exp, q.Serialize(), test.bash)
+					}
+				})
+			}
+
+		})
+	}
+}
+
+func TestImportMultipleTaxi(t *testing.T) {
+	// TODO (taxi files in place via:
+	// for url in `grep -v fhv_tripdata ../usecase/taxi/urls.txt`; do curl -s $url | head > testdata/${url##*/}; done
 	m := picsv.NewMain()
-	m.BatchSize = 100000
-	m.Index = "testpicsv"
-	m.File = "marketing-200k.csv"
-	m.Config.SourceFields["age"] = picsv.SourceField{TargetField: "age", Type: "float"}
-	m.Config.PilosaFields["age"] = picsv.Field{Type: "int"}
-	m.Config.IDField = "id"
-	getRawData(t, m.File)
+	m.BatchSize = 12
+	m.Index = "testdtaxi"
+	m.Files = getFiles(t, "./testdata/taxi/")
+	m.ConfigFile = "./testdata/taxiconfig.json"
 	client, err := pilosa.NewClient(m.Pilosa)
 	if err != nil {
 		t.Fatalf("getting client: %v", err)
 	}
-
 	defer func() {
 		err = client.DeleteIndexByName(m.Index)
 		if err != nil {
-			t.Fatalf("deleting index: %v", err)
+			t.Logf("deleting index: %v", err)
 		}
 	}()
+
+	config := `{
+"pilosa-fields": {
+    "cab_type": {"type": "set", "keys": false, "cache-type": "ranked", "cache-size": 3},
+    "pickup_time": {"type": "int"},
+    "dropoff_time": {"type": "int"},
+    "passenger_count": {"type": "set", "keys": false, "cache-type": "ranked", "cache-size": 50},
+    "trip_distance": {"type": "int"},
+    "pickup_longitude": {"type": "int"},
+    "pickup_latitude": {"type": "int"},
+    "dropoff_longitude": {"type": "int"},
+    "dropoff_latitude": {"type": "int"},
+    "store_and_fwd_flag": {"type": "set", "keys": true},
+    "rate_code": {"type": "set", "keys": true},
+    "fare_amount": {"type": "int"},
+    "extra": {"type": "int"},
+    "mta_tax": {"type": "int"},
+    "tip_amount": {"type": "int"},
+    "tolls_amount": {"type": "int"},
+    "total_amount": {"type": "int"},
+    "improvement_surcharge": {"type": "int"},
+    "ehail_fee": {"type": "int"},
+    "payment_type": {"type": "set", "keys": false}
+    },
+"id-field": "",
+"id-type": "",
+"source-fields": {
+        "VendorID": {"target-field": "cab_type", "type": "rowID"},
+        "vendor_id": {"target-field": "cab_type", "type": "rowID"},
+        "vendor_name": {"target-field": "cab_type", "type": "rowID"},
+        "lpep_pickup_datetime": {"target-field": "pickup_time", "type": "time", "time-format": "2006-01-02 15:04:05"},
+        "tpep_pickup_datetime": {"target-field": "pickup_time", "type": "time", "time-format": "2006-01-02 15:04:05"},
+        "pickup_datetime": {"target-field": "pickup_time", "type": "time", "time-format": "2006-01-02 15:04:05"},
+        "Trip_Pickup_Datetime": {"target-field": "pickup_time", "type": "time", "time-format": "2006-01-02 15:04:05"},
+        "Lpep_dropoff_datetime": {"target-field": "dropoff_time", "type": "time", "time-format": "2006-01-02 15:04:05"},
+        "tpep_dropoff_datetime": {"target-field": "dropoff_time", "type": "time", "time-format": "2006-01-02 15:04:05"},
+        "dropoff_datetime": {"target-field": "dropoff_time", "type": "time", "time-format": "2006-01-02 15:04:05"},
+        "Trip_Dropoff_Datetime": {"target-field": "dropoff_time", "type": "time", "time-format": "2006-01-02 15:04:05"},
+        "passenger_count": {"target-field": "passenger_count", "type": "rowID"},
+        "Passenger_count": {"target-field": "passenger_count", "type": "rowID"},
+        "Passenger_Count": {"target-field": "passenger_count", "type": "rowID"},
+        "trip_distance": {"target-field": "trip_distance", "type": "float", "multiplier": 100},
+        "Trip_distance": {"target-field": "trip_distance", "type": "float", "multiplier": 100},
+        "trip_Distance": {"target-field": "trip_distance", "type": "float", "multiplier": 100},
+        "pickup_longitude": {"target-field": "pickup_longitude", "type": "float", "multiplier": 10000},
+        "Pickup_longitude": {"target-field": "pickup_longitude", "type": "float", "multiplier": 10000},
+        "dropoff_longitude": {"target-field": "dropoff_longitude", "type": "float", "multiplier": 10000},
+        "Dropoff_longitude": {"target-field": "dropoff_longitude", "type": "float", "multiplier": 10000},
+        "pickup_latitude": {"target-field": "pickup_latitude", "type": "float", "multiplier": 10000},
+        "Pickup_latitude": {"target-field": "pickup_latitude", "type": "float", "multiplier": 10000},
+        "dropoff_latitude": {"target-field": "dropoff_latitude", "type": "float", "multiplier": 10000},
+        "Dropoff_latitude": {"target-field": "dropoff_latitude", "type": "float", "multiplier": 10000},
+        "store_and_fwd_flag": {"target-field": "store_and_fwd_flag", "type": "string"},
+        "Store_and_fwd_flag": {"target-field": "store_and_fwd_flag", "type": "string"},
+        "store_and_fwd": {"target-field": "store_and_fwd_flag", "type": "string"},
+        "rate_code": {"target-field": "rate_code", "type": "string"},
+        "Rate_Code": {"target-field": "rate_code", "type": "string"},
+        "RateCodeID": {"target-field": "rate_code", "type": "string"},
+        "Fare_Amt": {"target-field": "fare_amount", "type": "float", "multiplier": 100},
+        "fare_amount": {"target-field": "fare_amount", "type": "float", "multiplier": 100},
+        "Tip_Amt": {"target-field": "tip_amount", "type": "float", "multiplier": 100},
+        "tip_amount": {"target-field": "tip_amount", "type": "float", "multiplier": 100},
+        "Tolls_Amt": {"target-field": "tolls_amount", "type": "float", "multiplier": 100},
+        "tolls_amount": {"target-field": "tolls_amount", "type": "float", "multiplier": 100},
+        "improvement_surcharge": {"target-field": "improvement_surcharge", "type": "float", "multiplier": 100},
+        "surcharge": {"target-field": "improvement_surcharge", "type": "float", "multiplier": 100},
+        "mta_tax": {"target-field": "mta_tax", "type": "float", "multiplier": 100},
+        "Total_Amt": {"target-field": "total_amount", "type": "float", "multiplier": 100},
+        "total_amount": {"target-field": "total_amount", "type": "float", "multiplier": 100},
+        "ehail_fee": {"target-field": "ehail_fee", "type": "float", "multiplier": 100},
+        "payment_type": {"target-field": "payment_type", "type": "rowID"},
+        "extra": {"target-field": "extra", "type": "float", "multiplier": 100}
+    }
+}`
+
+	writeFile(t, m.ConfigFile, config)
+
 	err = m.Run()
 	if err != nil {
 		t.Fatalf("running ingest: %v", err)
 	}
 
-	schema, err := client.Schema()
-	if err != nil {
-		t.Fatalf("getting schema: %v", err)
-	}
+	// schema, err := client.Schema()
+	// if err != nil {
+	// 	t.Fatalf("getting schema: %v", err)
+	// }
 
-	index := schema.Index(m.Index)
-	marital := index.Field("marital")
-	converted := index.Field("converted")
-	age := index.Field("age")
+	// index := schema.Index(m.Index)
 
-	tests := []struct {
-		query *pilosa.PQLRowQuery
-		bash  string
-		exp   int64
-	}{
-		{
-			query: marital.Row("married"),
-			bash:  `awk -F, '/married/ {print $1,$4}' marketing-200k.csv | sort | uniq | wc`,
-			exp:   125514,
-		},
-		{
-			query: converted.Row("no"),
-			bash:  `awk -F, '{print $1,$17}' marketing-200k.csv | grep "no" |sort | uniq | wc`,
-			exp:   199999,
-		},
-		{
-			query: age.Equals(55),
-			bash:  `awk -F, '{print $1,$2}' marketing-200k.csv | grep " 55.0" |sort | uniq | wc`,
-			exp:   3282,
-		},
-	}
-
-	for i, test := range tests {
-		t.Run(fmt.Sprintf("%d", i), func(t *testing.T) {
-			q := index.Count(test.query)
-			resp, err := client.Query(q)
-			if err != nil {
-				t.Fatalf("running query '%s': %v", q.Serialize(), err)
-			}
-			if resp.Result().Count() != test.exp {
-				t.Fatalf("Got unexpected result %d instead of %d for\nquery: %s\nbash: %s", resp.Result().Count(), test.exp, q.Serialize(), test.bash)
-			}
-		})
-	}
 }
 
 func TestSmallImport(t *testing.T) {
 	m := picsv.NewMain()
 	m.BatchSize = 1 << 20
 	m.Index = "testsample"
-	m.File = "testdata/sample.csv"
+	m.Files = []string{"testdata/sample.csv"}
 	m.ConfigFile = "config.json"
 	client, err := pilosa.NewClient(m.Pilosa)
 	if err != nil {
@@ -184,7 +327,7 @@ EJSK,large,green,35,25.13106317,
 FEFF,,,,,6
 `
 	writeFile(t, m.ConfigFile, config)
-	writeFile(t, m.File, data)
+	writeFile(t, m.Files[0], data)
 
 	err = m.Run()
 	if err != nil {
@@ -328,4 +471,21 @@ outer:
 		return errors.Errorf("vals in two but not one: %v", two)
 	}
 	return nil
+}
+
+func getFiles(t testing.TB, dir string) []string {
+	f, err := os.Open(dir)
+	if err != nil {
+		t.Fatalf("opening %s: %v", dir, err)
+	}
+	fis, err := f.Readdirnames(0)
+	if err != nil {
+		t.Fatalf(": %v", err)
+	}
+
+	for i, name := range fis {
+		fis[i] = filepath.Join(dir, name)
+	}
+
+	return fis
 }
