@@ -96,7 +96,6 @@ func (m *Main) Run() error {
 	mu.Lock()
 	go func() {
 		for stat := range stats {
-			// TODO add file name to stats
 			log.Printf("processed %s\n", stat)
 			totalRecords += stat.n
 		}
@@ -104,7 +103,7 @@ func (m *Main) Run() error {
 	}()
 
 	///////////////////////////////////////////////////////
-	// for each file to process (just one right now)
+	// for each file to process
 	for _, filename := range m.Files {
 		f, err := os.Open(filename)
 		if err != nil {
@@ -128,6 +127,7 @@ func (m *Main) Run() error {
 		client.SyncSchema(schema)
 
 		jobs <- fileJob{
+			name:   filename,
 			reader: reader,
 			batch:  batch,
 			pc:     parseConfig,
@@ -143,18 +143,25 @@ func (m *Main) Run() error {
 
 type jobReport struct {
 	n        uint64
-	err      error
 	duration time.Duration
+	name     string
+	err      error
 }
 
 func (j jobReport) String() string {
+	s := fmt.Sprintf("{name:%s n:%d duration:%s", j.name, j.n, j.duration)
 	if j.err != nil {
-		return fmt.Sprintf("{n:%d duration:%s err:'%s'}", j.n, j.duration, j.err)
+		s += fmt.Sprintf(" err:'%s'}", j.err)
+	} else {
+		s += "}"
 	}
+
+	return s
 	return fmt.Sprintf("{n:%d duration:%s}", j.n, j.duration)
 }
 
 type fileJob struct {
+	name   string
 	reader *csv.Reader
 	batch  *gpexp.Batch
 	pc     *parseConfig
@@ -165,6 +172,7 @@ func fileProcessor(jobs <-chan fileJob, stats chan<- jobReport) {
 		start := time.Now()
 		n, err := processFile(fj.reader, fj.batch, fj.pc)
 		stats <- jobReport{
+			name:     fj.name,
 			n:        n,
 			err:      err,
 			duration: time.Since(start),
@@ -307,8 +315,12 @@ func processHeader(config *Config, client *pilosa.Client, index *pilosa.Index, r
 			continue
 		case "int":
 			valGetter = func(val string) interface{} {
+				if val == "" {
+					return nil
+				}
 				intVal, err := strconv.ParseInt(val, 10, 64)
 				if err != nil {
+					log.Printf("parsing '%s' for %s as int: %v\n", val, fieldName, err)
 					return nil
 				}
 				return intVal
@@ -317,14 +329,21 @@ func processHeader(config *Config, client *pilosa.Client, index *pilosa.Index, r
 		case "float":
 			if srcField.Multiplier != 0 {
 				valGetter = func(val string) interface{} {
+					if val == "" {
+						return nil
+					}
 					floatVal, err := strconv.ParseFloat(val, 64)
 					if err != nil {
+						log.Printf("parsing '%s' for %s as float: %v\n", val, fieldName, err)
 						return nil
 					}
 					return int64(floatVal * srcField.Multiplier)
 				}
 			} else {
 				valGetter = func(val string) interface{} {
+					if val == "" {
+						return nil
+					}
 					floatVal, err := strconv.ParseFloat(val, 64)
 					if err != nil {
 						return nil
@@ -343,8 +362,12 @@ func processHeader(config *Config, client *pilosa.Client, index *pilosa.Index, r
 			fields = append(fields, index.Field(fieldName, pilosaField.MakeOptions()...))
 		case "uint64", "rowID":
 			valGetter = func(val string) interface{} {
+				if val == "" {
+					return nil
+				}
 				uintVal, err := strconv.ParseUint(val, 0, 64)
 				if err != nil {
+					log.Printf("parsing '%s' for %s as rowID: %v\n", val, fieldName, err)
 					return nil
 				}
 				return uintVal
@@ -355,9 +378,12 @@ func processHeader(config *Config, client *pilosa.Client, index *pilosa.Index, r
 				return nil, nil, errors.Errorf("need time format for source field %s of type time", srcFieldName)
 			}
 			valGetter = func(val string) interface{} {
+				if val == "" {
+					return nil
+				}
 				tim, err := time.Parse(srcField.TimeFormat, val)
 				if err != nil {
-					// TODO some kind of logging or stats around failures in here.
+					log.Printf("parsing '%s' for %s as time w/ format '%s': %v\n", val, fieldName, srcField.TimeFormat, err)
 					return nil
 				}
 				return tim.Unix()

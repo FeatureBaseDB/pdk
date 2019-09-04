@@ -175,7 +175,6 @@ func TestImportMarketingCSV(t *testing.T) {
 }
 
 func TestImportMultipleTaxi(t *testing.T) {
-	// TODO (taxi files in place via:
 	// for url in `grep -v fhv_tripdata ../usecase/taxi/urls.txt`; do curl -s $url | head > testdata/${url##*/}; done
 	m := picsv.NewMain()
 	m.BatchSize = 12
@@ -195,7 +194,7 @@ func TestImportMultipleTaxi(t *testing.T) {
 
 	config := `{
 "pilosa-fields": {
-    "cab_type": {"type": "set", "keys": false, "cache-type": "ranked", "cache-size": 3},
+    "cab_type": {"type": "set", "keys": true, "cache-type": "ranked", "cache-size": 3},
     "pickup_time": {"type": "int"},
     "dropoff_time": {"type": "int"},
     "passenger_count": {"type": "set", "keys": false, "cache-type": "ranked", "cache-size": 50},
@@ -214,14 +213,14 @@ func TestImportMultipleTaxi(t *testing.T) {
     "total_amount": {"type": "int"},
     "improvement_surcharge": {"type": "int"},
     "ehail_fee": {"type": "int"},
-    "payment_type": {"type": "set", "keys": false}
+    "payment_type": {"type": "set", "keys": true}
     },
 "id-field": "",
 "id-type": "",
 "source-fields": {
-        "VendorID": {"target-field": "cab_type", "type": "rowID"},
-        "vendor_id": {"target-field": "cab_type", "type": "rowID"},
-        "vendor_name": {"target-field": "cab_type", "type": "rowID"},
+        "VendorID": {"target-field": "cab_type", "type": "string"},
+        "vendor_id": {"target-field": "cab_type", "type": "string"},
+        "vendor_name": {"target-field": "cab_type", "type": "string"},
         "lpep_pickup_datetime": {"target-field": "pickup_time", "type": "time", "time-format": "2006-01-02 15:04:05"},
         "tpep_pickup_datetime": {"target-field": "pickup_time", "type": "time", "time-format": "2006-01-02 15:04:05"},
         "pickup_datetime": {"target-field": "pickup_time", "type": "time", "time-format": "2006-01-02 15:04:05"},
@@ -262,7 +261,7 @@ func TestImportMultipleTaxi(t *testing.T) {
         "Total_Amt": {"target-field": "total_amount", "type": "float", "multiplier": 100},
         "total_amount": {"target-field": "total_amount", "type": "float", "multiplier": 100},
         "ehail_fee": {"target-field": "ehail_fee", "type": "float", "multiplier": 100},
-        "payment_type": {"target-field": "payment_type", "type": "rowID"},
+        "payment_type": {"target-field": "payment_type", "type": "string"},
         "extra": {"target-field": "extra", "type": "float", "multiplier": 100}
     }
 }`
@@ -274,12 +273,75 @@ func TestImportMultipleTaxi(t *testing.T) {
 		t.Fatalf("running ingest: %v", err)
 	}
 
-	// schema, err := client.Schema()
-	// if err != nil {
-	// 	t.Fatalf("getting schema: %v", err)
-	// }
+	schema, err := client.Schema()
+	if err != nil {
+		t.Fatalf("getting schema: %v", err)
+	}
 
-	// index := schema.Index(m.Index)
+	index := schema.Index(m.Index)
+	cabType := index.Field("cab_type")
+	drop_long := index.Field("dropoff_longitude")
+	pick_long := index.Field("pickup_longitude")
+
+	tests := []struct {
+		query *pilosa.PQLRowQuery
+		bash  string
+		exp   int64
+	}{
+		{
+			query: cabType.Row("1"),
+			bash:  `cat ./testdata/taxi/* | awk -F, '{print $1}' | sort | uniq -c`,
+			exp:   79,
+		},
+		{
+			query: cabType.Row("2"),
+			bash:  `cat ./testdata/taxi/* | awk -F, '{print $1}' | sort | uniq -c`,
+			exp:   363,
+		},
+		{
+			query: cabType.Row("CMT"),
+			bash:  `cat ./testdata/taxi/* | awk -F, '{print $1}' | sort | uniq -c`,
+			exp:   318,
+		},
+		{
+			query: cabType.Row("DDS"),
+			bash:  `cat ./testdata/taxi/* | awk -F, '{print $1}' | sort | uniq -c`,
+			exp:   17,
+		},
+		{
+			query: cabType.Row("VTS"),
+			bash:  `cat ./testdata/taxi/* | awk -F, '{print $1}' | sort | uniq -c`,
+			exp:   249,
+		},
+		{
+			query: drop_long.Equals(-738996),
+			bash:  `cat * | grep '73\.8996'`,
+			exp:   1,
+		},
+		{
+			query: drop_long.Equals(-738996),
+			bash:  `cat * | grep '73\.8996'`,
+			exp:   1,
+		},
+		{
+			query: index.Union(drop_long.Between(-739449, -739440), pick_long.Between(-739449, -739440)),
+			bash:  `cat * | grep '73\.944' | wc`,
+			exp:   16,
+		},
+	}
+
+	for i, test := range tests {
+		t.Run(fmt.Sprintf("%d", i), func(t *testing.T) {
+			q := index.Count(test.query)
+			resp, err := client.Query(q)
+			if err != nil {
+				t.Fatalf("running query '%s': %v", q.Serialize(), err)
+			}
+			if resp.Result().Count() != test.exp {
+				t.Fatalf("Got unexpected result %d instead of %d for\nquery: %s\nbash: %s", resp.Result().Count(), test.exp, q.Serialize(), test.bash)
+			}
+		})
+	}
 
 }
 
