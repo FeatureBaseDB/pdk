@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net/http"
 	"os"
 	"strconv"
 	"strings"
@@ -21,12 +22,12 @@ import (
 
 type Main struct {
 	Pilosa         []string `help:"Comma separated list of host:port describing Pilosa cluster."`
-	Files          []string
-	Index          string `help:"Name of index to ingest data into."`
-	BatchSize      int    `help:"Number of records to put in a batch before importing to Pilosa."`
-	ConfigFile     string `help:"JSON configuration describing source fields, and how to parse and map them to Pilosa fields."`
-	RangeAllocator string `help:"Designates where to retrieve unused ranged of record IDs (if generating ids). If left blank, generate locally starting from 0."`
-	Concurrency    int    `help:"Number of goroutines to run processing files."`
+	Files          []string `help:"File names or URLs to read."`
+	Index          string   `help:"Name of index to ingest data into."`
+	BatchSize      int      `help:"Number of records to put in a batch before importing to Pilosa."`
+	ConfigFile     string   `help:"JSON configuration describing source fields, and how to parse and map them to Pilosa fields."`
+	RangeAllocator string   `help:"Designates where to retrieve unused ranged of record IDs (if generating ids). If left blank, generate locally starting from 0."`
+	Concurrency    int      `help:"Number of goroutines to run processing files."`
 
 	Config *Config `flag:"-"`
 }
@@ -105,9 +106,9 @@ func (m *Main) Run() error {
 	///////////////////////////////////////////////////////
 	// for each file to process
 	for _, filename := range m.Files {
-		f, err := os.Open(filename)
+		f, err := openFileOrURL(filename)
 		if err != nil {
-			return errors.Wrap(err, "opening file")
+			return errors.Wrapf(err, "opening %s", filename)
 		}
 		defer f.Close()
 		reader := csv.NewReader(f)
@@ -405,6 +406,27 @@ func processHeader(config *Config, client *pilosa.Client, index *pilosa.Index, r
 	}
 
 	return batch, pc, nil
+}
+
+func openFileOrURL(name string) (io.ReadCloser, error) {
+	var content io.ReadCloser
+	if strings.HasPrefix(name, "http") {
+		resp, err := http.Get(name)
+		if err != nil {
+			return nil, errors.Wrap(err, "getting via http")
+		}
+		if resp.StatusCode > 299 {
+			return nil, errors.Errorf("got status %d via http.Get", resp.StatusCode)
+		}
+		content = resp.Body
+	} else {
+		f, err := os.Open(name)
+		if err != nil {
+			return nil, errors.Wrap(err, "opening file")
+		}
+		content = f
+	}
+	return content, nil
 }
 
 func NewConfig() *Config {

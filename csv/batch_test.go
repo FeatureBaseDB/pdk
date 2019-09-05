@@ -301,17 +301,17 @@ func TestImportMultipleTaxi(t *testing.T) {
 		{
 			query: cabType.Row("CMT"),
 			bash:  `cat ./testdata/taxi/* | awk -F, '{print $1}' | sort | uniq -c`,
-			exp:   318,
+			exp:   317,
 		},
 		{
 			query: cabType.Row("DDS"),
 			bash:  `cat ./testdata/taxi/* | awk -F, '{print $1}' | sort | uniq -c`,
-			exp:   17,
+			exp:   14,
 		},
 		{
 			query: cabType.Row("VTS"),
 			bash:  `cat ./testdata/taxi/* | awk -F, '{print $1}' | sort | uniq -c`,
-			exp:   249,
+			exp:   245,
 		},
 		{
 			query: drop_long.Equals(-738996),

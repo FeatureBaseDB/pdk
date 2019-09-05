@@ -31,3 +31,5 @@ require (
 	golang.org/x/sync v0.0.0-20190423024810-112230192c58
 	gopkg.in/linkedin/goavro.v1 v1.0.5 // indirect
 )
+
+go 1.13
