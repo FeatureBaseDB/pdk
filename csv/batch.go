@@ -1,6 +1,7 @@
 package csv
 
 import (
+	"bufio"
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
@@ -23,6 +24,7 @@ import (
 type Main struct {
 	Pilosa         []string `help:"Comma separated list of host:port describing Pilosa cluster."`
 	Files          []string `help:"File names or URLs to read."`
+	URLFile        string   `help:"Filename or URL containing line separated file names or urls to read data from. These will be appended to Files."`
 	Index          string   `help:"Name of index to ingest data into."`
 	BatchSize      int      `help:"Number of records to put in a batch before importing to Pilosa."`
 	ConfigFile     string   `help:"JSON configuration describing source fields, and how to parse and map them to Pilosa fields."`
@@ -35,7 +37,7 @@ type Main struct {
 func NewMain() *Main {
 	return &Main{
 		Pilosa:      []string{"localhost:10101"},
-		Files:       []string{"data.csv"},
+		Files:       []string{},
 		Index:       "picsvtest",
 		BatchSize:   1000,
 		Concurrency: 4,
@@ -57,6 +59,21 @@ func (m *Main) Run() error {
 		err = dec.Decode(m.Config)
 		if err != nil {
 			return errors.Wrap(err, "decoding config file")
+		}
+	}
+
+	if m.URLFile != "" {
+		f, err := openFileOrURL(m.URLFile)
+		if err != nil {
+			return errors.Wrap(err, "opening url file")
+		}
+		scan := bufio.NewScanner(f)
+		for scan.Scan() {
+			line := scan.Text()
+			m.Files = append(m.Files, line)
+		}
+		if err := scan.Err(); err != nil {
+			return errors.Wrap(err, "scanning URL file")
 		}
 	}
 	// log.Printf("Flags: %+v\n", *m)
