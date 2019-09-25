@@ -17,7 +17,7 @@ func BenchmarkImportCSV(b *testing.B) {
 	m := picsv.NewMain()
 	m.BatchSize = 1 << 20
 	m.Index = "picsvbench"
-	m.Files = []string{"testdata/marketing-200k.csv"}
+	m.Files = []string{"marketing-200k.csv"}
 	getRawData(b, m.Files[0])
 	client, err := pilosa.NewClient(m.Pilosa)
 	if err != nil {
@@ -84,7 +84,7 @@ func TestImportMarketingCSV(t *testing.T) {
 		{
 			name:    "uint64",
 			idField: "id",
-			idType:  "string",
+			idType:  "uint64",
 		},
 		{
 			name:    "generatedID",
@@ -99,7 +99,15 @@ func TestImportMarketingCSV(t *testing.T) {
 			m.Index = "testpicsv"
 			m.Files = []string{"marketing-200k.csv"}
 			m.Config.SourceFields["age"] = picsv.SourceField{TargetField: "age", Type: "float"}
+			m.Config.SourceFields["pdays"] = picsv.SourceField{TargetField: "pdays", Type: "float"}
+			m.Config.SourceFields["campaign"] = picsv.SourceField{TargetField: "campaign", Type: "float"}
+			m.Config.SourceFields["previous"] = picsv.SourceField{TargetField: "previous", Type: "float"}
+			m.Config.SourceFields["duration"] = picsv.SourceField{TargetField: "duration", Type: "float"}
 			m.Config.PilosaFields["age"] = picsv.Field{Type: "int"}
+			m.Config.PilosaFields["pdays"] = picsv.Field{Type: "int"}
+			m.Config.PilosaFields["campaign"] = picsv.Field{Type: "int"}
+			m.Config.PilosaFields["previous"] = picsv.Field{Type: "int"}
+			m.Config.PilosaFields["duration"] = picsv.Field{Type: "int"}
 			m.Config.IDField = tst.idField
 			m.Config.IDType = tst.idType
 			getRawData(t, m.Files[0])

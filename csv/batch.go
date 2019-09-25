@@ -142,7 +142,10 @@ func (m *Main) Run() error {
 			return errors.Wrap(err, "processing header")
 		}
 		// this has a non-obvious dependence on processHeader which sets up fields. TODO Do this inside processHeader?
-		client.SyncSchema(schema)
+		err = client.SyncSchema(schema)
+		if err != nil {
+			return errors.Wrap(err, "syncing schema")
+		}
 
 		jobs <- fileJob{
 			name:   filename,
