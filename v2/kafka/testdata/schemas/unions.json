@@ -3,9 +3,9 @@
      "namespace": "com.example",
      "name": "FullName",
      "fields": [
-	 { "name": "first", "type": [null, "string"]},
-	 { "name": "second", "type": [null, "boolean"]},
-	 { "name": "third", "type": [null, "long"]},
-	 { "name": "fourth", "type": [null, {"type": "bytes", "logicalType": "decimal", "scale": 3, "precision": 8}]}
+	 { "name": "first", "type": ["null", "string"]},
+	 { "name": "second", "type": ["null", "boolean"]},
+	 { "name": "third", "type": ["null", "long"]},
+	 { "name": "fourth", "type": ["null", {"type": "bytes", "logicalType": "decimal", "scale": 3, "precision": 8}]}
      ]
 }

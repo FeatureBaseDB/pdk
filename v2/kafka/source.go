@@ -15,6 +15,7 @@ import (
 	"github.com/pilosa/go-pilosa"
 	pdk "github.com/pilosa/pdk/v2"
 	"github.com/pkg/errors"
+	//	"github.com/y0ssar1an/q"
 )
 
 type Main struct {
@@ -169,6 +170,10 @@ func (s *Source) toPDKRecord(vals map[string]interface{}) error {
 	r := s.record
 	for i, field := range s.lastSchema {
 		val := vals[field.Name()]
+		if val == nil {
+			r.data[i] = nil
+			continue
+		}
 		switch field.(type) {
 		case pdk.DecimalField:
 			vb, ok := val.([]byte)
@@ -180,8 +185,8 @@ func (s *Source) toPDKRecord(vals map[string]interface{}) error {
 			} else if len(vb) < 8 {
 				copy(s.decBytes[8-len(vb):], vb)
 				r.data[i] = binary.BigEndian.Uint64(s.decBytes)
-				for i := 8 - len(vb); i >= 0; i-- {
-					s.decBytes[i] = 0
+				for j := range s.decBytes {
+					s.decBytes[j] = 0
 				}
 			} else {
 				return errors.Errorf("can't support decimals of greater than 8 bytes, got %d for %s", len(vb), field.Name())

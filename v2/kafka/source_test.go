@@ -125,16 +125,23 @@ func TestKafkaSource(t *testing.T) {
 		{
 			schemaFile: "decimal.json",
 			data:       []map[string]interface{}{{"somenum": &big.Rat{}}, {"somenum": big.NewRat(10, 1)}, {"somenum": big.NewRat(1, 1)}, {"somenum": big.NewRat(5, 2)}, {"somenum": big.NewRat(1234567890, 1)}},
-			exp:        [][]interface{}{[]interface{}{uint64(0)}, {uint64(1000)}, {uint64(100)}, {uint64(250)}, {uint64(123456789000)}},
+			exp:        [][]interface{}{{uint64(0)}, {uint64(1000)}, {uint64(100)}, {uint64(250)}, {uint64(123456789000)}},
 		},
-		// {
-		// 	schemaFile: "othertypes.json",
-		// 	data:       []map[string]interface{}{},
-		// },
-		// {
-		// 	schemaFile: "unions.json",
-		// 	data:       []map[string]interface{}{},
-		// },
+		{
+			schemaFile: "othertypes.json",
+			data:       []map[string]interface{}{{"first": "a", "second": []string{"b", "c"}, "third": -8, "fourth": 99, "fifth": 99.9, "sixth": 101.1, "seventh": true}},
+			exp:        [][]interface{}{{"a", []interface{}{"b", "c"}, int32(-8), int64(99), float32(99.9), float64(101.1), true}},
+		},
+		{
+			schemaFile: "unions.json",
+			data: []map[string]interface{}{
+				{"first": map[string]interface{}{"string": "a"}, "second": map[string]interface{}{"boolean": true}, "third": map[string]interface{}{"long": 101}, "fourth": map[string]interface{}{"bytes.decimal": big.NewRat(5, 2)}},
+				{"first": nil, "second": nil, "third": map[string]interface{}{"null": nil}, "fourth": nil},
+			},
+			exp: [][]interface{}{
+				{"a", true, int64(101), uint64(2500)},
+				{nil, nil, nil, nil}},
+		},
 	}
 
 	src := NewSource()
@@ -177,8 +184,18 @@ func TestKafkaSource(t *testing.T) {
 				if pdkRec == nil {
 					t.Fatalf("should have a record")
 				}
-				if !reflect.DeepEqual(pdkRec.Data(), test.exp[j]) {
-					t.Errorf("data mismatch exp/got:\n%+v\n%+v\n%[1]T %[2]T", test.exp[j][0], pdkRec.Data()[0])
+				data := pdkRec.Data()
+				if !reflect.DeepEqual(data, test.exp[j]) {
+					t.Errorf("data mismatch exp/got:\n%+v\n%+v", test.exp[j], data)
+					if len(data) != len(test.exp[j]) {
+						t.Fatalf("mismatched lengths exp/got %d/%d", len(test.exp[j]), len(data))
+					}
+					for k := range test.exp[j] {
+						if !reflect.DeepEqual(test.exp[j][k], data[k]) {
+							t.Errorf("Mismatch at %d, exp/got\n%v of %[2]T\n%v of %[3]T", k, test.exp[j][k], data[k])
+						}
+					}
+
 				}
 			}
 		})
