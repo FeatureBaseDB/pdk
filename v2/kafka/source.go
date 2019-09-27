@@ -141,9 +141,6 @@ func (s *Source) Record() (pdk.Record, error) {
 	msg, ok := <-s.messages
 	s.stash.MarkOffset(msg, "")
 	if ok {
-		ret := &Record{ // TODO reuse Record between calls
-			src: s,
-		}
 		val, err := s.decodeAvroValueWithSchemaRegistry(msg.Value)
 		if err != nil && err != pdk.ErrSchemaChange {
 			return nil, errors.Wrap(err, "decoding with schema registry")
@@ -151,17 +148,21 @@ func (s *Source) Record() (pdk.Record, error) {
 		if err == pdk.ErrSchemaChange {
 			s.record.data = make([]interface{}, len(s.lastSchema))
 		}
-		err = s.toPDKRecord(val.(map[string]interface{})) // val must be map[string]interface{} because we only accept schemas which are Record type at the top level.
-		if err != nil {
+		recErr := s.toPDKRecord(val.(map[string]interface{})) // val must be map[string]interface{} because we only accept schemas which are Record type at the top level.
+		if recErr != nil {
 			// reset lastSchema so if Record gets called again, and
 			// the schema just changed, we'll notify of the change.
 			s.lastSchema = nil
 			s.lastSchemaID = -1
-			return nil, errors.Wrap(err, "converting to PDK Record")
+			return nil, errors.Wrap(recErr, "converting to PDK Record")
 		}
-		return ret, err // err must be nil or ErrSchemaChange at this point
+		return s.record, err // err must be nil or ErrSchemaChange at this point
 	}
 	return nil, errors.New("messages channel closed")
+}
+
+func (s *Source) Schema() []pdk.Field {
+	return s.lastSchema
 }
 
 func (s *Source) toPDKRecord(vals map[string]interface{}) error {
@@ -179,6 +180,9 @@ func (s *Source) toPDKRecord(vals map[string]interface{}) error {
 			} else if len(vb) < 8 {
 				copy(s.decBytes[8-len(vb):], vb)
 				r.data[i] = binary.BigEndian.Uint64(s.decBytes)
+				for i := 8 - len(vb); i >= 0; i-- {
+					s.decBytes[i] = 0
+				}
 			} else {
 				return errors.Errorf("can't support decimals of greater than 8 bytes, got %d for %s", len(vb), field.Name())
 			}
@@ -311,14 +315,11 @@ func avroToPDKField(aField *avro.SchemaField) (pdk.Field, error) {
 		}
 		return pdkField, nil
 	case avro.Bytes, avro.Fixed:
-		fmt.Println("in bytes")
 		if lt, _ := stringProp(aField, "logicalType"); lt == "decimal" {
-			fmt.Println("in decimal")
 			precision, err := intProp(aField, "precision")
 			if precision > 18 || precision < 1 {
 				return nil, errors.Errorf("need precision for decimal in 1-18, but got:%d, err:%v", precision, err)
 			}
-			fmt.Println("got precision", precision)
 			scale, err := intProp(aField, "scale")
 			if scale > precision || err == wrongType {
 				return nil, errors.Errorf("0<=scale<=precision, got:%d err:%v", scale, err)
@@ -395,6 +396,7 @@ func intProp(p propper, s string) (int, error) {
 	if !ok {
 		return 0, notFound
 	}
+	// json decodes numeric values into float64
 	floatVal, ok := ival.(float64)
 	if !ok {
 		return 0, wrongType
@@ -419,25 +421,57 @@ func avroUnionToPDKField(field *avro.SchemaField) (pdk.Field, error) {
 	}
 	uSchema := field.Type.(*avro.UnionSchema)
 	nf := &avro.SchemaField{
-		Name:       field.Name,
-		Doc:        field.Doc,
-		Default:    field.Default,
-		Properties: field.Properties,
+		Name:    field.Name,
+		Doc:     field.Doc,
+		Default: field.Default,
 	}
 	if len(uSchema.Types) == 1 {
 		nf.Type = uSchema.Types[0]
 		return avroToPDKField(nf)
 	}
 	if len(uSchema.Types) == 2 {
+		var useType avro.Schema
 		if uSchema.Types[0].Type() == avro.Null {
-			nf.Type = uSchema.Types[0]
-			return avroToPDKField(nf)
+			useType = uSchema.Types[1]
 		} else if uSchema.Types[1].Type() == avro.Null {
-			nf.Type = uSchema.Types[1]
-			return avroToPDKField(nf)
+			useType = uSchema.Types[0]
+		} else {
+			return nil, errors.New("unions are only supported when one type is Null")
 		}
+		nf.Type = useType
+		nf.Properties = propertiesFromSchema(useType)
+		return avroToPDKField(nf)
 	}
 	return nil, errors.New("unions are only supported when they are a single type plus optionally a Null")
+}
+
+// propertiesFromSchema (document and use!)
+func propertiesFromSchema(sch avro.Schema) map[string]interface{} {
+	switch schT := sch.(type) {
+	case *avro.StringSchema, *avro.IntSchema, *avro.LongSchema, *avro.FloatSchema, *avro.DoubleSchema, *avro.BooleanSchema, *avro.NullSchema, *avro.UnionSchema:
+		return nil
+	case *avro.BytesSchema:
+		return schT.Properties
+	case *avro.RecordSchema:
+		return schT.Properties
+	case *avro.RecursiveSchema:
+		if schT.Actual != nil {
+			return schT.Actual.Properties
+		}
+		return nil
+	case *avro.EnumSchema:
+		return schT.Properties
+	case *avro.ArraySchema:
+		return schT.Properties
+	case *avro.MapSchema:
+		return schT.Properties
+	case *avro.FixedSchema:
+		return schT.Properties
+	default:
+		// TODO handle logging properly (e.g. respect log path, use an interface logger, etc.)
+		log.Printf("unhandled avro.Schema concrete type %T in propertiesFromSchema, value: %+v", schT, schT)
+		return nil
+	}
 }
 
 // The Schema type is an object produced by the schema registry.
@@ -458,7 +492,7 @@ func (s *Source) getCodec(id int32) (rschema avro.Schema, rerr error) {
 		return nil, errors.Wrap(err, "getting schema from registry")
 	}
 	defer func() {
-		// hahahahahaha
+		// TODO this might obscure a more important error?
 		rerr = r.Body.Close()
 	}()
 	if r.StatusCode >= 300 {

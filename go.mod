@@ -1,6 +1,8 @@
 module github.com/pilosa/pdk
 
-replace github.com/pilosa/go-pilosa => github.com/jaffee/go-pilosa v0.4.1-0.20190831210635-c2b019c94ab7
+replace github.com/pilosa/go-pilosa => /Users/jaffee/go/src/github.com/pilosa/go-pilosa
+
+replace github.com/go-avro/avro => /Users/jaffee/go/src/github.com/go-avro/avro
 
 require (
 	github.com/Shopify/sarama v1.19.0
@@ -12,9 +14,11 @@ require (
 	github.com/eapache/go-xerial-snappy v0.0.0-20180814174437-776d5712da21 // indirect
 	github.com/eapache/queue v1.1.0 // indirect
 	github.com/elodina/go-avro v0.0.0-20160406082632-0c8185d9a3ba
+	github.com/go-avro/avro v0.0.0-20171219232920-444163702c11
 	github.com/hashicorp/go-uuid v1.0.1 // indirect
 	github.com/jaffee/commandeer v0.1.1-0.20190726022955-4d43b78ebc4e
 	github.com/linkedin/goavro v0.0.0-20181018120728-1beee2a74088
+	github.com/linkedin/goavro/v2 v2.9.6
 	github.com/mmcloughlin/geohash v0.0.0-20181009053802-f7f2bcae3294
 	github.com/onsi/ginkgo v1.7.0 // indirect
 	github.com/onsi/gomega v1.4.3 // indirect
@@ -28,6 +32,7 @@ require (
 	github.com/spf13/viper v1.4.0
 	github.com/stretchr/testify v1.3.0 // indirect
 	github.com/syndtr/goleveldb v0.0.0-20181128100959-b001fa50d6b2
+	github.com/y0ssar1an/q v1.0.7
 	golang.org/x/sync v0.0.0-20190423024810-112230192c58
 	gopkg.in/linkedin/goavro.v1 v1.0.5 // indirect
 )

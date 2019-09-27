@@ -43,7 +43,7 @@ import (
 	"sync"
 
 	"github.com/Shopify/sarama"
-	"github.com/bsm/sarama-cluster"
+	cluster "github.com/bsm/sarama-cluster"
 	"github.com/elodina/go-avro"
 	"github.com/pkg/errors"
 )
