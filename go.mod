@@ -34,6 +34,7 @@ require (
 	github.com/syndtr/goleveldb v0.0.0-20181128100959-b001fa50d6b2
 	github.com/y0ssar1an/q v1.0.7
 	golang.org/x/sync v0.0.0-20190423024810-112230192c58
+	gopkg.in/avro.v0 v0.0.0-20171217001914-a730b5802183 // indirect
 	gopkg.in/linkedin/goavro.v1 v1.0.5 // indirect
 )
 

@@ -114,9 +114,10 @@ type Source struct {
 // NewSource gets a new Source
 func NewSource() *Source {
 	src := &Source{
-		Hosts:  []string{"localhost:9092"},
-		Topics: []string{"test"},
-		Group:  "group0",
+		Hosts:       []string{"localhost:9092"},
+		Topics:      []string{"test"},
+		Group:       "group0",
+		RegistryURL: "localhost:8081",
 
 		lastSchemaID: -1,
 		cache:        make(map[int32]avro.Schema),
