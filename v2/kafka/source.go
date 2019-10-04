@@ -12,73 +12,10 @@ import (
 	"github.com/Shopify/sarama"
 	cluster "github.com/bsm/sarama-cluster"
 	"github.com/go-avro/avro"
-	"github.com/pilosa/go-pilosa"
 	pdk "github.com/pilosa/pdk/v2"
 	"github.com/pkg/errors"
 	//	"github.com/y0ssar1an/q"
 )
-
-type Main struct {
-	PilosaHosts      []string `help:"Comma separated list of host:port pairs for Pilosa."`
-	KafkaHosts       []string `help:"Comma separated list of host:port pairs for Kafka."`
-	RegistryURL      string   `help:"Location of Confluent Schema Registry"`
-	BatchSize        int      `help:"Number of records to read before indexing all of them at once. Generally, larger means better throughput and more memory usage. 1,048,576 might be a good number."`
-	Group            string   `help:"Kafka group."`
-	Index            string   `help:"Name of Pilosa index."`
-	Topics           []string `help:"Kafka topics to read from."`
-	LogPath          string   `help:"Log file to write to. Empty means stderr."e`
-	PrimaryKeyFields []string `help:"Data field(s) which make up the primary key for a record. These will be concatenated and translated to a Pilosa ID. If empty, record key translation will not be used."`
-	IDField          string   `help:"Field which contains the integer column ID. May not be used in conjunction with primary-key-fields. If both are empty, auto-generated IDs will be used."`
-	MaxMsgs          int      `help:"Number of messages to consume from Kafka before stopping. Useful for testing when you don't want to run indefinitely."`
-	// TODO implement the auto-generated IDs... hopefully using Pilosa to manage it.
-}
-
-func NewMain() *Main {
-	return &Main{
-		PilosaHosts: []string{"localhost:10101"},
-		KafkaHosts:  []string{"localhost:9092"},
-		RegistryURL: "localhost:8081",
-		BatchSize:   1, // definitely increase this to achieve any amount of performance
-		Group:       "defaultgroup",
-		Index:       "defaultindex",
-		Topics:      []string{"defaulttopic"},
-	}
-}
-
-func (m *Main) Run() error {
-	if err := m.validate(); err != nil {
-		return errors.Wrap(err, "validating configuration")
-	}
-
-	client, err := pilosa.NewClient(m.PilosaHosts)
-	if err != nil {
-		return errors.Wrap(err, "getting pilosa client")
-	}
-	schema, err := client.Schema()
-	if err != nil {
-		return errors.Wrap(err, "getting schema")
-	}
-	keyTranslation := len(m.PrimaryKeyFields) > 0
-	index := schema.Index(m.Index, pilosa.OptIndexKeys(keyTranslation))
-	fmt.Println(index)
-
-	source := NewSource()
-	source.Hosts = m.KafkaHosts
-	source.Topics = m.Topics
-	source.Group = m.Group
-	source.MaxMsgs = m.MaxMsgs
-
-	// remember to flush old batch and make a new batch when schema changes
-
-	return nil
-}
-
-func (m *Main) validate() error {
-	if len(m.PrimaryKeyFields) != 0 && m.IDField != "" {
-		return errors.New("cannot set both primary key fields and id-field")
-	}
-	return nil
-}
 
 // Source implements the pdk.Source interface using kafka as a data
 // source. It is not threadsafe! Due to the way Kafka clients work, to
