@@ -176,9 +176,7 @@ func (j jobReport) String() string {
 	} else {
 		s += "}"
 	}
-
 	return s
-	return fmt.Sprintf("{n:%d duration:%s}", j.n, j.duration)
 }
 
 type fileJob struct {
@@ -201,7 +199,7 @@ func fileProcessor(jobs <-chan fileJob, stats chan<- jobReport) {
 	}
 }
 
-func processFile(reader *csv.Reader, batch *gpexp.Batch, pc *parseConfig) (n uint64, err error) {
+func processFile(reader *csv.Reader, batch gpexp.RecordBatch, pc *parseConfig) (n uint64, err error) {
 	defer pc.nexter.Return()
 	record := gpexp.Row{
 		Values: make([]interface{}, len(pc.fieldConfig)),

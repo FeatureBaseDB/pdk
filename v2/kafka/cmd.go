@@ -12,6 +12,11 @@ import (
 	//	"github.com/y0ssar1an/q"
 )
 
+// TODO Jaeger
+// TODO profiling endpoint
+// TODO Prometheus
+
+// Main holds all config for Kafka indexing w/ schema registry.
 type Main struct {
 	PilosaHosts      []string `help:"Comma separated list of host:port pairs for Pilosa."`
 	KafkaHosts       []string `help:"Comma separated list of host:port pairs for Kafka."`
@@ -20,7 +25,7 @@ type Main struct {
 	Group            string   `help:"Kafka group."`
 	Index            string   `help:"Name of Pilosa index."`
 	Topics           []string `help:"Kafka topics to read from."`
-	LogPath          string   `help:"Log file to write to. Empty means stderr."e`
+	LogPath          string   `help:"Log file to write to. Empty means stderr."` // TODO implement
 	PrimaryKeyFields []string `help:"Data field(s) which make up the primary key for a record. These will be concatenated and translated to a Pilosa ID. If empty, record key translation will not be used."`
 	IDField          string   `help:"Field which contains the integer column ID. May not be used in conjunction with primary-key-fields. If both are empty, auto-generated IDs will be used."`
 	MaxMsgs          int      `help:"Number of messages to consume from Kafka before stopping. Useful for testing when you don't want to run indefinitely."`
@@ -101,12 +106,12 @@ func (m *Main) runIngester(c int) error {
 	if err != nil {
 		return errors.Wrap(err, "opening source")
 	}
-
 	var batch gpexp.RecordBatch
 	var recordizers []Recordizer
 	var prevRec pdk.Record
-	row := &gpexp.Row{}
-	for rec, err := source.Record(); err == pdk.ErrSchemaChange || err == nil; rec, err = source.Record() {
+	var row *gpexp.Row
+	rec, err := source.Record()
+	for ; err == pdk.ErrSchemaChange || err == nil; rec, err = source.Record() {
 		if err == pdk.ErrSchemaChange {
 			// finish previous batch if this is not the first
 			if batch != nil {
@@ -120,7 +125,7 @@ func (m *Main) runIngester(c int) error {
 				}
 			}
 			schema := source.Schema()
-			recordizers, batch, err = m.batchFromSchema(schema)
+			recordizers, batch, row, err = m.batchFromSchema(schema)
 			if err != nil {
 				return errors.Wrap(err, "batchFromSchema")
 			}
@@ -131,15 +136,21 @@ func (m *Main) runIngester(c int) error {
 		data := rec.Data()
 		for _, rdz := range recordizers {
 			err = rdz(data, row)
+			if err != nil {
+				return errors.Wrap(err, "recordizing")
+			}
 		}
 		err = batch.Add(*row)
+		if err != nil {
+			return errors.Wrap(err, "adding to batch")
+		}
 	}
-	return nil
+	return errors.Wrap(err, "getting record")
 }
 
 type Recordizer func(rawRec []interface{}, rec *gpexp.Row) error
 
-func (m *Main) batchFromSchema(schema []pdk.Field) ([]Recordizer, gpexp.RecordBatch, error) {
+func (m *Main) batchFromSchema(schema []pdk.Field) ([]Recordizer, gpexp.RecordBatch, *gpexp.Row, error) {
 	// from the schema, and the configuration stored on Main, we need
 	// to create a []pilosa.Field and a []Recordizer processing
 	// functions which take a []interface{} which conforms to the
@@ -159,7 +170,6 @@ func (m *Main) batchFromSchema(schema []pdk.Field) ([]Recordizer, gpexp.RecordBa
 	// should be yes.
 	// 2. IDField — this is pretty easy. Use the integer value as the column ID. Do not index it separately by default.
 	// 3. Autogenerate IDs. Ideally using a RangeAllocator per concurrent goroutine. OK, let's assume that if we set row.ID to nil, the auto generation can happen inside the Batch.
-
 	recordizers := make([]Recordizer, 0)
 
 	var rz Recordizer
@@ -170,28 +180,28 @@ func (m *Main) batchFromSchema(schema []pdk.Field) ([]Recordizer, gpexp.RecordBa
 	if len(m.PrimaryKeyFields) != 0 {
 		rz, skips, err = getPrimaryKeyRecordizer(schema, m.PrimaryKeyFields)
 		if err != nil {
-			return nil, nil, errors.Wrap(err, "getting primary key recordizer")
+			return nil, nil, nil, errors.Wrap(err, "getting primary key recordizer")
 		}
 	} else if m.IDField != "" {
 		for fieldIndex, field := range schema {
 			if field.Name() == m.IDField {
 				if _, ok := field.(pdk.IDField); !ok {
-					return nil, nil, errors.Errorf("specified IDField %s is not an IDField but is %T", m.IDField, field)
+					return nil, nil, nil, errors.Errorf("specified IDField %s is not an IDField but is %T", m.IDField, field)
 				}
 				fieldIndex := fieldIndex
-				rz = func(rawRec []interface{}, rec *gpexp.Row) error {
-					rec.ID = rawRec[fieldIndex]
-					return nil
+				rz = func(rawRec []interface{}, rec *gpexp.Row) (err error) {
+					rec.ID, err = field.PilosafyVal(rawRec[fieldIndex])
+					return errors.Wrapf(err, "converting %+v to ID", rawRec[fieldIndex])
 				}
 				skips[fieldIndex] = struct{}{}
 				break
 			}
 		}
 		if rz == nil {
-			return nil, nil, errors.Errorf("ID field %s not found", m.IDField)
+			return nil, nil, nil, errors.Errorf("ID field %s not found", m.IDField)
 		}
 	} else {
-		return nil, nil, errors.New("autogen IDs is currently unimplemented; specify an IDField or primary key fields")
+		return nil, nil, nil, errors.New("autogen IDs is currently unimplemented; specify an IDField or primary key fields")
 	}
 	recordizers = append(recordizers, rz)
 
@@ -222,9 +232,9 @@ func (m *Main) batchFromSchema(schema []pdk.Field) ([]Recordizer, gpexp.RecordBa
 			fields = append(fields, m.index.Field(pdkField.Name()))
 			valIdx := len(fields) - 1
 			// TODO may need to have more sophisticated recordizer by type at some point
-			recordizers = append(recordizers, func(rawRec []interface{}, rec *gpexp.Row) error {
-				rec.Values[valIdx] = rawRec[i]
-				return nil
+			recordizers = append(recordizers, func(rawRec []interface{}, rec *gpexp.Row) (err error) {
+				rec.Values[valIdx], err = pdkField.PilosafyVal(rawRec[i])
+				return errors.Wrapf(err, "pilosafying field %d:%+v, val:%+v", i, pdkField, rawRec[i])
 			})
 			continue
 		}
@@ -244,22 +254,22 @@ func (m *Main) batchFromSchema(schema []pdk.Field) ([]Recordizer, gpexp.RecordBa
 			}
 			fields = append(fields, m.index.Field(fld.Name(), opts...))
 			valIdx := len(fields) - 1
-			recordizers = append(recordizers, func(rawRec []interface{}, rec *gpexp.Row) error {
-				rec.Values[valIdx] = rawRec[i]
-				return nil
+			recordizers = append(recordizers, func(rawRec []interface{}, rec *gpexp.Row) (err error) {
+				rec.Values[valIdx], err = pdkField.PilosafyVal(rawRec[i])
+				return errors.Wrapf(err, "pilosafying field %d:%+v, val:%+v", i, pdkField, rawRec[i])
 			})
 		case pdk.BoolField:
 			if m.PackBools == "" {
 				fields = append(fields, m.index.Field(fld.Name(), pilosa.OptFieldTypeBool()))
 				valIdx := len(fields) - 1
-				recordizers = append(recordizers, func(rawRec []interface{}, rec *gpexp.Row) error {
+				recordizers = append(recordizers, func(rawRec []interface{}, rec *gpexp.Row) (err error) {
 					rec.Values[valIdx] = rawRec[i]
 					return nil
 				})
 			} else {
 				fields = append(fields, boolField, boolFieldExists)
 				fieldIdx := len(fields) - 2
-				recordizers = append(recordizers, func(rawRec []interface{}, rec *gpexp.Row) error {
+				recordizers = append(recordizers, func(rawRec []interface{}, rec *gpexp.Row) (err error) {
 					b, ok := rawRec[i].(bool)
 					if b {
 						rec.Values[fieldIdx] = pdkField.Name()
@@ -281,29 +291,32 @@ func (m *Main) batchFromSchema(schema []pdk.Field) ([]Recordizer, gpexp.RecordBa
 				}
 			}
 			valIdx := len(fields) - 1
-			recordizers = append(recordizers, func(rawRec []interface{}, rec *gpexp.Row) error {
-				rec.Values[valIdx] = rawRec[i]
-				return nil
+			recordizers = append(recordizers, func(rawRec []interface{}, rec *gpexp.Row) (err error) {
+				rec.Values[valIdx], err = pdkField.PilosafyVal(rawRec[i])
+				return errors.Wrapf(err, "pilosafying field %d:%+v, val:%+v", i, pdkField, rawRec[i])
 			})
 		case pdk.DecimalField:
 			// TODO handle scale
 			fields = append(fields, m.index.Field(fld.Name(), pilosa.OptFieldTypeInt()))
 			valIdx := len(fields) - 1
-			recordizers = append(recordizers, func(rawRec []interface{}, rec *gpexp.Row) error {
-				rec.Values[valIdx] = rawRec[i]
-				return nil
+			recordizers = append(recordizers, func(rawRec []interface{}, rec *gpexp.Row) (err error) {
+				rec.Values[valIdx], err = pdkField.PilosafyVal(rawRec[i])
+				return errors.Wrapf(err, "pilosafying field %d:%+v, val:%+v", i, pdkField, rawRec[i])
 			})
 		}
 	}
 	err = m.client.SyncSchema(m.schema)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "syncing schema")
+		return nil, nil, nil, errors.Wrap(err, "syncing schema")
 	}
 	batch, err := gpexp.NewBatch(m.client, m.BatchSize, m.index, fields)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "creating batch")
+		return nil, nil, nil, errors.Wrap(err, "creating batch")
 	}
-	return recordizers, batch, nil
+	row := &gpexp.Row{
+		Values: make([]interface{}, len(fields)),
+	}
+	return recordizers, batch, row, nil
 }
 
 func hasMutex(fld pdk.Field) bool {
@@ -341,7 +354,7 @@ func getPrimaryKeyRecordizer(schema []pdk.Field, pkFields []string) (recordizer 
 			}
 		}
 		if len(fieldIndices) != pkIndex+1 {
-			return nil, nil, errors.Errorf("no field with primary key field name %s found", pk)
+			return nil, nil, errors.Errorf("no field with primary key field name %s found. fields: %+v", pk, schema)
 		}
 	}
 	if len(pkFields) == 1 {
@@ -350,7 +363,7 @@ func getPrimaryKeyRecordizer(schema []pdk.Field, pkFields []string) (recordizer 
 			skipFields[fieldIndices[0]] = struct{}{}
 		}
 	}
-	recordizer = func(rawRec []interface{}, rec *gpexp.Row) error {
+	recordizer = func(rawRec []interface{}, rec *gpexp.Row) (err error) {
 		idbytes, ok := rec.ID.([]byte)
 		if ok {
 			idbytes = idbytes[:0]

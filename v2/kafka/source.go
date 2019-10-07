@@ -14,7 +14,6 @@ import (
 	"github.com/go-avro/avro"
 	pdk "github.com/pilosa/pdk/v2"
 	"github.com/pkg/errors"
-	//	"github.com/y0ssar1an/q"
 )
 
 // Source implements the pdk.Source interface using kafka as a data
@@ -116,7 +115,8 @@ func (s *Source) toPDKRecord(vals map[string]interface{}) error {
 		case pdk.DecimalField:
 			vb, ok := val.([]byte)
 			if !ok {
-				return errors.Errorf("decimal must be []byte, but got %v of %[1]T", val)
+				r.data[i] = val
+				continue
 			}
 			if len(vb) == 8 {
 				r.data[i] = binary.BigEndian.Uint64(vb)
@@ -303,9 +303,18 @@ func avroToPDKField(aField *avro.SchemaField) (pdk.Field, error) {
 			NameVal: aField.Name,
 		}, nil
 	case avro.Float, avro.Double:
-		return pdk.IntField{
+		// TODO should probably require a logicalType if we're going
+		// to treat a float as a decimal.
+		field := pdk.DecimalField{
 			NameVal: aField.Name,
-		}, nil
+		}
+		scale, err := intProp(aField, "scale")
+		if err == wrongType {
+			return nil, errors.Wrap(err, "getting scale")
+		} else if err == nil {
+			field.Scale = uint(scale)
+		}
+		return field, nil
 	case avro.Boolean:
 		return pdk.BoolField{
 			NameVal: aField.Name,
@@ -475,31 +484,4 @@ func avroDecode(codec avro.Schema, data []byte) (map[string]interface{}, error) 
 	}
 
 	return decodedRecord.Map(), nil
-}
-
-func toUint64(val interface{}) (uint64, error) {
-	switch vt := val.(type) {
-	case uint:
-		return uint64(vt), nil
-	case uint8:
-		return uint64(vt), nil
-	case uint16:
-		return uint64(vt), nil
-	case uint32:
-		return uint64(vt), nil
-	case uint64:
-		return vt, nil
-	case int:
-		return uint64(vt), nil
-	case int8:
-		return uint64(vt), nil
-	case int16:
-		return uint64(vt), nil
-	case int32:
-		return uint64(vt), nil
-	case int64:
-		return uint64(vt), nil
-	default:
-		return 0, errors.Errorf("couldn't convert %v of %[1]T to uint64", vt)
-	}
 }

@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Shopify/sarama"
 	"github.com/pilosa/go-pilosa/gpexp"
 	pdk "github.com/pilosa/pdk/v2"
 )
@@ -15,10 +16,67 @@ func TestCmdMain(t *testing.T) {
 	}
 
 	// load big schema
-	// make a bunch of data and insert it
+	licodec := liDecodeTestSchema(t, "bigschema.json")
+	schemaID := postSchema(t, "bigschema.json", "bigschema2")
 
-	type testcase struct {
+	fields := []string{"abc", "db", "user_id", "all_users", "has_deleted_date", "central_group", "custom_audiences", "desktop_boolean", "desktop_frequency", "desktop_recency", "product_boolean_historical_forestry_cravings_or_bugles", "ddd_category_total_current_rhinocerous_checking", "ddd_category_total_current_rhinocerous_thedog_cheetah", "survey1234", "days_since_last_logon", "elephant_added_for_account"}
+
+	// make a bunch of data and insert it
+	records := [][]interface{}{
+		{"2", "1", 159, map[string]interface{}{"boolean": true}, map[string]interface{}{"boolean": false}, map[string]interface{}{"string": "cgr"}, map[string]interface{}{"array": []string{"a", "b"}}, nil, map[string]interface{}{"int": 7}, nil, nil, map[string]interface{}{"float": 5.4}, nil, map[string]interface{}{"org.test.survey1234": "yes"}, map[string]interface{}{"float": 8.0}, nil},
 	}
+
+	// put records in kafka
+	conf := sarama.NewConfig()
+	conf.Version = sarama.V0_10_0_0 // TODO - do we need this? should we move it up?
+	conf.Producer.Return.Successes = true
+	producer, err := sarama.NewSyncProducer([]string{"localhost:9092"}, conf)
+	if err != nil {
+		t.Fatalf("getting new producer: %v", err)
+	}
+	topic := "testcmdmain"
+	for _, vals := range records {
+		rec := makeRecord(t, fields, vals)
+		putRecordKafka(t, producer, schemaID, licodec, "akey", topic, rec)
+	}
+
+	// create Main and run with MaxMsgs
+	m := NewMain()
+	m.Index = "cmd_test_index23lkjdkfj"
+	m.PrimaryKeyFields = []string{"abc", "db", "user_id"}
+	m.PackBools = "bools"
+	m.BatchSize = 1
+	m.Topics = []string{topic}
+	m.MaxMsgs = len(records)
+
+	err = m.Run()
+	if err != nil {
+		t.Fatalf("running main: %v", err)
+	}
+
+	// check data in Pilosa
+	if !m.index.HasField("abc") {
+		t.Fatalf("don't have abc")
+	}
+	abc := m.index.Field("abc")
+	qr, err := m.client.Query(m.index.Count(abc.Row("2")))
+	if err != nil {
+		t.Fatalf("querying: %v", err)
+	}
+	if qr.Result().Count() != 1 {
+		t.Fatalf("wrong count for abc, %d is not 1", qr.Result().Count())
+	}
+}
+
+func makeRecord(t *testing.T, fields []string, vals []interface{}) map[string]interface{} {
+	if len(fields) != len(vals) {
+		t.Fatalf("have %d fields and %d vals", len(fields), len(vals))
+	}
+	ret := make(map[string]interface{})
+	for i, field := range fields {
+		ret[field] = vals[i]
+	}
+	return ret
 }
 
 func TestGetPrimaryKeyRecordizer(t *testing.T) {
@@ -150,22 +208,31 @@ func TestBatchFromSchema(t *testing.T) {
 			}()
 		}
 
-		rdzs, batch, err := m.batchFromSchema(test.schema)
+		rdzs, batch, row, err := m.batchFromSchema(test.schema)
 		if testErr(t, test.err, err) {
 			return
 		}
 
-		row := &gpexp.Row{}
-		row.Values = make([]interface{}, len(test.rowVals))
 		for _, rdz := range rdzs {
 			err = rdz(test.rawRec, row)
+			if err != nil {
+				t.Fatalf("recordizing: %v", err)
+			}
 		}
 
 		if !reflect.DeepEqual(row.ID, test.rowID) {
 			t.Fatalf("row IDs exp: %+v got %+v", test.rowID, row.ID)
 		}
 		if !reflect.DeepEqual(row.Values, test.rowVals) {
-			t.Fatalf("row values exp/got:\n%+v\n%+v", test.rowVals, row.Values)
+			t.Errorf("row values exp/got:\n%+v %[1]T\n%+v %[2]T", test.rowVals, row.Values)
+			if len(row.Values) == len(test.rowVals) {
+				for i, v := range row.Values {
+					if !reflect.DeepEqual(v, test.rowVals[i]) {
+						t.Errorf("%v %[1]T != %v %[2]T", test.rowVals[i], v)
+					}
+				}
+			}
+			t.Fail()
 		}
 
 		err = batch.Add(*row)
@@ -232,7 +299,7 @@ func TestBatchFromSchema(t *testing.T) {
 			pkFields: []string{"a"},
 			rawRec:   []interface{}{"blah", uint64(321)},
 			rowID:    []byte("blah"),
-			rowVals:  []interface{}{uint64(321)},
+			rowVals:  []interface{}{int64(321)},
 		},
 	}
 

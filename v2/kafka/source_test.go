@@ -59,7 +59,7 @@ func TestAvroToPDKSchema(t *testing.T) {
 	if err != nil {
 		t.Fatalf("reading directory: %v", err)
 	}
-	if len(files) != len(tests) {
+	if len(files) != len(tests)+1 { // +1 because we aren't testing bigschema.json here
 		t.Errorf("have different number of schemas and tests: %d and %d\n%+v", len(files), len(tests), files)
 	}
 
@@ -225,17 +225,15 @@ func TestKafkaSourceIntegration(t *testing.T) {
 		t.Skip()
 	}
 	src := NewSource()
-	src.Topics = []string{"test"}
+	src.Topics = []string{"testKafkaSourceIntegration"}
 	src.Group = "group0"
 	err := src.Open()
 	if err != nil {
 		t.Fatalf("opening source: %v", err)
 	}
 
-	schemaClient := csrc.NewClient("localhost:8081")
-
 	conf := sarama.NewConfig()
-	conf.Version = sarama.V0_10_0_0
+	conf.Version = sarama.V0_10_0_0 // TODO - do we need this? should we move it up?
 	conf.Producer.Return.Successes = true
 	producer, err := sarama.NewSyncProducer([]string{"localhost:9092"}, conf)
 	if err != nil {
@@ -247,30 +245,12 @@ func TestKafkaSourceIntegration(t *testing.T) {
 
 	key := fmt.Sprintf("%d", rnd.Int())
 	for i, test := range tests {
-		schemaStr := readTestSchema(t, test.schemaFile)
-		resp, err := schemaClient.PostSubjects(fmt.Sprintf("schema%d", i), schemaStr)
-		if err != nil {
-			t.Fatalf("posting schema: %v", err)
-		}
-		schemaID := resp.ID
+		schemaID := postSchema(t, test.schemaFile, fmt.Sprintf("schema%d", i))
 		schema := liDecodeTestSchema(t, test.schemaFile)
 		t.Run(test.schemaFile, func(t *testing.T) {
 
 			for j, record := range test.data {
-				buf := make([]byte, 5, 1000)
-				buf[0] = 0
-				binary.BigEndian.PutUint32(buf[1:], uint32(schemaID))
-				buf, err := schema.BinaryFromNative(buf, record)
-				if err != nil {
-					t.Errorf("encoding:\n%+v\nerr: %v", record, err)
-				}
-
-				// post buf to kafka
-				_, _, err = producer.SendMessage(&sarama.ProducerMessage{Topic: "test", Key: sarama.StringEncoder(key), Value: sarama.ByteEncoder(buf)})
-				if err != nil {
-					t.Fatalf("sending message to kafka: %v", err)
-				}
-
+				putRecordKafka(t, producer, schemaID, schema, key, src.Topics[0], record)
 				pdkRec, err := src.Record()
 				if j == 0 {
 					if err != pdk.ErrSchemaChange {
@@ -305,10 +285,37 @@ func TestKafkaSourceIntegration(t *testing.T) {
 
 }
 
+func postSchema(t *testing.T, schemaFile, subj string) (schemaID int) {
+	schemaClient := csrc.NewClient("localhost:8081")
+	schemaStr := readTestSchema(t, schemaFile)
+	resp, err := schemaClient.PostSubjects(subj, schemaStr)
+	if err != nil {
+		t.Fatalf("posting schema: %v", err)
+	}
+	return resp.ID
+}
+
+func putRecordKafka(t *testing.T, producer sarama.SyncProducer, schemaID int, schema *liavro.Codec, key, topic string, record map[string]interface{}) {
+	t.Helper()
+	buf := make([]byte, 5, 1000)
+	buf[0] = 0
+	binary.BigEndian.PutUint32(buf[1:], uint32(schemaID))
+	buf, err := schema.BinaryFromNative(buf, record)
+	if err != nil {
+		t.Errorf("encoding:\n%+v\nerr: %v", record, err)
+	}
+
+	// post buf to kafka
+	_, _, err = producer.SendMessage(&sarama.ProducerMessage{Topic: topic, Key: sarama.StringEncoder(key), Value: sarama.ByteEncoder(buf)})
+	if err != nil {
+		t.Fatalf("sending message to kafka: %v", err)
+	}
+}
+
 var expectedSchemas = map[string][]pdk.Field{
 	"simple.json":      []pdk.Field{pdk.StringField{NameVal: "first"}, pdk.StringField{NameVal: "last"}},
 	"stringtypes.json": []pdk.Field{pdk.StringField{NameVal: "first"}, pdk.StringField{NameVal: "last"}, pdk.StringField{NameVal: "middle"}},
 	"decimal.json":     []pdk.Field{pdk.DecimalField{NameVal: "somenum", Scale: 2}},
 	"unions.json":      []pdk.Field{pdk.StringField{NameVal: "first"}, pdk.BoolField{NameVal: "second"}, pdk.IntField{NameVal: "third"}, pdk.DecimalField{NameVal: "fourth", Scale: 3}},
-	"othertypes.json":  []pdk.Field{pdk.StringField{NameVal: "first", Mutex: true}, pdk.StringArrayField{NameVal: "second"}, pdk.IntField{NameVal: "third"}, pdk.IntField{NameVal: "fourth"}, pdk.IntField{NameVal: "fifth"}, pdk.IntField{NameVal: "sixth"}, pdk.BoolField{NameVal: "seventh"}},
+	"othertypes.json":  []pdk.Field{pdk.StringField{NameVal: "first", Mutex: true}, pdk.StringArrayField{NameVal: "second"}, pdk.IntField{NameVal: "third"}, pdk.IntField{NameVal: "fourth"}, pdk.DecimalField{NameVal: "fifth"}, pdk.DecimalField{NameVal: "sixth"}, pdk.BoolField{NameVal: "seventh"}},
 }

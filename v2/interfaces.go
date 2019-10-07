@@ -1,5 +1,11 @@
 package pdk
 
+import (
+	"math"
+
+	"github.com/pkg/errors"
+)
+
 // Source is an interface implemented by sources of data which can be
 // ingested into Pilosa. Each Record returned from Record is described
 // by the slice of Fields returned from Source.Schema directly after
@@ -45,6 +51,7 @@ type Record interface {
 
 type Field interface {
 	Name() string
+	PilosafyVal(val interface{}) (interface{}, error) // TODO rename this
 }
 
 type IDField struct {
@@ -59,12 +66,24 @@ type IDField struct {
 }
 
 func (id IDField) Name() string { return id.NameVal }
+func (id IDField) PilosafyVal(val interface{}) (interface{}, error) {
+	if val == nil {
+		return nil, nil
+	}
+	return toUint64(val)
+}
 
 type BoolField struct {
 	NameVal string
 }
 
 func (b BoolField) Name() string { return b.NameVal }
+func (b BoolField) PilosafyVal(val interface{}) (interface{}, error) {
+	if val == nil {
+		return nil, nil
+	}
+	return toBool(val)
+}
 
 type StringField struct {
 	NameVal string
@@ -78,6 +97,12 @@ type StringField struct {
 }
 
 func (s StringField) Name() string { return s.NameVal }
+func (s StringField) PilosafyVal(val interface{}) (interface{}, error) {
+	if val == nil {
+		return nil, nil
+	}
+	return toString(val)
+}
 
 type IntField struct {
 	NameVal string
@@ -86,6 +111,12 @@ type IntField struct {
 }
 
 func (i IntField) Name() string { return i.NameVal }
+func (i IntField) PilosafyVal(val interface{}) (interface{}, error) {
+	if val == nil {
+		return nil, nil
+	}
+	return toInt64(val)
+}
 
 type DecimalField struct {
 	NameVal string
@@ -93,9 +124,125 @@ type DecimalField struct {
 }
 
 func (d DecimalField) Name() string { return d.NameVal }
+func (i DecimalField) PilosafyVal(val interface{}) (interface{}, error) {
+	if val == nil {
+		return nil, nil
+	}
+	switch vt := val.(type) {
+	case float32:
+		v64 := float64(vt) * math.Pow(10, float64(i.Scale))
+		return int64(v64), nil
+	case float64:
+		vt = vt * math.Pow(10, float64(i.Scale))
+		return int64(vt), nil
+	default:
+		return toInt64(val)
+	}
+}
 
 type StringArrayField struct {
 	NameVal string
 }
 
 func (s StringArrayField) Name() string { return s.NameVal }
+func (i StringArrayField) PilosafyVal(val interface{}) (interface{}, error) {
+	if val == nil {
+		return nil, nil
+	}
+	return toStringArray(val)
+}
+
+func toUint64(val interface{}) (uint64, error) {
+	switch vt := val.(type) {
+	case uint:
+		return uint64(vt), nil
+	case uint8:
+		return uint64(vt), nil
+	case uint16:
+		return uint64(vt), nil
+	case uint32:
+		return uint64(vt), nil
+	case uint64:
+		return vt, nil
+	case int:
+		return uint64(vt), nil
+	case int8:
+		return uint64(vt), nil
+	case int16:
+		return uint64(vt), nil
+	case int32:
+		return uint64(vt), nil
+	case int64:
+		return uint64(vt), nil
+	default:
+		return 0, errors.Errorf("couldn't convert %v of %[1]T to uint64", vt)
+	}
+}
+
+func toBool(val interface{}) (bool, error) {
+	switch vt := val.(type) {
+	case bool:
+		return vt, nil
+	case byte:
+		return vt != 0, nil
+	default:
+		return false, errors.Errorf("couldn't convert %v of %[1]T to bool", vt)
+	}
+}
+
+func toString(val interface{}) (string, error) {
+	switch vt := val.(type) {
+	case string:
+		return vt, nil
+	case []byte:
+		return string(vt), nil
+	default:
+		return "", errors.Errorf("couldn't convert %v of %[1]T to string", vt)
+	}
+}
+
+func toInt64(val interface{}) (int64, error) {
+	switch vt := val.(type) {
+	case uint:
+		return int64(vt), nil
+	case uint8:
+		return int64(vt), nil
+	case uint16:
+		return int64(vt), nil
+	case uint32:
+		return int64(vt), nil
+	case uint64:
+		return int64(vt), nil
+	case int:
+		return int64(vt), nil
+	case int8:
+		return int64(vt), nil
+	case int16:
+		return int64(vt), nil
+	case int32:
+		return int64(vt), nil
+	case int64:
+		return vt, nil
+	default:
+		return 0, errors.Errorf("couldn't convert %v of %[1]T to int64", vt)
+	}
+}
+
+func toStringArray(val interface{}) ([]string, error) {
+	switch vt := val.(type) {
+	case []string:
+		return vt, nil
+	case []interface{}:
+		ret := make([]string, len(vt))
+		for i, v := range vt {
+			vs, ok := v.(string)
+			if !ok {
+				return nil, errors.Errorf("couldn't convert []interface{} to []string, value %v of type %[1]T at %d", v, i)
+			}
+			ret[i] = vs
+		}
+		return ret, nil
+	default:
+		return nil, errors.Errorf("couldn't convert %v of %[1]T to []string", vt)
+	}
+}

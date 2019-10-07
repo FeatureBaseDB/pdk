@@ -449,12 +449,12 @@ FEFF,,,,,6
 		{
 			query:   result.GT(0),
 			resType: "rowKeys",
-			exp:     []string{"ABDJ", "EJSK"},
+			exp:     []string{"ABDJ", "EJSK", "HFZP"},
 		},
 		{
 			query:   result.GT(100000),
 			resType: "rowKeys",
-			exp:     []string{"ABDJ", "EJSK"},
+			exp:     []string{"ABDJ", "EJSK", "HFZP"},
 		},
 		{
 			query:   day.Row(1),
