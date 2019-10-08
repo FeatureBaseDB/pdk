@@ -3,6 +3,7 @@ package kafka
 import (
 	"bytes"
 	"encoding/binary"
+	"io"
 
 	"github.com/pilosa/go-pilosa"
 	"github.com/pilosa/go-pilosa/gpexp"
@@ -141,9 +142,22 @@ func (m *Main) runIngester(c int) error {
 			}
 		}
 		err = batch.Add(*row)
-		if err != nil {
+		if err == gpexp.ErrBatchNowFull {
+			err = batch.Import()
+			if err != nil {
+				return errors.Wrap(err, "importing batch")
+			}
+			err = rec.Commit()
+			if err != nil {
+				return errors.Wrap(err, "commiting record")
+			}
+		} else if err != nil {
 			return errors.Wrap(err, "adding to batch")
 		}
+		prevRec = rec
+	}
+	if err == io.EOF {
+		err = nil
 	}
 	return errors.Wrap(err, "getting record")
 }
@@ -211,7 +225,6 @@ func (m *Main) batchFromSchema(schema []pdk.Field) ([]Recordizer, gpexp.RecordBa
 		boolField = m.index.Field(m.PackBools, pilosa.OptFieldTypeBool())
 		boolFieldExists = m.index.Field(m.PackBools+"-exists", pilosa.OptFieldTypeBool())
 	}
-
 	fields := make([]*pilosa.Field, 0, len(schema))
 	for i, pdkField := range schema {
 		// need to redefine these inside the loop since we're
@@ -289,6 +302,8 @@ func (m *Main) batchFromSchema(schema []pdk.Field) ([]Recordizer, gpexp.RecordBa
 				} else {
 					fields = append(fields, m.index.Field(fld.Name(), pilosa.OptFieldTypeInt(min)))
 				}
+			} else {
+				fields = append(fields, m.index.Field(fld.Name(), pilosa.OptFieldTypeInt()))
 			}
 			valIdx := len(fields) - 1
 			recordizers = append(recordizers, func(rawRec []interface{}, rec *gpexp.Row) (err error) {
@@ -303,6 +318,8 @@ func (m *Main) batchFromSchema(schema []pdk.Field) ([]Recordizer, gpexp.RecordBa
 				rec.Values[valIdx], err = pdkField.PilosafyVal(rawRec[i])
 				return errors.Wrapf(err, "pilosafying field %d:%+v, val:%+v", i, pdkField, rawRec[i])
 			})
+		default:
+			return nil, nil, nil, errors.Errorf("unknown schema field type %T %[1]v", pdkField)
 		}
 	}
 	err = m.client.SyncSchema(m.schema)
