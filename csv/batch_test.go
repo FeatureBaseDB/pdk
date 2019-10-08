@@ -119,7 +119,7 @@ func TestImportMarketingCSV(t *testing.T) {
 			defer func() {
 				err = client.DeleteIndexByName(m.Index)
 				if err != nil {
-					t.Fatalf("deleting index: %v", err)
+					t.Logf("deleting index: %v", err)
 				}
 			}()
 			err = m.Run()

@@ -291,7 +291,6 @@ func TestBatchFromSchema(t *testing.T) {
 			rawRec:   []interface{}{[]string{"aval", "aval2"}, uint64(7)},
 			rowID:    []byte{0, 0, 0, 0, 0, 0, 0, 7},
 			rowVals:  []interface{}{[]string{"aval", "aval2"}},
-			batchErr: "[]string is not currently supported.", // TODO support this in gpexp.Batch
 		},
 		{
 			name:     "decimal field",
