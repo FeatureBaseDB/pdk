@@ -1,7 +1,5 @@
 module github.com/pilosa/pdk
 
-//replace github.com/pilosa/go-pilosa => /Users/jaffee/go/src/github.com/pilosa/go-pilosa
-
 replace github.com/pilosa/go-pilosa => github.com/jaffee/go-pilosa v0.4.1-0.20191008194651-6791c1437ec4
 
 replace github.com/go-avro/avro => github.com/jaffee/avro v0.0.0-20190926030934-2b116da4fa22
@@ -18,7 +16,7 @@ require (
 	github.com/elodina/go-avro v0.0.0-20160406082632-0c8185d9a3ba
 	github.com/go-avro/avro v0.0.0-20171219232920-444163702c11
 	github.com/hashicorp/go-uuid v1.0.1 // indirect
-	github.com/jaffee/commandeer v0.1.1-0.20190726022955-4d43b78ebc4e
+	github.com/jaffee/commandeer v0.3.0
 	github.com/linkedin/goavro v0.0.0-20181018120728-1beee2a74088
 	github.com/linkedin/goavro/v2 v2.9.6
 	github.com/mmcloughlin/geohash v0.0.0-20181009053802-f7f2bcae3294

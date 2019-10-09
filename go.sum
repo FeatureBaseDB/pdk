@@ -150,6 +150,8 @@ github.com/jaffee/commandeer v0.1.0 h1:UxHHnhKmtz8gAgqu67lYK5tlX5D9A86mGc9AWcEMS
 github.com/jaffee/commandeer v0.1.0/go.mod h1:x1WpthEI14PRNcPtVna43ontBxJ1o7plCOsZ8kksl8M=
 github.com/jaffee/commandeer v0.1.1-0.20190726022955-4d43b78ebc4e h1:CC1usSIzu9p6zmz7jPj0QiP3FdpGW+PCGc9d1yhSls0=
 github.com/jaffee/commandeer v0.1.1-0.20190726022955-4d43b78ebc4e/go.mod h1:N5yIzoHN6EwVFi0QCKvpFPJeECoZyEcFBQSR8r+7Mz0=
+github.com/jaffee/commandeer v0.3.0 h1:9KEz8f9T6PwuzjdxfV8C5FevdJp6xih5yqPLmNzQarc=
+github.com/jaffee/commandeer v0.3.0/go.mod h1:kCwfuSvZ2T0NVEr3LDSo6fDUgi0xSBnAVDdkOKTtpLQ=
 github.com/jaffee/go-pilosa v0.4.1-0.20191008192729-4129aee12032 h1:uATKnbEhR3+K3L1YFYa4DfPIHpfvnLvNcG9v4iWYjrA=
 github.com/jaffee/go-pilosa v0.4.1-0.20191008192729-4129aee12032/go.mod h1:rauptBRJWI8sLM+7BAd+6+GfqSFDnuQdgreUjOIO6BE=
 github.com/jaffee/go-pilosa v0.4.1-0.20191008194651-6791c1437ec4 h1:IEGhQ3aUdbLHPkv+twI74W6ggBcAwl0cNJzquQ1IXdE=
