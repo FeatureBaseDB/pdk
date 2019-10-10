@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/Shopify/sarama"
 	cluster "github.com/bsm/sarama-cluster"
@@ -162,6 +163,8 @@ func (s *Source) Open() error {
 	config.Consumer.Return.Errors = true
 	config.Consumer.Offsets.Initial = sarama.OffsetOldest
 	config.Group.Return.Notifications = true
+	config.Consumer.Group.Heartbeat.Interval = time.Millisecond * 500
+	config.Consumer.Group.Session.Timeout = time.Second
 
 	var err error
 	s.consumer, err = cluster.NewConsumer(s.Hosts, s.Group, s.Topics, config)
