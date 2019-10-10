@@ -1,7 +1,6 @@
 package kafka
 
 import (
-	"fmt"
 	"reflect"
 	"sort"
 	"testing"
@@ -139,7 +138,7 @@ func TestCmdMainIDField(t *testing.T) {
 	if err != nil {
 		t.Fatalf("getting new producer: %v", err)
 	}
-	topic := "testcmdmain"
+	topic := "testcmdmain2"
 	for _, vals := range records {
 		rec := makeRecord(t, fields, vals)
 		putRecordKafka(t, producer, schemaID, licodec, "akey", topic, rec)
@@ -154,7 +153,6 @@ func TestCmdMainIDField(t *testing.T) {
 	m.Topics = []string{topic}
 	m.MaxMsgs = len(records)
 
-	fmt.Println("r2")
 	err = m.Run()
 	if err != nil {
 		t.Fatalf("running main: %v", err)
@@ -164,9 +162,7 @@ func TestCmdMainIDField(t *testing.T) {
 	schema, err := client.Schema()
 	index := schema.Index(m.Index)
 	defer func() {
-		fmt.Println("d2")
 		err := client.DeleteIndex(index)
-		fmt.Println("d3")
 		if err != nil {
 			t.Logf("deleting index: %v", err)
 		}

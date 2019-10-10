@@ -7,10 +7,10 @@ import (
 
 type Main struct {
 	pdk.Main    `flag:"!embed"`
-	KafkaHosts  []string
-	RegistryURL string
-	Group       string
-	Topics      []string
+	KafkaHosts  []string `help:"Comma separated list of host:port pairs for Kafka."`
+	RegistryURL string   `help:"Location of Confluent Schema Registry"`
+	Group       string   `help:"Kafka group."`
+	Topics      []string `help:"Kafka topics to read from."`
 }
 
 func NewMain() *Main {

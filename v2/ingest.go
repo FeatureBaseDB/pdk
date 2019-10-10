@@ -20,7 +20,7 @@ import (
 // Main holds all config for general ingest
 type Main struct {
 	PilosaHosts      []string `help:"Comma separated list of host:port pairs for Pilosa."`
-	BatchSize        int      `flag:"batch-size",help:"Number of records to read before indexing all of them at once. Generally, larger means better throughput and more memory usage. 1,048,576 might be a good number."`
+	BatchSize        int      `help:"Number of records to read before indexing all of them at once. Generally, larger means better throughput and more memory usage. 1,048,576 might be a good number."`
 	Index            string   `help:"Name of Pilosa index."`
 	LogPath          string   `help:"Log file to write to. Empty means stderr. TODO implement."`
 	PrimaryKeyFields []string `help:"Data field(s) which make up the primary key for a record. These will be concatenated and translated to a Pilosa ID. If empty, record key translation will not be used."`
