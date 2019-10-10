@@ -1,6 +1,7 @@
 module github.com/pilosa/pdk
 
-replace github.com/pilosa/go-pilosa => github.com/jaffee/go-pilosa v0.4.1-0.20191008194651-6791c1437ec4
+//replace github.com/pilosa/go-pilosa => github.com/jaffee/go-pilosa v0.4.1-0.20191008194651-6791c1437ec4
+replace github.com/pilosa/go-pilosa => /Users/jaffee/go/src/github.com/pilosa/go-pilosa
 
 replace github.com/go-avro/avro => github.com/jaffee/avro v0.0.0-20190926030934-2b116da4fa22
 

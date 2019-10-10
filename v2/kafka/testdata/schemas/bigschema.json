@@ -91,7 +91,7 @@
             "doc": "ddd_category_total_current_rhinocerous_checking NOTE: float? use decimal?",
             "type": [
                 "null",
-                "float"
+                {"type": "float", "scale": 2}
             ]
         },
         {

@@ -4,9 +4,11 @@ import (
 	"bytes"
 	"encoding/binary"
 	"io"
+	"os"
 
 	"github.com/pilosa/go-pilosa"
 	"github.com/pilosa/go-pilosa/gpexp"
+	"github.com/pilosa/pilosa/logger"
 	"github.com/pkg/errors"
 	"golang.org/x/sync/errgroup"
 )
@@ -20,12 +22,13 @@ type Main struct {
 	PilosaHosts      []string `help:"Comma separated list of host:port pairs for Pilosa."`
 	BatchSize        int      `flag:"batch-size",help:"Number of records to read before indexing all of them at once. Generally, larger means better throughput and more memory usage. 1,048,576 might be a good number."`
 	Index            string   `help:"Name of Pilosa index."`
-	LogPath          string   `help:"Log file to write to. Empty means stderr."` // TODO implement
+	LogPath          string   `help:"Log file to write to. Empty means stderr. TODO implement."`
 	PrimaryKeyFields []string `help:"Data field(s) which make up the primary key for a record. These will be concatenated and translated to a Pilosa ID. If empty, record key translation will not be used."`
 	IDField          string   `help:"Field which contains the integer column ID. May not be used in conjunction with primary-key-fields. If both are empty, auto-generated IDs will be used."`
 	MaxMsgs          int      `help:"Number of messages to consume from Kafka before stopping. Useful for testing when you don't want to run indefinitely."`
 	Concurrency      int      `help:"Number of concurrent kafka readers and indexing routines to launch. MaxMsgs will be read *from each*."`
 	PackBools        string   `help:"If non-empty, boolean fields will be packed into two set fields—one with this name, and one with <name>-exists."`
+	Verbose          bool     `help:"Enable verbose logging."`
 	// TODO implement the auto-generated IDs... hopefully using Pilosa to manage it.
 
 	NewSource func() (Source, error) `flag:"-"`
@@ -33,6 +36,8 @@ type Main struct {
 	client *pilosa.Client
 	schema *pilosa.Schema
 	index  *pilosa.Index
+
+	log logger.Logger
 }
 
 func (m *Main) PilosaClient() *pilosa.Client {
@@ -68,6 +73,21 @@ func (m *Main) Run() (err error) {
 func (m *Main) setup() (err error) {
 	if err := m.validate(); err != nil {
 		return errors.Wrap(err, "validating configuration")
+	}
+
+	logOut := os.Stdout
+	if m.LogPath != "" {
+		f, err := os.OpenFile(m.LogPath, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+		if err != nil {
+			return errors.Wrap(err, "opening log file")
+		}
+		logOut = f
+	}
+
+	if m.Verbose {
+		m.log = logger.NewVerboseLogger(logOut)
+	} else {
+		m.log = logger.NewStandardLogger(logOut)
 	}
 
 	m.client, err = pilosa.NewClient(m.PilosaHosts)
@@ -116,6 +136,7 @@ func (m *Main) runIngester(c int) error {
 				}
 			}
 			schema := source.Schema()
+			m.log.Printf("new schema: %+v", schema)
 			recordizers, batch, row, err = m.batchFromSchema(schema)
 			if err != nil {
 				return errors.Wrap(err, "batchFromSchema")
@@ -125,6 +146,7 @@ func (m *Main) runIngester(c int) error {
 			row.Values[i] = nil
 		}
 		data := rec.Data()
+		m.log.Debugf("record: %+v", data)
 		for _, rdz := range recordizers {
 			err = rdz(data, row)
 			if err != nil {
@@ -190,12 +212,24 @@ func (m *Main) batchFromSchema(schema []Field) ([]Recordizer, gpexp.RecordBatch,
 		for fieldIndex, field := range schema {
 			if field.Name() == m.IDField {
 				if _, ok := field.(IDField); !ok {
-					return nil, nil, nil, errors.Errorf("specified IDField %s is not an IDField but is %T", m.IDField, field)
+					if _, ok := field.(IntField); !ok {
+						return nil, nil, nil, errors.Errorf("specified column id field %s is not an IDField or an IntField %T", m.IDField, field)
+					}
 				}
 				fieldIndex := fieldIndex
 				rz = func(rawRec []interface{}, rec *gpexp.Row) (err error) {
-					rec.ID, err = field.PilosafyVal(rawRec[fieldIndex])
-					return errors.Wrapf(err, "converting %+v to ID", rawRec[fieldIndex])
+					id, err := field.PilosafyVal(rawRec[fieldIndex])
+					if err != nil {
+						return errors.Wrapf(err, "converting %+v to ID", rawRec[fieldIndex])
+					}
+					if uid, ok := id.(uint64); ok {
+						rec.ID = uid
+					} else if iid, ok := id.(int64); ok {
+						rec.ID = uint64(iid)
+					} else {
+						return errors.Errorf("can't convert %v of %[1]T to uint64 for use as ID", id)
+					}
+					return nil
 				}
 				skips[fieldIndex] = struct{}{}
 				break

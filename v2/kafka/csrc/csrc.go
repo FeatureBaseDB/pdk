@@ -59,7 +59,7 @@ func (c *Client) PostSubjects(subj, schema string) (*SchemaResponse, error) {
 	sr := &SchemaResponse{}
 	err = unmarshalRespErr(resp, err, sr)
 	if err != nil {
-		return nil, errors.Wrap(err, "unmarshaling resp")
+		return nil, errors.Wrapf(err, "unmarshaling resp to %s", fmt.Sprintf("%s/subjects/%s/versions", c.URL, subj))
 	}
 	return sr, nil
 }
