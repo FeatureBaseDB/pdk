@@ -20,7 +20,7 @@ require (
 	github.com/onsi/ginkgo v1.7.0 // indirect
 	github.com/onsi/gomega v1.4.3 // indirect
 	github.com/pierrec/lz4 v0.0.0-20181005164709-635575b42742 // indirect
-	github.com/pilosa/go-pilosa v1.3.1-0.20191011140449-29aaccbd50c5
+	github.com/pilosa/go-pilosa v1.3.1-0.20191011151453-0c53860b34ff
 	github.com/pilosa/pilosa v1.3.1
 	github.com/pkg/errors v0.8.1
 	github.com/rcrowley/go-metrics v0.0.0-20181016184325-3113b8401b8a // indirect
