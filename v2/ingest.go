@@ -335,7 +335,6 @@ func (m *Main) batchFromSchema(schema []Field) ([]Recordizer, gpexp.RecordBatch,
 				return errors.Wrapf(err, "pilosafying field %d:%+v, val:%+v", i, pdkField, rawRec[i])
 			})
 		case DecimalField:
-			// TODO handle scale
 			fields = append(fields, m.index.Field(fld.Name(), pilosa.OptFieldTypeInt()))
 			valIdx := len(fields) - 1
 			recordizers = append(recordizers, func(rawRec []interface{}, rec *gpexp.Row) (err error) {

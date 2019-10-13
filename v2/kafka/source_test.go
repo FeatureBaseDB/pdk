@@ -45,6 +45,10 @@ func TestAvroToPDKSchema(t *testing.T) {
 			exp:        expectedSchemas["unions.json"],
 		},
 		{
+			schemaFile: "floatscale.json",
+			exp:        expectedSchemas["floatscale.json"],
+		},
+		{
 			schemaFile: "notarecord.json",
 			expErr:     "unsupported Avro Schema type",
 		},
@@ -125,7 +129,7 @@ var tests = []struct {
 	{
 		schemaFile: "decimal.json",
 		data:       []map[string]interface{}{{"somenum": &big.Rat{}}, {"somenum": big.NewRat(10, 1)}, {"somenum": big.NewRat(1, 1)}, {"somenum": big.NewRat(5, 2)}, {"somenum": big.NewRat(1234567890, 1)}},
-		exp:        [][]interface{}{{uint64(0)}, {uint64(1000)}, {uint64(100)}, {uint64(250)}, {uint64(123456789000)}},
+		exp:        [][]interface{}{{[]byte{0}}, {[]byte{0x3, 0xE8}}, {[]byte{100}}, {[]byte{0, 250}}, {[]byte{0x1C, 0xBE, 0x99, 0x1A, 0x08}}},
 	},
 	{
 		schemaFile: "othertypes.json",
@@ -135,12 +139,17 @@ var tests = []struct {
 	{
 		schemaFile: "unions.json",
 		data: []map[string]interface{}{
-			{"first": map[string]interface{}{"string": "a"}, "second": map[string]interface{}{"boolean": true}, "third": map[string]interface{}{"long": 101}, "fourth": map[string]interface{}{"bytes.decimal": big.NewRat(5, 2)}},
-			{"first": nil, "second": nil, "third": map[string]interface{}{"null": nil}, "fourth": nil},
+			{"first": map[string]interface{}{"string": "a"}, "second": map[string]interface{}{"boolean": true}, "third": map[string]interface{}{"long": 101}, "fourth": map[string]interface{}{"bytes.decimal": big.NewRat(5, 2)}, "fifth": map[string]interface{}{"double": float64(9.4921)}},
+			{"first": nil, "second": nil, "third": map[string]interface{}{"null": nil}, "fourth": nil, "fifth": nil},
 		},
 		exp: [][]interface{}{
-			{"a", true, int64(101), uint64(2500)},
-			{nil, nil, nil, nil}},
+			{"a", true, int64(101), []byte{9, 196}, float64(9.4921)},
+			{nil, nil, nil, nil, nil}},
+	},
+	{
+		schemaFile: "floatscale.json",
+		data:       []map[string]interface{}{{"first": 23.12345}},
+		exp:        [][]interface{}{{float32(23.12345)}},
 	},
 }
 
@@ -180,7 +189,7 @@ func TestKafkaSourceLocal(t *testing.T) {
 					}
 					gotSchema := src.Schema()
 					if !reflect.DeepEqual(gotSchema, expectedSchemas[test.schemaFile]) {
-						t.Errorf("unexpected schema got/exp:\n%+v\n%+v", gotSchema, expectedSchemas[test.schemaFile])
+						t.Errorf("unexpected schema exp/got:\n%+v\n%+v", expectedSchemas[test.schemaFile], gotSchema)
 					}
 				} else if err != nil {
 					t.Fatalf("unexpected error getting record: %v", err)
@@ -199,7 +208,6 @@ func TestKafkaSourceLocal(t *testing.T) {
 							t.Errorf("Mismatch at %d, exp/got\n%v of %[2]T\n%v of %[3]T", k, test.exp[j][k], data[k])
 						}
 					}
-
 				}
 			}
 		})
@@ -316,6 +324,7 @@ var expectedSchemas = map[string][]pdk.Field{
 	"simple.json":      []pdk.Field{pdk.StringField{NameVal: "first"}, pdk.StringField{NameVal: "last"}},
 	"stringtypes.json": []pdk.Field{pdk.StringField{NameVal: "first"}, pdk.StringField{NameVal: "last"}, pdk.StringField{NameVal: "middle"}},
 	"decimal.json":     []pdk.Field{pdk.DecimalField{NameVal: "somenum", Scale: 2}},
-	"unions.json":      []pdk.Field{pdk.StringField{NameVal: "first"}, pdk.BoolField{NameVal: "second"}, pdk.IntField{NameVal: "third"}, pdk.DecimalField{NameVal: "fourth", Scale: 3}},
+	"unions.json":      []pdk.Field{pdk.StringField{NameVal: "first"}, pdk.BoolField{NameVal: "second"}, pdk.IntField{NameVal: "third"}, pdk.DecimalField{NameVal: "fourth", Scale: 3}, pdk.DecimalField{NameVal: "fifth", Scale: 2}},
 	"othertypes.json":  []pdk.Field{pdk.StringField{NameVal: "first", Mutex: true}, pdk.StringArrayField{NameVal: "second"}, pdk.IntField{NameVal: "third"}, pdk.IntField{NameVal: "fourth"}, pdk.DecimalField{NameVal: "fifth"}, pdk.DecimalField{NameVal: "sixth"}, pdk.BoolField{NameVal: "seventh"}},
+	"floatscale.json":  []pdk.Field{pdk.DecimalField{NameVal: "first", Scale: 4}},
 }

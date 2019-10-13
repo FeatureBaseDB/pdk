@@ -130,7 +130,7 @@ func TestCmdMainOne(t *testing.T) {
 			}
 
 			rhino := index.Field("ddd_category_total_current_rhinocerous_checking")
-			qr, err = client.Query(rhino.GT(0))
+			qr, err = client.Query(rhino.Equals(540))
 			if err != nil {
 				t.Fatalf("querying: %v", err)
 			}

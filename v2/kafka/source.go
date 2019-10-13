@@ -107,32 +107,7 @@ func (s *Source) Schema() []pdk.Field {
 func (s *Source) toPDKRecord(vals map[string]interface{}) error {
 	r := s.record
 	for i, field := range s.lastSchema {
-		val := vals[field.Name()]
-		if val == nil {
-			r.data[i] = nil
-			continue
-		}
-		switch field.(type) {
-		case pdk.DecimalField:
-			vb, ok := val.([]byte)
-			if !ok {
-				r.data[i] = val
-				continue
-			}
-			if len(vb) == 8 {
-				r.data[i] = binary.BigEndian.Uint64(vb)
-			} else if len(vb) < 8 {
-				copy(s.decBytes[8-len(vb):], vb)
-				r.data[i] = binary.BigEndian.Uint64(s.decBytes)
-				for j := range s.decBytes {
-					s.decBytes[j] = 0
-				}
-			} else {
-				return errors.Errorf("can't support decimals of greater than 8 bytes, got %d for %s", len(vb), field.Name())
-			}
-		default:
-			r.data[i] = val
-		}
+		r.data[i] = vals[field.Name()]
 	}
 	return nil
 }
@@ -403,9 +378,13 @@ func avroUnionToPDKField(field *avro.SchemaField) (pdk.Field, error) {
 // propertiesFromSchema (document and use!)
 func propertiesFromSchema(sch avro.Schema) map[string]interface{} {
 	switch schT := sch.(type) {
-	case *avro.StringSchema, *avro.IntSchema, *avro.LongSchema, *avro.FloatSchema, *avro.DoubleSchema, *avro.BooleanSchema, *avro.NullSchema, *avro.UnionSchema:
+	case *avro.StringSchema, *avro.IntSchema, *avro.LongSchema, *avro.BooleanSchema, *avro.NullSchema, *avro.UnionSchema:
 		return nil
 	case *avro.BytesSchema:
+		return schT.Properties
+	case *avro.DoubleSchema:
+		return schT.Properties
+	case *avro.FloatSchema:
 		return schT.Properties
 	case *avro.RecordSchema:
 		return schT.Properties

@@ -1,6 +1,8 @@
 module github.com/pilosa/pdk
 
-replace github.com/go-avro/avro => github.com/jaffee/avro v0.0.0-20190926030934-2b116da4fa22
+replace github.com/pilosa/go-pilosa => github.com/jaffee/go-pilosa v0.4.1-0.20191011215038-51699dbd7261
+
+replace github.com/go-avro/avro => github.com/jaffee/avro v0.0.0-20191013175548-8d07fd23d4fa
 
 require (
 	github.com/Shopify/sarama v1.19.0

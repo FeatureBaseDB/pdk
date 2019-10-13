@@ -1,6 +1,7 @@
 package pdk
 
 import (
+	"encoding/binary"
 	"math"
 
 	"github.com/pkg/errors"
@@ -125,6 +126,7 @@ type DecimalField struct {
 
 func (d DecimalField) Name() string { return d.NameVal }
 func (i DecimalField) PilosafyVal(val interface{}) (interface{}, error) {
+	var tmp [8]byte
 	if val == nil {
 		return nil, nil
 	}
@@ -135,6 +137,15 @@ func (i DecimalField) PilosafyVal(val interface{}) (interface{}, error) {
 	case float64:
 		vt = vt * math.Pow(10, float64(i.Scale))
 		return int64(vt), nil
+	case []byte:
+		if len(vt) == 8 {
+			return int64(binary.BigEndian.Uint64(vt)), nil
+		} else if len(vt) < 8 {
+			copy(tmp[8-len(vt):], vt)
+			return binary.BigEndian.Uint64(tmp[:]), nil
+		} else {
+			return nil, errors.Errorf("can't support decimals of greater than 8 bytes, got %d for %s", len(vt), i.Name())
+		}
 	default:
 		return toInt64(val)
 	}
