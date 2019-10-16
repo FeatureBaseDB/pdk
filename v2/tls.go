@@ -3,7 +3,6 @@ package pdk
 import (
 	"crypto/tls"
 	"crypto/x509"
-	"fmt"
 	"io/ioutil"
 	"os"
 	"os/signal"
@@ -70,7 +69,6 @@ func (kpr *keypairReloader) maybeReload() error {
 }
 
 func (kpr *keypairReloader) GetCertificateFunc() func(*tls.ClientHelloInfo) (*tls.Certificate, error) {
-	fmt.Println("getting certificate func")
 	return func(clientHello *tls.ClientHelloInfo) (*tls.Certificate, error) {
 		kpr.certMu.RLock()
 		defer kpr.certMu.RUnlock()
@@ -87,6 +85,9 @@ func (kpr *keypairReloader) GetClientCertificateFunc() func(*tls.CertificateRequ
 }
 
 func GetTLSConfig(tlsConfig *TLSConfig, log logger.Logger) (TLSConfig *tls.Config, err error) {
+	if tlsConfig == nil {
+		return nil, nil
+	}
 	if tlsConfig.CertificatePath != "" && tlsConfig.CertificateKeyPath != "" {
 		kpr, err := NewKeypairReloader(tlsConfig.CertificatePath, tlsConfig.CertificateKeyPath, log)
 		if err != nil {

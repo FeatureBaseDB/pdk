@@ -1,6 +1,7 @@
 package kafka
 
 import (
+	"crypto/tls"
 	"encoding/binary"
 	"fmt"
 	"io/ioutil"
@@ -253,7 +254,7 @@ func TestKafkaSourceIntegration(t *testing.T) {
 
 	key := fmt.Sprintf("%d", rnd.Int())
 	for i, test := range tests {
-		schemaID := postSchema(t, test.schemaFile, fmt.Sprintf("schema%d", i))
+		schemaID := postSchema(t, test.schemaFile, fmt.Sprintf("schema%d", i), "localhost:8081", nil)
 		schema := liDecodeTestSchema(t, test.schemaFile)
 		t.Run(test.schemaFile, func(t *testing.T) {
 
@@ -293,8 +294,8 @@ func TestKafkaSourceIntegration(t *testing.T) {
 
 }
 
-func postSchema(t *testing.T, schemaFile, subj string) (schemaID int) {
-	schemaClient := csrc.NewClient("localhost:8081")
+func postSchema(t *testing.T, schemaFile, subj, regURL string, tlsConfig *tls.Config) (schemaID int) {
+	schemaClient := csrc.NewClient(regURL, tlsConfig)
 	schemaStr := readTestSchema(t, schemaFile)
 	resp, err := schemaClient.PostSubjects(subj, schemaStr)
 	if err != nil {

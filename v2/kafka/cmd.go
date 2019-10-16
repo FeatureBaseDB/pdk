@@ -8,7 +8,7 @@ import (
 type Main struct {
 	pdk.Main    `flag:"!embed"`
 	KafkaHosts  []string `help:"Comma separated list of host:port pairs for Kafka."`
-	RegistryURL string   `help:"Location of Confluent Schema Registry"`
+	RegistryURL string   `help:"Location of Confluent Schema Registry. Must start with 'https://' if you want to use TLS."`
 	Group       string   `help:"Kafka group."`
 	Topics      []string `help:"Kafka topics to read from."`
 }

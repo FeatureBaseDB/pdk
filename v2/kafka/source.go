@@ -1,13 +1,16 @@
 package kafka
 
 import (
+	"crypto/tls"
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
+	"net"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/Shopify/sarama"
@@ -45,7 +48,8 @@ type Source struct {
 	cache map[int32]avro.Schema
 	// stash is a local offset stash which source maintains so it can
 	// control when offsets are committed to Kafka.
-	stash *cluster.OffsetStash
+	stash      *cluster.OffsetStash
+	httpClient *http.Client
 
 	decBytes []byte
 	record   *Record
@@ -57,7 +61,7 @@ func NewSource() *Source {
 		Hosts:       []string{"localhost:9092"},
 		Topics:      []string{"test"},
 		Group:       "group0",
-		RegistryURL: "localhost:8081",
+		RegistryURL: "http://localhost:8081",
 		Log:         logger.NopLogger,
 
 		lastSchemaID: -1,
@@ -145,6 +149,11 @@ func (s *Source) Open() error {
 	config.Consumer.Group.Heartbeat.Interval = time.Millisecond * 500
 	config.Consumer.Group.Session.Timeout = time.Second
 
+	if !strings.HasPrefix(s.RegistryURL, "http") {
+		s.RegistryURL = "http://" + s.RegistryURL
+	}
+	s.httpClient = http.DefaultClient
+
 	if s.TLS.CertificatePath != "" {
 		tlsConfig, err := pdk.GetTLSConfig(&s.TLS, s.Log)
 		if err != nil {
@@ -152,6 +161,10 @@ func (s *Source) Open() error {
 		}
 		config.Config.Net.TLS.Config = tlsConfig
 		config.Config.Net.TLS.Enable = true
+
+		if strings.HasPrefix(s.RegistryURL, "https://") {
+			s.httpClient = getHTTPClient(tlsConfig)
+		}
 	}
 
 	var err error
@@ -434,7 +447,7 @@ func (s *Source) getCodec(id int32) (rschema avro.Schema, rerr error) {
 		return codec, nil
 	}
 
-	r, err := http.Get(fmt.Sprintf("http://%s/schemas/ids/%d", s.RegistryURL, id))
+	r, err := s.httpClient.Get(fmt.Sprintf("%s/schemas/ids/%d", s.RegistryURL, id))
 	if err != nil {
 		return nil, errors.Wrap(err, "getting schema from registry")
 	}
@@ -479,4 +492,22 @@ func avroDecode(codec avro.Schema, data []byte) (map[string]interface{}, error) 
 	}
 
 	return decodedRecord.Map(), nil
+}
+
+func getHTTPClient(t *tls.Config) *http.Client {
+	transport := &http.Transport{
+		Proxy: http.ProxyFromEnvironment,
+		DialContext: (&net.Dialer{
+			Timeout:   10 * time.Second,
+			KeepAlive: 20 * time.Second,
+			DualStack: true,
+		}).DialContext,
+		IdleConnTimeout:       90 * time.Second,
+		TLSHandshakeTimeout:   10 * time.Second,
+		ExpectContinueTimeout: 1 * time.Second,
+	}
+	if t != nil {
+		transport.TLSClientConfig = t
+	}
+	return &http.Client{Transport: transport}
 }

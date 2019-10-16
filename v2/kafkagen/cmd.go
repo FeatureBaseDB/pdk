@@ -105,7 +105,7 @@ func decodeSchema(filename string) (*liavro.Codec, error) {
 }
 
 func (m *Main) postSchema(schemaFile, subj string) (schemaID int, err error) {
-	schemaClient := csrc.NewClient("http://" + m.RegistryURL)
+	schemaClient := csrc.NewClient("http://"+m.RegistryURL, nil)
 	schemaStr, err := readSchema(schemaFile)
 	if err != nil {
 		return 0, errors.Wrap(err, "reading schema file")

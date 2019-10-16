@@ -1,25 +1,37 @@
 package csrc
 
 import (
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/pkg/errors"
 )
 
 type Client struct {
 	URL string
+
+	httpClient *http.Client
 }
 
-func NewClient(url string) *Client {
+func NewClient(url string, tlsConfig *tls.Config) *Client {
 	if !strings.HasPrefix(url, "http") {
 		url = "http://" + url
 	}
+	c := http.DefaultClient
+	if strings.HasPrefix(url, "https://") {
+		fmt.Println("getting http client with tls config", tlsConfig)
+		c = getHTTPClient(tlsConfig)
+	}
 	return &Client{
 		URL: url,
+
+		httpClient: c,
 	}
 }
 
@@ -27,7 +39,7 @@ func NewClient(url string) *Client {
 // https://docs.confluent.io/current/schema-registry/develop/api.html#get--schemas-ids-int-%20id
 func (c *Client) GetSchema(id int) (string, error) {
 	sr := SchemaResponse{}
-	resp, err := http.Get(fmt.Sprintf("%s/schemas/ids/%d", c.URL, id))
+	resp, err := c.httpClient.Get(fmt.Sprintf("%s/schemas/ids/%d", c.URL, id))
 	err = unmarshalRespErr(resp, err, &sr)
 	if err != nil {
 		return "", errors.Wrap(err, "making http request")
@@ -55,7 +67,7 @@ func (c *Client) PostSubjects(subj, schema string) (*SchemaResponse, error) {
 	schema = strings.Replace(schema, "\t", "", -1)
 	schema = strings.Replace(schema, "\n", `\n`, -1)
 	schema = fmt.Sprintf(`{"schema": "%s"}`, strings.Replace(schema, `"`, `\"`, -1)) // this is probably terrible
-	resp, err := http.Post(fmt.Sprintf("%s/subjects/%s/versions", c.URL, subj), "application/json", strings.NewReader(schema))
+	resp, err := c.httpClient.Post(fmt.Sprintf("%s/subjects/%s/versions", c.URL, subj), "application/json", strings.NewReader(schema))
 	sr := &SchemaResponse{}
 	err = unmarshalRespErr(resp, err, sr)
 	if err != nil {
@@ -85,4 +97,16 @@ func unmarshalRespErr(resp *http.Response, err error, into interface{}) error {
 		return errors.Wrap(err, "unmarshaling body")
 	}
 	return nil
+}
+
+func getHTTPClient(t *tls.Config) *http.Client {
+	transport := &http.Transport{
+		Dial: (&net.Dialer{
+			Timeout: time.Second * 20,
+		}).Dial,
+	}
+	if t != nil {
+		transport.TLSClientConfig = t
+	}
+	return &http.Client{Transport: transport}
 }

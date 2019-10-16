@@ -11,7 +11,7 @@ func TestPostGet(t *testing.T) {
 		t.Skip()
 	}
 	sr := "localhost:8081"
-	client := csrc.NewClient(sr)
+	client := csrc.NewClient(sr, nil)
 
 	schemaStr := `{"type":"record","name":"a","fields":[{"name":"blah","type":"string"}]}`
 	r, err := client.PostSubjects("aname", schemaStr)

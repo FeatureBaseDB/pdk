@@ -12,6 +12,7 @@ import (
 	"github.com/Shopify/sarama"
 	"github.com/pilosa/go-pilosa"
 	"github.com/pilosa/pdk/v2"
+	"github.com/pilosa/pilosa/logger"
 )
 
 func TestCmdMainOne(t *testing.T) {
@@ -30,6 +31,7 @@ func TestCmdMainOne(t *testing.T) {
 		PrimaryKeyFields []string
 		IDField          string
 		PilosaHosts      []string
+		RegistryURL      string
 		TLS              *pdk.TLSConfig
 		expRhinoKeys     []string
 		expRhinoCols     []uint64
@@ -62,31 +64,16 @@ func TestCmdMainOne(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			// load big schema
-			licodec := liDecodeTestSchema(t, "bigschema.json")
-			schemaID := postSchema(t, "bigschema.json", "bigschema2")
-
 			fields := []string{"abc", "db", "user_id", "all_users", "has_deleted_date", "central_group", "custom_audiences", "desktop_boolean", "desktop_frequency", "desktop_recency", "product_boolean_historical_forestry_cravings_or_bugles", "ddd_category_total_current_rhinocerous_checking", "ddd_category_total_current_rhinocerous_thedog_cheetah", "survey1234", "days_since_last_logon", "elephant_added_for_account"}
 
-			// make a bunch of data and insert it
 			records := [][]interface{}{
 				{"2", "1", 159, map[string]interface{}{"boolean": true}, map[string]interface{}{"boolean": false}, map[string]interface{}{"string": "cgr"}, map[string]interface{}{"array": []string{"a", "b"}}, nil, map[string]interface{}{"int": 7}, nil, nil, map[string]interface{}{"float": 5.4}, nil, map[string]interface{}{"org.test.survey1234": "yes"}, map[string]interface{}{"float": 8.0}, nil},
 			}
 
-			// put records in kafka
-			conf := sarama.NewConfig()
-			conf.Version = sarama.V0_10_0_0 // TODO - do we need this? should we move it up?
-			conf.Producer.Return.Successes = true
-			producer, err := sarama.NewSyncProducer([]string{"localhost:9092"}, conf)
-			if err != nil {
-				t.Fatalf("getting new producer: %v", err)
-			}
 			a := rand.Int()
 			topic := strconv.Itoa(a)
-			for _, vals := range records {
-				rec := makeRecord(t, fields, vals)
-				putRecordKafka(t, producer, schemaID, licodec, "akey", topic, rec)
-			}
+
+			// make a bunch of data and insert it
 
 			// create Main and run with MaxMsgs
 			m := NewMain()
@@ -102,6 +89,31 @@ func TestCmdMainOne(t *testing.T) {
 			}
 			if test.TLS != nil {
 				m.TLS = *test.TLS
+			}
+			if test.RegistryURL != "" {
+				m.RegistryURL = test.RegistryURL
+			}
+
+			// load big schema
+			licodec := liDecodeTestSchema(t, "bigschema.json")
+			tlsConf, err := pdk.GetTLSConfig(test.TLS, logger.NopLogger)
+			if err != nil {
+				t.Fatalf("getting tls config: %v", err)
+			}
+			schemaID := postSchema(t, "bigschema.json", "bigschema2", m.RegistryURL, tlsConf)
+
+			// put records in kafka
+			conf := sarama.NewConfig()
+			conf.Version = sarama.V0_10_0_0 // TODO - do we need this? should we move it up?
+			conf.Producer.Return.Successes = true
+			producer, err := sarama.NewSyncProducer([]string{"localhost:9092"}, conf)
+			if err != nil {
+				t.Fatalf("getting new producer: %v", err)
+			}
+
+			for _, vals := range records {
+				rec := makeRecord(t, fields, vals)
+				putRecordKafka(t, producer, schemaID, licodec, "akey", topic, rec)
 			}
 
 			err = m.Run()
