@@ -22,7 +22,7 @@ type Main struct {
 	PilosaHosts      []string `help:"Comma separated list of host:port pairs for Pilosa."`
 	BatchSize        int      `help:"Number of records to read before indexing all of them at once. Generally, larger means better throughput and more memory usage. 1,048,576 might be a good number."`
 	Index            string   `help:"Name of Pilosa index."`
-	LogPath          string   `help:"Log file to write to. Empty means stderr. TODO implement."`
+	LogPath          string   `help:"Log file to write to. Empty means stderr."`
 	PrimaryKeyFields []string `help:"Data field(s) which make up the primary key for a record. These will be concatenated and translated to a Pilosa ID. If empty, record key translation will not be used."`
 	IDField          string   `help:"Field which contains the integer column ID. May not be used in conjunction with primary-key-fields. If both are empty, auto-generated IDs will be used."`
 	MaxMsgs          int      `help:"Number of messages to consume from Kafka before stopping. Useful for testing when you don't want to run indefinitely."`
@@ -30,6 +30,7 @@ type Main struct {
 	PackBools        string   `help:"If non-empty, boolean fields will be packed into two set fields—one with this name, and one with <name>-exists."`
 	Verbose          bool     `help:"Enable verbose logging."`
 	// TODO implement the auto-generated IDs... hopefully using Pilosa to manage it.
+	TLS TLSConfig
 
 	NewSource func() (Source, error) `flag:"-"`
 
@@ -40,9 +41,8 @@ type Main struct {
 	log logger.Logger
 }
 
-func (m *Main) PilosaClient() *pilosa.Client {
-	return m.client
-}
+func (m *Main) PilosaClient() *pilosa.Client { return m.client }
+func (m *Main) Log() logger.Logger           { return m.log }
 
 func NewMain() *Main {
 	return &Main{
@@ -75,7 +75,7 @@ func (m *Main) setup() (err error) {
 		return errors.Wrap(err, "validating configuration")
 	}
 
-	logOut := os.Stdout
+	logOut := os.Stderr
 	if m.LogPath != "" {
 		f, err := os.OpenFile(m.LogPath, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 		if err != nil {
@@ -90,10 +90,22 @@ func (m *Main) setup() (err error) {
 		m.log = logger.NewStandardLogger(logOut)
 	}
 
-	m.client, err = pilosa.NewClient(m.PilosaHosts)
-	if err != nil {
-		return errors.Wrap(err, "getting pilosa client")
+	if m.TLS.CertificatePath != "" {
+		tlsConfig, err := GetTLSConfig(&m.TLS, m.Log())
+		if err != nil {
+			return errors.Wrap(err, "getting TLS config")
+		}
+		m.client, err = pilosa.NewClient(m.PilosaHosts, pilosa.OptClientTLSConfig(tlsConfig))
+		if err != nil {
+			return errors.Wrap(err, "getting pilosa client")
+		}
+	} else {
+		m.client, err = pilosa.NewClient(m.PilosaHosts)
+		if err != nil {
+			return errors.Wrap(err, "getting pilosa client")
+		}
 	}
+
 	m.schema, err = m.client.Schema()
 	if err != nil {
 		return errors.Wrap(err, "getting schema")

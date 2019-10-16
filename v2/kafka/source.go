@@ -14,6 +14,7 @@ import (
 	cluster "github.com/bsm/sarama-cluster"
 	"github.com/go-avro/avro"
 	pdk "github.com/pilosa/pdk/v2"
+	"github.com/pilosa/pilosa/logger"
 	"github.com/pkg/errors"
 )
 
@@ -26,6 +27,8 @@ type Source struct {
 	Group       string
 	MaxMsgs     int
 	RegistryURL string
+	TLS         pdk.TLSConfig
+	Log         logger.Logger
 
 	numMsgs  int
 	consumer *cluster.Consumer
@@ -55,6 +58,7 @@ func NewSource() *Source {
 		Topics:      []string{"test"},
 		Group:       "group0",
 		RegistryURL: "localhost:8081",
+		Log:         logger.NopLogger,
 
 		lastSchemaID: -1,
 		cache:        make(map[int32]avro.Schema),
@@ -140,6 +144,15 @@ func (s *Source) Open() error {
 	config.Group.Return.Notifications = true
 	config.Consumer.Group.Heartbeat.Interval = time.Millisecond * 500
 	config.Consumer.Group.Session.Timeout = time.Second
+
+	if s.TLS.CertificatePath != "" {
+		tlsConfig, err := pdk.GetTLSConfig(&s.TLS, s.Log)
+		if err != nil {
+			return errors.Wrap(err, "getting TLS config")
+		}
+		config.Config.Net.TLS.Config = tlsConfig
+		config.Config.Net.TLS.Enable = true
+	}
 
 	var err error
 	s.consumer, err = cluster.NewConsumer(s.Hosts, s.Group, s.Topics, config)

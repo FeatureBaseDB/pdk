@@ -3,6 +3,7 @@ package kafka
 import (
 	"fmt"
 	"math/rand"
+	"os"
 	"reflect"
 	"sort"
 	"strconv"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/Shopify/sarama"
 	"github.com/pilosa/go-pilosa"
+	"github.com/pilosa/pdk/v2"
 )
 
 func TestCmdMainOne(t *testing.T) {
@@ -17,10 +19,18 @@ func TestCmdMainOne(t *testing.T) {
 		t.Skip()
 	}
 
+	// TODO automate the setup for this test (creating certs with certstrap, etc)
+	home, err := os.UserHomeDir()
+	if err != nil {
+		t.Fatalf("getting home dir: %v", err)
+	}
+
 	tests := []struct {
 		name             string
 		PrimaryKeyFields []string
 		IDField          string
+		PilosaHosts      []string
+		TLS              *pdk.TLSConfig
 		expRhinoKeys     []string
 		expRhinoCols     []uint64
 	}{
@@ -28,6 +38,19 @@ func TestCmdMainOne(t *testing.T) {
 			name:             "3 primary keys str/str/int",
 			PrimaryKeyFields: []string{"abc", "db", "user_id"},
 			expRhinoKeys:     []string{string([]byte{50, 49, 0, 0, 0, 159})}, // "2" + "1" + uint32(159)
+
+		},
+		{
+			name:             "3 primary keys str/str/int",
+			PrimaryKeyFields: []string{"abc", "db", "user_id"},
+			PilosaHosts:      []string{"https://localhost:10111"},
+			TLS: &pdk.TLSConfig{
+				CertificatePath:          home + "/pilosa-sec/out/theclient.crt",
+				CertificateKeyPath:       home + "/pilosa-sec/out/theclient.key",
+				CACertPath:               home + "/pilosa-sec/out/ca.crt",
+				EnableClientVerification: true,
+			},
+			expRhinoKeys: []string{string([]byte{50, 49, 0, 0, 0, 159})}, // "2" + "1" + uint32(159)
 
 		},
 		{
@@ -74,6 +97,12 @@ func TestCmdMainOne(t *testing.T) {
 			m.BatchSize = 1
 			m.Topics = []string{topic}
 			m.MaxMsgs = len(records)
+			if test.PilosaHosts != nil {
+				m.PilosaHosts = test.PilosaHosts
+			}
+			if test.TLS != nil {
+				m.TLS = *test.TLS
+			}
 
 			err = m.Run()
 			if err != nil {

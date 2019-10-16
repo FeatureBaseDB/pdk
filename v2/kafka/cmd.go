@@ -27,6 +27,7 @@ func NewMain() *Main {
 		source.Topics = m.Topics
 		source.Group = m.Group
 		source.MaxMsgs = m.MaxMsgs
+		source.Log = m.Main.Log()
 
 		err := source.Open()
 		if err != nil {
