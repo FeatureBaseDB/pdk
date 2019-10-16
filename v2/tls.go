@@ -16,15 +16,15 @@ import (
 // TLSConfig contains TLS configuration
 type TLSConfig struct {
 	// CertificatePath contains the path to the certificate (.crt or .pem file)
-	CertificatePath string `json:"certificate"`
+	CertificatePath string `json:"certificate" help:"Path to certificate file."`
 	// CertificateKeyPath contains the path to the certificate key (.key file)
-	CertificateKeyPath string `json:"key"`
+	CertificateKeyPath string `json:"key" help:"Path to certificate key file."`
 	// CACertPath is the path to a CA certificate (.crt or .pem file)
-	CACertPath string `json:"ca-certificate"`
-	// SkipVerify disables verification of server certificates when connecting to another Pilosa node
-	SkipVerify bool `json:"skip-verify"`
+	CACertPath string `json:"ca-certificate" help:"Path to CA certificate file."`
+	// SkipVerify disables verification of server certificates.
+	SkipVerify bool `json:"skip-verify" help:"Disables verification of server certificates."`
 	// EnableClientVerification enables verification of client TLS certificates (Mutual TLS)
-	EnableClientVerification bool `json:"enable-client-verification"`
+	EnableClientVerification bool `json:"enable-client-verification" help:"Enable verification of client certificates."`
 }
 
 type keypairReloader struct {
