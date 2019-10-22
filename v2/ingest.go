@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"encoding/binary"
 	"io"
+	"net/http"
+	_ "net/http/pprof"
 	"os"
 
 	"github.com/pilosa/go-pilosa"
@@ -25,8 +27,7 @@ type Main struct {
 	LogPath          string   `help:"Log file to write to. Empty means stderr."`
 	PrimaryKeyFields []string `help:"Data field(s) which make up the primary key for a record. These will be concatenated and translated to a Pilosa ID. If empty, record key translation will not be used."`
 	IDField          string   `help:"Field which contains the integer column ID. May not be used in conjunction with primary-key-fields. If both are empty, auto-generated IDs will be used."`
-	MaxMsgs          int      `help:"Number of messages to consume from Kafka before stopping. Useful for testing when you don't want to run indefinitely."`
-	Concurrency      int      `help:"Number of concurrent kafka readers and indexing routines to launch. MaxMsgs will be read *from each*."`
+	Concurrency      int      `help:"Number of concurrent sources and indexing routines to launch."`
 	PackBools        string   `help:"If non-empty, boolean fields will be packed into two set fields—one with this name, and one with <name>-exists."`
 	Verbose          bool     `help:"Enable verbose logging."`
 	// TODO implement the auto-generated IDs... hopefully using Pilosa to manage it.
@@ -75,6 +76,7 @@ func (m *Main) setup() (err error) {
 		return errors.Wrap(err, "validating configuration")
 	}
 
+	// setup logging
 	logOut := os.Stderr
 	if m.LogPath != "" {
 		f, err := os.OpenFile(m.LogPath, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
@@ -90,6 +92,12 @@ func (m *Main) setup() (err error) {
 		m.log = logger.NewStandardLogger(logOut)
 	}
 
+	// start profiling endpoint
+	go func() {
+		m.log.Printf("%v", http.ListenAndServe("localhost:6060", nil))
+	}()
+
+	// set up Pilosa client
 	if m.TLS.CertificatePath != "" {
 		tlsConfig, err := GetTLSConfig(&m.TLS, m.Log())
 		if err != nil {
@@ -100,12 +108,11 @@ func (m *Main) setup() (err error) {
 			return errors.Wrap(err, "getting pilosa client")
 		}
 	} else {
-		m.client, err = pilosa.NewClient(m.PilosaHosts)
+		m.client, err = pilosa.NewClient(m.PilosaHosts, pilosa.OptClientRetries(10), pilosa.OptClientTotalPoolSize(1000), pilosa.OptClientPoolSizePerRoute(400))
 		if err != nil {
 			return errors.Wrap(err, "getting pilosa client")
 		}
 	}
-
 	m.schema, err = m.client.Schema()
 	if err != nil {
 		return errors.Wrap(err, "getting schema")
@@ -125,6 +132,8 @@ func (m *Main) setup() (err error) {
 }
 
 func (m *Main) runIngester(c int) error {
+	m.log.Printf("start ingester %d", c)
+
 	source, err := m.NewSource()
 	if err != nil {
 		return errors.Wrap(err, "getting source")
