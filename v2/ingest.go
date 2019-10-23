@@ -267,8 +267,8 @@ func (m *Main) batchFromSchema(schema []Field) ([]Recordizer, gpexp.RecordBatch,
 	// set up bool fields
 	var boolField, boolFieldExists *pilosa.Field
 	if m.PackBools != "" {
-		boolField = m.index.Field(m.PackBools, pilosa.OptFieldTypeBool())
-		boolFieldExists = m.index.Field(m.PackBools+"-exists", pilosa.OptFieldTypeBool())
+		boolField = m.index.Field(m.PackBools)
+		boolFieldExists = m.index.Field(m.PackBools + "-exists")
 	}
 	fields := make([]*pilosa.Field, 0, len(schema))
 	for i, pdkField := range schema {
