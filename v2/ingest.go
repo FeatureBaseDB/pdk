@@ -10,6 +10,7 @@ import (
 
 	"github.com/pilosa/go-pilosa"
 	"github.com/pilosa/go-pilosa/gpexp"
+	"github.com/pilosa/pdk"
 	"github.com/pilosa/pilosa/logger"
 	"github.com/pkg/errors"
 	"golang.org/x/sync/errgroup"
@@ -38,6 +39,8 @@ type Main struct {
 	client *pilosa.Client
 	schema *pilosa.Schema
 	index  *pilosa.Index
+
+	ra pdk.RangeAllocator
 
 	log logger.Logger
 }
@@ -127,12 +130,28 @@ func (m *Main) setup() (err error) {
 	if err != nil {
 		return errors.Wrap(err, "syncing schema")
 	}
+	if len(m.PrimaryKeyFields) == 0 && m.IDField == "" {
+		shardWidth := m.index.ShardWidth()
+		if shardWidth == 0 {
+			shardWidth = pilosa.DefaultShardWidth
+		}
+		m.ra = pdk.NewLocalRangeAllocator(shardWidth)
+	}
 
 	return nil
 }
 
 func (m *Main) runIngester(c int) error {
 	m.log.Printf("start ingester %d", c)
+	var nexter pdk.RangeNexter
+	if m.IDField == "" && len(m.PrimaryKeyFields) == 0 {
+		var err error
+		nexter, err = pdk.NewRangeNexter(m.ra)
+		if err != nil {
+			return errors.Wrap(err, "getting range nexter")
+		}
+		defer nexter.Return() // TODO log possible err?
+	}
 
 	source, err := m.NewSource()
 	if err != nil {
@@ -172,6 +191,12 @@ func (m *Main) runIngester(c int) error {
 			err = rdz(data, row)
 			if err != nil {
 				return errors.Wrap(err, "recordizing")
+			}
+		}
+		if nexter != nil { // add ID if no id field specified
+			row.ID, err = nexter.Next()
+			if err != nil {
+				return errors.Wrap(err, "getting next ID")
 			}
 		}
 		err = batch.Add(*row)
@@ -260,9 +285,11 @@ func (m *Main) batchFromSchema(schema []Field) ([]Recordizer, gpexp.RecordBatch,
 			return nil, nil, nil, errors.Errorf("ID field %s not found", m.IDField)
 		}
 	} else {
-		return nil, nil, nil, errors.New("autogen IDs is currently unimplemented; specify an IDField or primary key fields")
+		m.log.Debugf("getting no recordizer because we're autogening IDs")
 	}
-	recordizers = append(recordizers, rz)
+	if rz != nil {
+		recordizers = append(recordizers, rz)
+	}
 
 	// set up bool fields
 	var boolField, boolFieldExists *pilosa.Field
