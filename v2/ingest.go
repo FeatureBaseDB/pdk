@@ -108,7 +108,7 @@ func (m *Main) setup() (err error) {
 			return errors.Wrap(err, "getting pilosa client")
 		}
 	} else {
-		m.client, err = pilosa.NewClient(m.PilosaHosts, pilosa.OptClientRetries(10), pilosa.OptClientTotalPoolSize(1000), pilosa.OptClientPoolSizePerRoute(400))
+		m.client, err = pilosa.NewClient(m.PilosaHosts, pilosa.OptClientRetries(2), pilosa.OptClientTotalPoolSize(1000), pilosa.OptClientPoolSizePerRoute(400))
 		if err != nil {
 			return errors.Wrap(err, "getting pilosa client")
 		}
