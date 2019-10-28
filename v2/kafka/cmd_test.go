@@ -123,6 +123,9 @@ func TestCmdMainOne(t *testing.T) {
 
 			client := m.PilosaClient()
 			schema, err := client.Schema()
+			if err != nil {
+				t.Fatalf("getting client: %v", err)
+			}
 			index := schema.Index(m.Index)
 			defer func() {
 				err := client.DeleteIndex(index)
