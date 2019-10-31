@@ -39,11 +39,11 @@ func TestCmdMainOne(t *testing.T) {
 		{
 			name:             "3 primary keys str/str/int",
 			PrimaryKeyFields: []string{"abc", "db", "user_id"},
-			expRhinoKeys:     []string{string([]byte{50, 49, 0, 0, 0, 159})}, // "2" + "1" + uint32(159)
+			expRhinoKeys:     []string{string([]byte{50, 49, 0, 0, 0, 159}), string([]byte{52, 51, 0, 0, 0, 44})}, // "2" + "1" + uint32(159)
 
 		},
 		{
-			name:             "3 primary keys str/str/int",
+			name:             "3 primary keys str/str/int TLS",
 			PrimaryKeyFields: []string{"abc", "db", "user_id"},
 			PilosaHosts:      []string{"https://localhost:10111"},
 			TLS: &pdk.TLSConfig{
@@ -52,13 +52,13 @@ func TestCmdMainOne(t *testing.T) {
 				CACertPath:               home + "/pilosa-sec/out/ca.crt",
 				EnableClientVerification: true,
 			},
-			expRhinoKeys: []string{string([]byte{50, 49, 0, 0, 0, 159})}, // "2" + "1" + uint32(159)
+			expRhinoKeys: []string{string([]byte{50, 49, 0, 0, 0, 159}), string([]byte{52, 51, 0, 0, 0, 44})}, // "2" + "1" + uint32(159)
 
 		},
 		{
 			name:         "IDField int",
 			IDField:      "user_id",
-			expRhinoCols: []uint64{159},
+			expRhinoCols: []uint64{44, 159},
 		},
 	}
 
@@ -68,6 +68,7 @@ func TestCmdMainOne(t *testing.T) {
 
 			records := [][]interface{}{
 				{"2", "1", 159, map[string]interface{}{"boolean": true}, map[string]interface{}{"boolean": false}, map[string]interface{}{"string": "cgr"}, map[string]interface{}{"array": []string{"a", "b"}}, nil, map[string]interface{}{"int": 7}, nil, nil, map[string]interface{}{"float": 5.4}, nil, map[string]interface{}{"org.test.survey1234": "yes"}, map[string]interface{}{"float": 8.0}, nil},
+				{"4", "3", 44, map[string]interface{}{"boolean": true}, map[string]interface{}{"boolean": false}, map[string]interface{}{"string": "cgr"}, map[string]interface{}{"array": []string{"a", "b"}}, nil, map[string]interface{}{"int": 7}, nil, nil, map[string]interface{}{"float": 5.4}, nil, map[string]interface{}{"org.test.survey1234": "yes"}, map[string]interface{}{"float": 8.0}, nil},
 			}
 
 			a := rand.Int()
@@ -81,7 +82,7 @@ func TestCmdMainOne(t *testing.T) {
 			m.PrimaryKeyFields = test.PrimaryKeyFields
 			m.IDField = test.IDField
 			m.PackBools = "bools"
-			m.BatchSize = 1
+			m.BatchSize = 3 // need to test at a batch size less than the # of records, greater than, and equal to
 			m.Topics = []string{topic}
 			m.MaxMsgs = len(records)
 			if test.PilosaHosts != nil {
@@ -141,10 +142,10 @@ func TestCmdMainOne(t *testing.T) {
 			abc := index.Field("abc")
 			qr, err := client.Query(index.Count(abc.Row("2")))
 			if err != nil {
-				t.Fatalf("querying: %v", err)
+				t.Errorf("querying: %v", err)
 			}
 			if qr.Result().Count() != 1 {
-				t.Fatalf("wrong count for abc, %d is not 1", qr.Result().Count())
+				t.Errorf("wrong count for abc, %d is not 1", qr.Result().Count())
 			}
 
 			bools := index.Field("bools")
@@ -153,7 +154,7 @@ func TestCmdMainOne(t *testing.T) {
 				t.Fatalf("querying: %v", err)
 			}
 			ci := sortableCRI(qr.Result().CountItems())
-			exp := sortableCRI{{Count: 1, Key: "all_users"}}
+			exp := sortableCRI{{Count: 2, Key: "all_users"}}
 			sort.Sort(ci)
 			sort.Sort(exp)
 			if !reflect.DeepEqual(ci, exp) {
@@ -166,7 +167,7 @@ func TestCmdMainOne(t *testing.T) {
 				t.Fatalf("querying: %v", err)
 			}
 			ci = sortableCRI(qr.Result().CountItems())
-			exp = sortableCRI{{Count: 1, Key: "all_users"}, {Count: 1, Key: "has_deleted_date"}}
+			exp = sortableCRI{{Count: 2, Key: "all_users"}, {Count: 2, Key: "has_deleted_date"}}
 			sort.Sort(ci)
 			sort.Sort(exp)
 			if !reflect.DeepEqual(ci, exp) {
@@ -178,8 +179,11 @@ func TestCmdMainOne(t *testing.T) {
 			if err != nil {
 				t.Fatalf("querying: %v", err)
 			}
+			keys := qr.Result().Row().Keys
+			sort.Strings(keys)
+			sort.Strings(test.expRhinoKeys)
 			if test.expRhinoKeys != nil {
-				if keys := qr.Result().Row().Keys; !reflect.DeepEqual(keys, test.expRhinoKeys) {
+				if !reflect.DeepEqual(keys, test.expRhinoKeys) {
 					t.Errorf("wrong cols: %v, exp: %v", keys, test.expRhinoKeys)
 				}
 			}

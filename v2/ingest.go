@@ -162,8 +162,8 @@ func (m *Main) runIngester(c int) error {
 	var prevRec Record
 	var row *gpexp.Row
 	rec, err := source.Record()
-	for ; err == ErrSchemaChange || err == nil; rec, err = source.Record() {
-		if err == ErrSchemaChange {
+	for ; ; rec, err = source.Record() {
+		if err != nil {
 			// finish previous batch if this is not the first
 			if batch != nil {
 				err = batch.Import()
@@ -175,11 +175,15 @@ func (m *Main) runIngester(c int) error {
 					return errors.Wrap(err, "committing")
 				}
 			}
-			schema := source.Schema()
-			m.log.Printf("new schema: %+v", schema)
-			recordizers, batch, row, err = m.batchFromSchema(schema)
-			if err != nil {
-				return errors.Wrap(err, "batchFromSchema")
+			if err == ErrSchemaChange {
+				schema := source.Schema()
+				m.log.Printf("new schema: %+v", schema)
+				recordizers, batch, row, err = m.batchFromSchema(schema)
+				if err != nil {
+					return errors.Wrap(err, "batchFromSchema")
+				}
+			} else {
+				break
 			}
 		}
 		for i := range row.Values {
@@ -214,10 +218,10 @@ func (m *Main) runIngester(c int) error {
 		}
 		prevRec = rec
 	}
-	if err == io.EOF {
-		err = nil
+	if err != io.EOF {
+		return errors.Wrap(err, "getting record")
 	}
-	return errors.Wrap(err, "getting record")
+	return nil
 }
 
 type Recordizer func(rawRec []interface{}, rec *gpexp.Row) error
