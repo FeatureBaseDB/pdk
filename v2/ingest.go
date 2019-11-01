@@ -464,8 +464,8 @@ func getPrimaryKeyRecordizer(schema []Field, pkFields []string) (recordizer Reco
 		}
 		buf := bytes.NewBuffer(idbytes) // TODO does the buffer escape to heap?
 
-		for _, fieldIdx := range fieldIndices {
-			if fieldIdx != 0 {
+		for i, fieldIdx := range fieldIndices {
+			if i != 0 {
 				err := buf.WriteByte('|')
 				if err != nil {
 					return errors.Wrap(err, "writing separator")

@@ -64,7 +64,7 @@ func TestGetPrimaryKeyRecordizer(t *testing.T) {
 			schema:   []Field{StringField{NameVal: "a"}, IntField{NameVal: "b"}, IntField{NameVal: "c"}, IntField{NameVal: "d"}},
 			pkFields: []string{"c", "d", "b"},
 			rawRec:   []interface{}{"a", uint32(1), uint32(2), uint32(4)},
-			expID:    []byte{0, 0, 0, 2, 0, 0, 0, 4, 0, 0, 0, 1},
+			expID:    []byte("2|4|1"),
 		},
 	}
 
