@@ -39,7 +39,7 @@ func TestCmdMainOne(t *testing.T) {
 		{
 			name:             "3 primary keys str/str/int",
 			PrimaryKeyFields: []string{"abc", "db", "user_id"},
-			expRhinoKeys:     []string{string([]byte{50, 49, 0, 0, 0, 159}), string([]byte{52, 51, 0, 0, 0, 44})}, // "2" + "1" + uint32(159)
+			expRhinoKeys:     []string{"2|1|159", "4|3|44", "123456789|q2db_1234|432"}, // "2" + "1" + uint32(159)
 
 		},
 		{
@@ -52,7 +52,7 @@ func TestCmdMainOne(t *testing.T) {
 				CACertPath:               home + "/pilosa-sec/out/ca.crt",
 				EnableClientVerification: true,
 			},
-			expRhinoKeys: []string{string([]byte{50, 49, 0, 0, 0, 159}), string([]byte{52, 51, 0, 0, 0, 44})}, // "2" + "1" + uint32(159)
+			expRhinoKeys: []string{"2|1|159", "4|3|44", "123456789|q2db_1234|432"}, // "2" + "1" + uint32(159)
 
 		},
 		{
@@ -69,12 +69,14 @@ func TestCmdMainOne(t *testing.T) {
 			records := [][]interface{}{
 				{"2", "1", 159, map[string]interface{}{"boolean": true}, map[string]interface{}{"boolean": false}, map[string]interface{}{"string": "cgr"}, map[string]interface{}{"array": []string{"a", "b"}}, nil, map[string]interface{}{"int": 7}, nil, nil, map[string]interface{}{"float": 5.4}, nil, map[string]interface{}{"org.test.survey1234": "yes"}, map[string]interface{}{"float": 8.0}, nil},
 				{"4", "3", 44, map[string]interface{}{"boolean": true}, map[string]interface{}{"boolean": false}, map[string]interface{}{"string": "cgr"}, map[string]interface{}{"array": []string{"a", "b"}}, nil, map[string]interface{}{"int": 7}, nil, nil, map[string]interface{}{"float": 5.4}, nil, map[string]interface{}{"org.test.survey1234": "yes"}, map[string]interface{}{"float": 8.0}, nil},
+				{"123456789", "q2db_1234", 432, map[string]interface{}{"boolean": false}, map[string]interface{}{"boolean": false}, map[string]interface{}{"string": "cgr"}, map[string]interface{}{"array": []string{"a", "b"}}, nil, map[string]interface{}{"int": 7}, nil, nil, map[string]interface{}{"float": 5.9}, nil, map[string]interface{}{"org.test.survey1234": "yes"}, map[string]interface{}{"float": 8.0}, nil},
+				{"123456789", "q2db_1234", 432, map[string]interface{}{"boolean": false}, map[string]interface{}{"boolean": false}, map[string]interface{}{"string": "cgr"}, map[string]interface{}{"array": []string{"a", "b"}}, nil, map[string]interface{}{"int": 7}, nil, nil, map[string]interface{}{"float": 5.4}, nil, map[string]interface{}{"org.test.survey1234": "yes"}, map[string]interface{}{"float": 8.0}, nil},
+				{"2", "1", 159, map[string]interface{}{"boolean": true}, map[string]interface{}{"boolean": false}, map[string]interface{}{"string": "cgr"}, map[string]interface{}{"array": []string{"a", "b"}}, nil, map[string]interface{}{"int": 7}, nil, nil, map[string]interface{}{"float": 5.4}, nil, map[string]interface{}{"org.test.survey1234": "yes"}, map[string]interface{}{"float": 8.0}, nil},
+				{"4", "3", 44, map[string]interface{}{"boolean": true}, map[string]interface{}{"boolean": false}, map[string]interface{}{"string": "cgr"}, map[string]interface{}{"array": []string{"a", "b"}}, nil, map[string]interface{}{"int": 7}, nil, nil, map[string]interface{}{"float": 5.4}, nil, map[string]interface{}{"org.test.survey1234": "yes"}, map[string]interface{}{"float": 8.0}, nil},
 			}
 
 			a := rand.Int()
 			topic := strconv.Itoa(a)
-
-			// make a bunch of data and insert it
 
 			// create Main and run with MaxMsgs
 			m := NewMain()
@@ -167,7 +169,7 @@ func TestCmdMainOne(t *testing.T) {
 				t.Fatalf("querying: %v", err)
 			}
 			ci = sortableCRI(qr.Result().CountItems())
-			exp = sortableCRI{{Count: 2, Key: "all_users"}, {Count: 2, Key: "has_deleted_date"}}
+			exp = sortableCRI{{Count: 3, Key: "all_users"}, {Count: 3, Key: "has_deleted_date"}}
 			sort.Sort(ci)
 			sort.Sort(exp)
 			if !reflect.DeepEqual(ci, exp) {

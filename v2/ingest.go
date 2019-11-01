@@ -2,7 +2,7 @@ package pdk
 
 import (
 	"bytes"
-	"encoding/binary"
+	"fmt"
 	"io"
 	"net/http"
 	_ "net/http/pprof"
@@ -464,19 +464,17 @@ func getPrimaryKeyRecordizer(schema []Field, pkFields []string) (recordizer Reco
 		}
 		buf := bytes.NewBuffer(idbytes) // TODO does the buffer escape to heap?
 
-		// TODO... will want to change this encoding logic to length-prefix the different fields or something.
 		for _, fieldIdx := range fieldIndices {
-			val := rawRec[fieldIdx]
-			switch vt := val.(type) {
-			case string:
-				buf.WriteString(vt) // err is always nil
-			case []byte:
-				buf.Write(vt) // err is always nil
-			default:
-				err = binary.Write(buf, binary.BigEndian, val)
+			if fieldIdx != 0 {
+				err := buf.WriteByte('|')
 				if err != nil {
-					return errors.Wrapf(err, "writing %+v of type %[1]T", val)
+					return errors.Wrap(err, "writing separator")
 				}
+			}
+			val := rawRec[fieldIdx]
+			_, err := fmt.Fprintf(buf, "%v", val)
+			if err != nil {
+				return errors.Wrapf(err, "encoding primary key val:'%v' type: %[1]T", val)
 			}
 		}
 		rec.ID = buf.Bytes()
