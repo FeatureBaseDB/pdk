@@ -27,3 +27,5 @@ vendor
 
 .terraform
 terraform.tfstate*
+
+build

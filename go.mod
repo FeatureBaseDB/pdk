@@ -11,7 +11,7 @@ require (
 	github.com/bsm/sarama-cluster v2.1.15+incompatible
 	github.com/elodina/go-avro v0.0.0-20160406082632-0c8185d9a3ba
 	github.com/go-avro/avro v0.0.0-20171219232920-444163702c11
-	github.com/jaffee/commandeer v0.3.0
+	github.com/jaffee/commandeer v0.3.1-0.20191101204523-07c6265b86ee
 	github.com/linkedin/goavro v0.0.0-20181018120728-1beee2a74088
 	github.com/linkedin/goavro/v2 v2.9.6
 	github.com/mmcloughlin/geohash v0.0.0-20181009053802-f7f2bcae3294

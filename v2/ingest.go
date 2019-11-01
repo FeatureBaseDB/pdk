@@ -64,6 +64,8 @@ func (m *Main) Run() (err error) {
 		return errors.Wrap(err, "setting up")
 	}
 	eg := errgroup.Group{}
+
+	m.log.Debugf("Ingest Config: %+v", m)
 	for c := 0; c < m.Concurrency; c++ {
 		c := c
 		eg.Go(func() error {
