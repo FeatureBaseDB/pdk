@@ -1,7 +1,5 @@
 module github.com/pilosa/pdk
 
-replace github.com/pilosa/go-pilosa => github.com/jaffee/go-pilosa v0.4.1-0.20191011215038-51699dbd7261
-
 replace github.com/go-avro/avro => github.com/jaffee/avro v0.0.0-20191013175548-8d07fd23d4fa
 
 require (
@@ -17,7 +15,7 @@ require (
 	github.com/mmcloughlin/geohash v0.0.0-20181009053802-f7f2bcae3294
 	github.com/onsi/ginkgo v1.7.0 // indirect
 	github.com/onsi/gomega v1.4.3 // indirect
-	github.com/pilosa/go-pilosa v1.3.1-0.20191011151453-0c53860b34ff
+	github.com/pilosa/go-pilosa v1.3.1-0.20191028170026-39c2f0e6af86
 	github.com/pilosa/pilosa v1.3.1
 	github.com/pkg/errors v0.8.1
 	github.com/pkg/profile v1.2.1 // indirect
