@@ -32,6 +32,7 @@ crossbuild:
 
 install:
 	go install $(LDFLAGS) $(FLAGS) $(CLONE_URL)/cmd/pdk
+	go install $(LDFLAGS) $(FLAGS) $(CLONE_URL)/cmd/picsv
 
 gometalinter: vendor
 	GO111MODULE=off gometalinter --vendor --disable-all \
@@ -54,3 +55,8 @@ install-gometalinter:
 	GO111MODULE=off go get -u github.com/alecthomas/gometalinter
 	GO111MODULE=off gometalinter --install
 	GO111MODULE=off go get github.com/remyoudompheng/go-misc/deadcode
+
+build-consumers:
+	mkdir -p build
+	go build -o build/consumer-mac-`git log | head -1 | cut -d' ' -f2 | head -c 7` ./v2/cmd/kafka
+	GOOS=linux go build -o build/consumer-linux-`git log | head -1 | cut -d' ' -f2 | head -c 7` ./v2/cmd/kafka

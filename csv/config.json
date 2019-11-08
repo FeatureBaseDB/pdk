@@ -1,0 +1,17 @@
+{
+"pilosa-fields": {"size": {"type": "set", "keys": true, "cache-type": "ranked", "cache-size": 100000},
+                  "age": {"type": "int"},
+                  "color": {"type": "set", "keys": true},
+                  "result": {"type": "int"},
+                  "dayofweek": {"type": "set", "keys": false, "cache-type": "ranked", "cache-size": 7}
+    },
+"id-field": "ID",
+"id-type": "string",
+"source-fields": {
+        "Size": {"target-field": "size", "type": "string"},
+        "Color": {"target-field": "color", "type": "string"},
+        "Age": {"target-field": "age", "type": "int"},
+        "Result": {"target-field": "result", "type": "float", "multiplier": 100000000},
+        "dayofweek": {"target-field": "dayofweek", "type": "uint64"}
+    }
+}

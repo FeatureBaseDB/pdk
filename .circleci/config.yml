@@ -2,7 +2,7 @@ version: 2
 defaults: &defaults
   working_directory: /go/src/github.com/pilosa/pdk
   docker:
-    - image: circleci/golang:1.11
+    - image: circleci/golang:1.12
   environment:
     GO111MODULE: "on"
 fast-checkout: &fast-checkout
@@ -30,15 +30,15 @@ jobs:
       - *fast-checkout
       - run: make install-gometalinter
       - run: make gometalinter
-  test-golang-1.11: &base-test
+  test-golang-1.12: &base-test
     <<: *defaults
     steps:
       - *fast-checkout
       - run: make test
-  test-golang-1.12-rc:
+  test-golang-1.13:
     <<: *base-test
     docker:
-      - image: circleci/golang:1.12-rc
+      - image: circleci/golang:1.13
 workflows:
   version: 2
   test:
@@ -47,9 +47,9 @@ workflows:
       - linter:
           requires:
             - build
-      - test-golang-1.11:
+      - test-golang-1.12:
           requires:
             - build
-      - test-golang-1.12-rc:
+      - test-golang-1.13:
           requires:
             - build
