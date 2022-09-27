@@ -1,5 +1,8 @@
 # pdk
 
+This repo archived Sept 2022 as part of the transition from Pilosa to FeatureBase.
+Please contact community[at]featurebase[dot]com with any questions.
+
 [![CircleCI](https://circleci.com/gh/pilosa/pdk.svg?style=shield)](https://circleci.com/gh/pilosa/pdk)
 [![Go Report Card](https://goreportcard.com/badge/github.com/pilosa/pdk)](https://goreportcard.com/report/github.com/pilosa/pdk)
 [![GoDoc](https://godoc.org/github.com/pilosa/pdk?status.svg)](https://godoc.org/github.com/pilosa/pdk)
